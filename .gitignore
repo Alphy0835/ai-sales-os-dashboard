@@ -1,0 +1,36 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & AI tooling
+.idea/
+.vscode/
+.cursor/
+.continue/
+.windsurf/
+.claude/
+*.swp
+*.swo
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+credentials.json
+
+# Dependencies & build
+node_modules/
+dist/
+build/
+.next/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs & temp
+*.log
+tmp/
+temp/
