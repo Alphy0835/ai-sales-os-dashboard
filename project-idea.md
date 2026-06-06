@@ -6,12 +6,12 @@
 
 Операционная система для отделов продаж. Закрывает разрыв между CRM (что произошло) и качеством работы (как и почему).
 
-Анализирует коммуникации → связывает с базой знаний и pipeline → выдаёт **действия**: просадки, зоны роста, рекомендации.
+Анализирует коммуникации → связывает с базой знаний и pipeline → выдаёт **действия**: оценки качества, зоны роста, рекомендации *(post-MVP: сигналы просадки до P&L)*.
 
-| Роль | Ценность |
-|------|----------|
-| **Руководитель** | Картина контура, сигналы до P&L, план развития |
-| **Менеджер** | Динамика, зоны роста, рекомендации *(post-MVP: Employee View)* |
+| Роль | MVP | Post-MVP |
+|------|-----|----------|
+| **Руководитель** | Качество команды, зоны роста, [Manager Card](./docs/glossary/manager-card.md), карточка сотрудника | Сигналы просадки до P&L, прогнозы, иерархия |
+| **Менеджер** | — *(объект оценки)* | Employee View: динамика, рекомендации, подготовка к касаниям |
 
 ---
 
@@ -52,4 +52,4 @@ CRM показывает «что», ОКК не масштабируется, �
 
 **MVP =** звонок + pipeline + criteria + knowledge base → score + growth zones + manager card.
 
-→ [docs/progect/feauters/mvp-scope.md](./docs/progect/feauters/mvp-scope.md) · [docs/product/roadmap.md](./docs/product/roadmap.md) · [demo-scenario-1.md](./docs/progect/feauters/demo-scenario-1.md)
+→ [docs/project/features/mvp-scope.md](./docs/project/features/mvp-scope.md) · [docs/product/roadmap.md](./docs/product/roadmap.md) · [demo-scenario-1.md](./docs/project/features/demo-scenario-1.md)

@@ -1,6 +1,6 @@
 # MVP: In / Out Scope
 
-← [mvp-scope.md](../progect/feauters/mvp-scope.md)
+← [mvp-scope.md](../project/features/mvp-scope.md)
 
 ---
 

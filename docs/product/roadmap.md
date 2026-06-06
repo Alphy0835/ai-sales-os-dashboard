@@ -1,6 +1,6 @@
 # Roadmap: MVP → V2 → V3
 
-← [project-idea.md](../../project-idea.md) · [mvp-scope.md](../progect/feauters/mvp-scope.md)
+← [project-idea.md](../../project-idea.md) · [mvp-scope.md](../project/features/mvp-scope.md)
 
 ---
 
@@ -8,7 +8,7 @@
 
 Звонок + pipeline + criteria + knowledge base → score + growth zones + manager card.
 
-→ [scope-in-out.md](../mvp/scope-in-out.md) · [acceptance-criteria.md](../mvp/acceptance-criteria.md) · [demo-scenario-1.md](../progect/feauters/demo-scenario-1.md)
+→ [scope-in-out.md](../mvp/scope-in-out.md) · [acceptance-criteria.md](../mvp/acceptance-criteria.md) · [demo-scenario-1.md](../project/features/demo-scenario-1.md)
 
 ---
 

@@ -10,9 +10,9 @@
 | Product | [product/](./product/) |
 | Architecture | [architecture/](./architecture/) |
 | MVP (детали) | [mvp/](./mvp/) |
-| MVP (summary) | [progect/feauters/](./progect/feauters/) |
+| MVP (summary) | [project/features/](./project/features/) |
 | ICP (детали) | [icp/](./icp/) |
 | ICP / Marketing (summary) | [marketing/](./marketing/) |
 | Positioning | [positioning/](./positioning/) |
 | Glossary | [glossary/](./glossary/) |
-| Разработка | [progect/](./progect/) — backend, frontend, design, screens |
+| Разработка | [project/](./project/) — backend, frontend, design, screens |

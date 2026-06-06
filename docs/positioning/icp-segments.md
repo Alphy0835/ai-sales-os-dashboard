@@ -1,6 +1,6 @@
 # Positioning: ICP Segments
 
-← [gtm-maifesto.md](../marketing/gtm-maifesto.md)
+← [gtm-manifesto.md](../marketing/gtm-manifesto.md)
 
 ---
 

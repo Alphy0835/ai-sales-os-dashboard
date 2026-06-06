@@ -1,6 +1,8 @@
 # Positioning: Value Proposition
 
-← [gtm-maifesto.md](../marketing/gtm-maifesto.md)
+← [gtm-manifesto.md](../marketing/gtm-manifesto.md)
+
+> **MVP vs продукт:** pillars 1, 3, 4, 5 — в MVP (частично). Pillar 2 (раннее обнаружение, сигналы до P&L) — **post-MVP**. См. [mvp-scope.md](../project/features/mvp-scope.md).
 
 ---
 

@@ -9,8 +9,8 @@
 | Задача | Куда идти |
 |--------|-----------|
 | Понять продукт за 2 мин | [project-idea.md](./project-idea.md) |
-| Что входит в MVP | [docs/progect/feauters/mvp-scope.md](./docs/progect/feauters/mvp-scope.md) |
-| Прогнать первое демо | [docs/progect/feauters/demo-scenario-1.md](./docs/progect/feauters/demo-scenario-1.md) |
+| Что входит в MVP | [docs/project/features/mvp-scope.md](./docs/project/features/mvp-scope.md) |
+| Прогнать первое демо | [docs/project/features/demo-scenario-1.md](./docs/project/features/demo-scenario-1.md) |
 | Найти термин | [product-glossary.md](./product-glossary.md) |
 | Кто клиент и зачем | [docs/marketing/icp-profile.md](./docs/marketing/icp-profile.md) |
 
@@ -46,12 +46,12 @@
 
 | Документ | Содержание |
 |----------|------------|
-| [docs/progect/feauters/mvp-scope.md](./docs/progect/feauters/mvp-scope.md) | Граница MVP — summary |
+| [docs/project/features/mvp-scope.md](./docs/project/features/mvp-scope.md) | Граница MVP — summary |
 | [docs/mvp/scope-in-out.md](./docs/mvp/scope-in-out.md) | In / out scope |
 | [docs/mvp/input-output.md](./docs/mvp/input-output.md) | Что загружают / что получают |
 | [docs/mvp/acceptance-criteria.md](./docs/mvp/acceptance-criteria.md) | AC-1 … AC-15 |
 | [docs/mvp/tech-limits.md](./docs/mvp/tech-limits.md) | Лимиты и Definition of Done |
-| [docs/progect/feauters/demo-scenario-1.md](./docs/progect/feauters/demo-scenario-1.md) | Сквозное демо |
+| [docs/project/features/demo-scenario-1.md](./docs/project/features/demo-scenario-1.md) | Сквозное демо |
 
 ### Маркетинг / ICP
 
@@ -68,7 +68,7 @@
 
 | Документ | Содержание |
 |----------|------------|
-| [docs/marketing/gtm-maifesto.md](./docs/marketing/gtm-maifesto.md) | Позиционирование — summary |
+| [docs/marketing/gtm-manifesto.md](./docs/marketing/gtm-manifesto.md) | Позиционирование — summary |
 | [docs/positioning/icp-segments.md](./docs/positioning/icp-segments.md) | Primary / Secondary / Anti-ICP |
 | [docs/positioning/value-proposition.md](./docs/positioning/value-proposition.md) | Value pillars, one-liner |
 | [docs/positioning/competitive-map.md](./docs/positioning/competitive-map.md) | Конкурентная карта |
@@ -79,12 +79,13 @@
 | Документ | Содержание |
 |----------|------------|
 | [product-glossary.md](./product-glossary.md) | Индекс терминов |
+| [docs/glossary/manager-card.md](./docs/glossary/manager-card.md) | Manager Card — спецификация MVP |
 | [docs/glossary/](./docs/glossary/) | Определения по категориям |
 
 ### Разработка (заготовки)
 
 | Документ | Содержание |
 |----------|------------|
-| [docs/progect/backend/backend-docs.md](./docs/progect/backend/backend-docs.md) | Backend |
-| [docs/progect/frontend/frontend-docs.md](./docs/progect/frontend/frontend-docs.md) | Frontend |
-| [docs/progect/skreens/README.md](./docs/progect/skreens/README.md) | Экраны |
+| [docs/project/backend/backend-docs.md](./docs/project/backend/backend-docs.md) | Backend |
+| [docs/project/frontend/frontend-docs.md](./docs/project/frontend/frontend-docs.md) | Frontend |
+| [docs/project/screens/README.md](./docs/project/screens/README.md) | Экраны |
