@@ -1,6 +1,6 @@
 # Positioning: Competitive Map
 
-← [gtm-maifesto.md](../../dogs/marketing/gtm-maifesto.md)
+← [gtm-maifesto.md](../marketing/gtm-maifesto.md)
 
 | | CRM | ОКК | Generic AI | Conv. Intelligence | **AI Sales OS** |
 |---|---|---|---|---|---|

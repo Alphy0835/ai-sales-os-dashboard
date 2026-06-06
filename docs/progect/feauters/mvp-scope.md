@@ -25,8 +25,8 @@
 
 | Тема | Документ |
 |------|----------|
-| In scope / Out of scope | [docs/mvp/scope-in-out.md](../../../docs/mvp/scope-in-out.md) |
-| Input / Output | [docs/mvp/input-output.md](../../../docs/mvp/input-output.md) |
-| Acceptance Criteria (AC-1 … AC-15) | [docs/mvp/acceptance-criteria.md](../../../docs/mvp/acceptance-criteria.md) |
-| Tech limits, Definition of Done | [docs/mvp/tech-limits.md](../../../docs/mvp/tech-limits.md) |
+| In scope / Out of scope | [docs/mvp/scope-in-out.md](../../mvp/scope-in-out.md) |
+| Input / Output | [docs/mvp/input-output.md](../../mvp/input-output.md) |
+| Acceptance Criteria (AC-1 … AC-15) | [docs/mvp/acceptance-criteria.md](../../mvp/acceptance-criteria.md) |
+| Tech limits, Definition of Done | [docs/mvp/tech-limits.md](../../mvp/tech-limits.md) |
 | Сквозное демо | [demo-scenario-1.md](./demo-scenario-1.md) |

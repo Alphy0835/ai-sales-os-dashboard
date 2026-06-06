@@ -1,6 +1,6 @@
 # MVP: Input / Output
 
-← [mvp-scope.md](../../dogs/progect/feauters/mvp-scope.md) · [data-flow-mvp.md](../architecture/data-flow-mvp.md)
+← [mvp-scope.md](../progect/feauters/mvp-scope.md) · [data-flow-mvp.md](../architecture/data-flow-mvp.md)
 
 ---
 

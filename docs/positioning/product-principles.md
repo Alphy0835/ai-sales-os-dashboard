@@ -1,6 +1,6 @@
 # Positioning: Product Principles
 
-← [gtm-maifesto.md](../../dogs/marketing/gtm-maifesto.md)
+← [gtm-maifesto.md](../marketing/gtm-maifesto.md)
 
 ---
 

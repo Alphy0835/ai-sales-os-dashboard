@@ -1,6 +1,6 @@
 # MVP: Tech Limits & Definition of Done
 
-← [mvp-scope.md](../../dogs/progect/feauters/mvp-scope.md)
+← [mvp-scope.md](../progect/feauters/mvp-scope.md)
 
 ---
 

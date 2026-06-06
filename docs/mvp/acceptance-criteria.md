@@ -1,6 +1,6 @@
 # MVP: Acceptance Criteria
 
-← [mvp-scope.md](../../dogs/progect/feauters/mvp-scope.md) · [demo-scenario-1.md](../../dogs/progect/feauters/demo-scenario-1.md)
+← [mvp-scope.md](../progect/feauters/mvp-scope.md) · [demo-scenario-1.md](../progect/feauters/demo-scenario-1.md)
 
 MVP готов, когда все пункты выполнены.
 

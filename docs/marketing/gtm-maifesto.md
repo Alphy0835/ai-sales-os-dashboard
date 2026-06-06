@@ -18,7 +18,7 @@
 
 | Тема | Документ |
 |------|----------|
-| ICP-сегменты (Primary / Secondary / Anti) | [docs/positioning/icp-segments.md](../../docs/positioning/icp-segments.md) |
-| Value proposition, pillars, positioning | [docs/positioning/value-proposition.md](../../docs/positioning/value-proposition.md) |
-| Конкурентная карта | [docs/positioning/competitive-map.md](../../docs/positioning/competitive-map.md) |
-| Продуктовые принципы, открытые вопросы | [docs/positioning/product-principles.md](../../docs/positioning/product-principles.md) |
+| ICP-сегменты (Primary / Secondary / Anti) | [docs/positioning/icp-segments.md](../positioning/icp-segments.md) |
+| Value proposition, pillars, positioning | [docs/positioning/value-proposition.md](../positioning/value-proposition.md) |
+| Конкурентная карта | [docs/positioning/competitive-map.md](../positioning/competitive-map.md) |
+| Продуктовые принципы, открытые вопросы | [docs/positioning/product-principles.md](../positioning/product-principles.md) |

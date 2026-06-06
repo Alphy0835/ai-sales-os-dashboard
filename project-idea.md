@@ -52,4 +52,4 @@ CRM показывает «что», ОКК не масштабируется, �
 
 **MVP =** звонок + pipeline + criteria + knowledge base → score + growth zones + manager card.
 
-→ [dogs/progect/feauters/mvp-scope.md](./dogs/progect/feauters/mvp-scope.md) · [docs/product/roadmap.md](./docs/product/roadmap.md) · [demo-scenario-1.md](./dogs/progect/feauters/demo-scenario-1.md)
+→ [docs/progect/feauters/mvp-scope.md](./docs/progect/feauters/mvp-scope.md) · [docs/product/roadmap.md](./docs/product/roadmap.md) · [demo-scenario-1.md](./docs/progect/feauters/demo-scenario-1.md)

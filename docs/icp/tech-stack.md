@@ -1,6 +1,6 @@
 # ICP: Tech Stack & Data Flow
 
-← [icp-profile.md](../../dogs/marketing/icp-profile.md)
+← [icp-profile.md](../marketing/icp-profile.md)
 
 ---
 

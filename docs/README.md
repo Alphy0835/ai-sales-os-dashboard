@@ -2,14 +2,17 @@
 
 ← [README.md](../README.md)
 
-Все детальные документы. Основные файлы содержат только summary + ссылки сюда.
+Все документы проекта. Корневые файлы (`project-idea.md`, `README.md`) — summary + ссылки сюда.
 
 | Раздел | Путь |
 |--------|------|
 | Flow | [flow/](./flow/) |
 | Product | [product/](./product/) |
 | Architecture | [architecture/](./architecture/) |
-| MVP | [mvp/](./mvp/) |
-| ICP | [icp/](./icp/) |
+| MVP (детали) | [mvp/](./mvp/) |
+| MVP (summary) | [progect/feauters/](./progect/feauters/) |
+| ICP (детали) | [icp/](./icp/) |
+| ICP / Marketing (summary) | [marketing/](./marketing/) |
 | Positioning | [positioning/](./positioning/) |
 | Glossary | [glossary/](./glossary/) |
+| Разработка | [progect/](./progect/) — backend, frontend, design, screens |

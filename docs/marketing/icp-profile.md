@@ -24,8 +24,8 @@
 
 | Тема | Документ |
 |------|----------|
-| Проблема | [docs/icp/problem.md](../../docs/icp/problem.md) |
-| Техстек ОП, поток данных, иерархия | [docs/icp/tech-stack.md](../../docs/icp/tech-stack.md) |
-| Боли по ролям | [docs/icp/pain-points.md](../../docs/icp/pain-points.md) |
-| Почему текущие решения не работают | [docs/icp/failed-solutions.md](../../docs/icp/failed-solutions.md) |
-| Must / Should / Nice have | [docs/icp/requirements.md](../../docs/icp/requirements.md) |
+| Проблема | [docs/icp/problem.md](../icp/problem.md) |
+| Техстек ОП, поток данных, иерархия | [docs/icp/tech-stack.md](../icp/tech-stack.md) |
+| Боли по ролям | [docs/icp/pain-points.md](../icp/pain-points.md) |
+| Почему текущие решения не работают | [docs/icp/failed-solutions.md](../icp/failed-solutions.md) |
+| Must / Should / Nice have | [docs/icp/requirements.md](../icp/requirements.md) |

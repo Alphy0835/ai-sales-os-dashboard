@@ -2,7 +2,7 @@
 
 > Сквозной сценарий первого рабочего демо MVP. Используется для разработки, QA и презентации.
 
-← [README.md](../../../README.md) · [mvp-scope.md](./mvp-scope.md) · [acceptance-criteria.md](../../../docs/mvp/acceptance-criteria.md) · [product-glossary.md](../../../product-glossary.md)
+← [README.md](../../../README.md) · [mvp-scope.md](./mvp-scope.md) · [acceptance-criteria.md](../../mvp/acceptance-criteria.md) · [product-glossary.md](../../../product-glossary.md)
 
 ---
 
