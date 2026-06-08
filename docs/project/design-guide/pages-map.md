@@ -13,6 +13,7 @@ Maturity: L1
 Карта экранов User Level: Page ID, shell, зоны, навигация и подготовка к ASCII/HTML preview.
 
 > Правила design-guide: `work-rules-design-guide.md`  
+> Визуальный стиль: `design-system-format/ui-kit.md`  
 > Индекс preview: `design-system-preview/design-system-preview.md`  
 > Сценарии: `docs/project/user-flow.md`
 
@@ -100,67 +101,74 @@ Preview-файлы — в `design-system-preview/`. Routes черновые до
 
 ### SHELL-MANAGER — PAGE-002 … PAGE-007
 
+Layout: **AI Control Dashboard** — sidebar + main + optional insight panel.  
+Детали стиля: `design-system-format/page-layout-rules.md`.
+
 | Zone ID | Назначение |
 |---|---|
-| Z-TOPBAR | логотип, выбор подразделения, профиль, выход |
-| Z-NAV | вкладки: Дашборд / Клиенты / История / Аналитика / Настройки / AI-агент |
-| Z-PAGE-HEADER | заголовок страницы, фильтры, primary actions |
-| Z-MAIN | контент страницы (уникален для Page ID) |
-| Z-TOAST | уведомления (overlay, опционально) |
+| Z-SIDEBAR | logo, nav (glass), выбор подразделения, settings, logout |
+| Z-PAGE-HEADER | заголовок + subtitle (в Z-MAIN) |
+| Z-TOOLBAR | filter chips, primary action |
+| Z-CONTENT | cards grid, tables, chat — уникален для Page ID |
+| Z-INSIGHT | AI-сводка, quick stats (optional, см. page-layout-rules) |
+| Z-TOAST | уведомления (overlay) |
+
+`Z-MAIN` = Z-PAGE-HEADER + Z-TOOLBAR + Z-CONTENT.
 
 ```
-+------------------------- SHELL-MANAGER --------------------------+
-| Z-TOPBAR: [Logo] AI Sales OS    [Подразделение v]  [User] [Out] |
-+------------------------------------------------------------------+
-| Z-NAV: Dash | Clients | Reviews | Analytics | Settings | Agent |
-+------------------------------------------------------------------+
-| Z-PAGE-HEADER: {Page Title}          [filters] [primary action]  |
-+------------------------------------------------------------------+
-| Z-MAIN                                                           |
-|   (см. Page Layout Spec ниже)                                    |
-|                                                                  |
-+------------------------------------------------------------------+
-| Z-TOAST (optional)                                               |
-+------------------------------------------------------------------+
++--------------------------- SHELL-MANAGER ---------------------------+
+| +-------------+----------------------------------+------------------+ |
+| | Z-SIDEBAR   | Z-MAIN                           | Z-INSIGHT        | |
+| | [Logo]      | Z-PAGE-HEADER: Title / subtitle  | AI summary       | |
+| | o Dashboard | Z-TOOLBAR: [chips] [Primary CTA] | Quick alerts   | |
+| |   Clients   | Z-CONTENT:                       |                  | |
+| |   Reviews   |   [ metric ] [ metric ] [ metric]|                  | |
+| |   Analytics |   [ chart / table / chat       ] |                  | |
+| |   AI Agent  |                                  |                  | |
+| |   Settings  |                                  |                  | |
+| | [Subdivision|                                  |                  | |
+| |  Settings   |                                  |                  | |
+| |  Logout     |                                  |                  | |
+| +-------------+----------------------------------+------------------+ |
++---------------------------------------------------------------------+
 ```
 
-Активная вкладка Z-NAV соответствует текущему Page ID.
+Active nav item в Z-SIDEBAR = текущий Page ID (glow pill, `--accent-blue`).
 
 ### SHELL-EMPLOYEE — PAGE-008 … PAGE-009
 
 | Zone ID | Назначение |
 |---|---|
-| Z-TOPBAR | логотип, профиль, выход |
-| Z-NAV | вкладки: Дашборд / AI-агент |
-| Z-PAGE-HEADER | заголовок, опциональные фильтры |
-| Z-MAIN | контент страницы |
+| Z-SIDEBAR | logo, nav (2 items), profile, logout |
+| Z-PAGE-HEADER | заголовок |
+| Z-TOOLBAR | опциональные фильтры |
+| Z-CONTENT | дашборд или chat |
+| Z-INSIGHT | задачи / tips (optional) |
 
 ```
-+------------------------- SHELL-EMPLOYEE -------------------------+
-| Z-TOPBAR: [Logo] AI Sales OS                      [User] [Out]   |
-+------------------------------------------------------------------+
-| Z-NAV: Dashboard | AI Agent                                      |
-+------------------------------------------------------------------+
-| Z-PAGE-HEADER: {Page Title}                                      |
-+------------------------------------------------------------------+
-| Z-MAIN                                                           |
-+------------------------------------------------------------------+
++--------------------------- SHELL-EMPLOYEE --------------------------+
+| +-------------+----------------------------------+------------------+ |
+| | Z-SIDEBAR   | Z-MAIN                           | Z-INSIGHT        | |
+| | [Logo]      | Z-PAGE-HEADER                    | Tasks preview    | |
+| | o Dashboard | Z-CONTENT                        | (optional)       | |
+| |   AI Agent  |                                  |                  | |
+| |  Logout     |                                  |                  | |
+| +-------------+----------------------------------+------------------+ |
++---------------------------------------------------------------------+
 ```
 
-## Page Layout Specs
-
-Структура `Z-MAIN` по Page ID. Детальный ASCII — в соответствующем preview `.md`.
+Структура `Z-CONTENT` (внутри Z-MAIN) по Page ID. Детальный ASCII — в preview `.md`.
 
 ### PAGE-002 — Manager Dashboard
 
 | Zone | Блок | Компоненты |
 |---|---|---|
 | Z-KPI-TODAY | показатели за сегодня | metric-cards row |
-| Z-KPI-PERIOD | неделя / месяц | metric-cards, tabs или sections |
-| Z-TREND | динамика, отставание от нормы | chart / trend block |
-| Z-AI-SUMMARY | AI-сводка | alert-list: просадки, контроль, похвалить |
-| Z-DRILLDOWN | выбор подразделения / сотрудника | select, breadcrumb |
+| Z-KPI-PERIOD | неделя / месяц | metric-cards, filter chips |
+| Z-TREND | динамика, отставание от нормы | chart block |
+| Z-DRILLDOWN | подразделение / сотрудник | select, breadcrumb |
 | Z-QUICK-LINKS | быстрые переходы | links → PAGE-003, PAGE-004 |
+| Z-INSIGHT | AI-сводка | просадки, контроль, похвалить — glass ai-focus card |
 
 ### PAGE-003 — Clients To Review
 
@@ -226,20 +234,22 @@ Preview-файлы — в `design-system-preview/`. Routes черновые до
 
 ## Navigation Map
 
-| Tab (RU) | Page ID | Shell |
+Sidebar items (Z-SIDEBAR) → Page ID:
+
+| Nav (RU) | Page ID | Shell |
 |---|---|---|
 | Дашборд | PAGE-002 / PAGE-008 | MANAGER / EMPLOYEE |
 | Клиенты к разбору | PAGE-003 | MANAGER |
 | История разборов | PAGE-004 | MANAGER |
 | AI-аналитика | PAGE-005 | MANAGER |
-| Настройки | PAGE-006 | MANAGER |
 | AI-агент | PAGE-007 / PAGE-009 | MANAGER / EMPLOYEE |
+| Настройки | PAGE-006 | MANAGER |
 
 ## Cross-Page Links
 
 | From | To | Trigger | Zone |
 |---|---|---|---|
-| PAGE-002 | PAGE-003 | блок «к разбору» | Z-QUICK-LINKS / Z-AI-SUMMARY |
+| PAGE-002 | PAGE-003 | блок «к разбору» | Z-QUICK-LINKS / Z-INSIGHT |
 | PAGE-002 | PAGE-004 | «провести разбор» по сотруднику | Z-DRILLDOWN |
 | PAGE-003 | PAGE-004 | «разобрать с сотрудником» | Z-ROW-ACTIONS |
 | PAGE-003 | PAGE-007 | «обсудить с AI» | Z-ROW-ACTIONS |
@@ -248,7 +258,7 @@ Preview-файлы — в `design-system-preview/`. Routes черновые до
 
 ## Visibility Rules
 
-- Страница скрыта при `none` на модуль; Z-NAV не показывает недоступную вкладку.
+- Страница скрыта при `none` на модуль; пункт Z-SIDEBAR не показывается.
 - Scope ограничивает данные во всех Z-* с lists/metrics.
 - PAGE-006 → Z-SET-ACCESS только при `edit` на управление доступами.
 - Forbidden → заменить Z-MAIN на empty-state с сообщением (REQ-NFR-004).
@@ -270,7 +280,7 @@ Preview-файлы — в `design-system-preview/`. Routes черновые до
 | Page ID | Preview MD | Preview HTML | Status |
 |---|---|---|---|
 | PAGE-001 | planned | planned | draft |
-| PAGE-002 | planned | planned | draft |
+| PAGE-002 | `PAGE-002-manager-dashboard.md` | `PAGE-002-manager-dashboard.html` | review |
 | PAGE-003 | planned | planned | draft |
 | PAGE-004 | planned | planned | draft |
 | PAGE-005 | planned | planned | draft |
@@ -285,6 +295,9 @@ Preview-файлы — в `design-system-preview/`. Routes черновые до
 
 - `work-rules-design-guide.md`
 - `design-system-preview/design-system-preview.md`
-- `design-system-format/page-layout-rules.md`
+- `design-system-format/ui-kit.md` — AI Control Dashboard style
+- `design-system-format/colors.md` — palette tokens
+- `design-system-format/page-layout-rules.md` — 3-column shell
+- `design-system-format/components-guidelines.md` — glass components
 - `docs/project/user-flow.md`
 - `docs/project/user-roles.md`

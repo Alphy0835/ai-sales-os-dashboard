@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PAGE-002 — Manager Dashboard | AI Sales OS Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-main: #070B14;
+      --bg-secondary: #0D1323;
+      --bg-panel: rgba(18, 25, 43, 0.72);
+      --bg-card-deep: rgba(10, 15, 28, 0.86);
+      --bg-elevated: rgba(24, 32, 54, 0.78);
+      --text-primary: #F4F7FF;
+      --text-secondary: #A8B3CF;
+      --text-muted: #6B7898;
+      --accent-blue: #3B6CFF;
+      --accent-violet: #7C5CFF;
+      --accent-cyan: #28E0D4;
+      --accent-gold: #D6B56D;
+      --status-success: #34D399;
+      --status-warning: #FBBF24;
+      --status-danger: #F87171;
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --glow-blue: 0 0 24px rgba(59, 108, 255, 0.35);
+      --glow-violet: 0 0 20px rgba(124, 92, 255, 0.25);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --sidebar-w: 260px;
+      --insight-w: 320px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.43;
+    }
+
+    .ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 15% 0%, rgba(59, 108, 255, 0.12), transparent 50%),
+        radial-gradient(ellipse at 85% 100%, rgba(124, 92, 255, 0.08), transparent 45%);
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      min-height: 100vh;
+      padding: 24px;
+      gap: 20px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    .glass {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .glass-deep {
+      background: var(--bg-card-deep);
+      border: 1px solid var(--border-glass);
+      backdrop-filter: blur(20px);
+    }
+
+    /* Z-SIDEBAR */
+    [data-zone="Z-SIDEBAR"] {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      border-radius: var(--radius-xl);
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px 20px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-violet));
+      box-shadow: var(--glow-blue);
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+    }
+
+    .nav-item.active {
+      background: rgba(59, 108, 255, 0.15);
+      color: var(--text-primary);
+      box-shadow: var(--glow-blue);
+    }
+
+    .nav-item.active .nav-icon { color: var(--accent-blue); }
+
+    .nav-icon {
+      width: 20px;
+      text-align: center;
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .sidebar-spacer { flex: 1; }
+
+    .sidebar-footer {
+      border-top: 1px solid var(--border-glass);
+      padding-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .select-wrap {
+      padding: 0 8px 8px;
+    }
+
+    .select-wrap label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    select {
+      width: 100%;
+      height: 40px;
+      padding: 0 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-glass);
+      background: rgba(0, 0, 0, 0.25);
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 13px;
+    }
+
+    /* Z-MAIN */
+    [data-zone="Z-MAIN"] {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    [data-zone="Z-PAGE-HEADER"] h1 {
+      font-size: 32px;
+      line-height: 1.25;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    [data-zone="Z-PAGE-HEADER"] .subtitle {
+      color: var(--text-secondary);
+      margin-top: 6px;
+      font-size: 15px;
+    }
+
+    [data-zone="Z-TOOLBAR"] {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .chips { display: flex; gap: 8px; }
+
+    .chip {
+      height: 32px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border-glass);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .chip.active {
+      background: rgba(59, 108, 255, 0.2);
+      border-color: rgba(59, 108, 255, 0.35);
+      color: var(--accent-blue);
+    }
+
+    .toolbar-selects {
+      display: flex;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .toolbar-selects select { width: 180px; }
+
+    .btn-primary {
+      height: 40px;
+      padding: 0 18px;
+      border: none;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--accent-blue), #2B5AE0);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-primary:hover { box-shadow: var(--glow-blue); }
+
+    .btn-ghost {
+      height: 36px;
+      padding: 0 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-glass);
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-ghost:hover { background: rgba(255, 255, 255, 0.06); }
+
+    [data-zone="Z-CONTENT"] {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .metric-card {
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+
+    .metric-delta {
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .metric-delta.up { color: var(--status-success); }
+    .metric-delta.down { color: var(--status-danger); }
+
+    .sparkline {
+      margin-top: 12px;
+      height: 32px;
+      background: linear-gradient(90deg, transparent, rgba(59, 108, 255, 0.15));
+      border-radius: 4px;
+      opacity: 0.6;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 16px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .chart-placeholder {
+      height: 200px;
+      border-radius: var(--radius-md);
+      background: rgba(0, 0, 0, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chart-line {
+      position: absolute;
+      bottom: 30%;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent-violet), var(--accent-blue));
+      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 80'%3E%3Cpath fill='none' stroke='white' stroke-width='3' d='M0,60 Q50,20 100,45 T200,30 T300,50 T400,25'/%3E%3C/svg%3E");
+      mask-size: 100% 100%;
+      opacity: 0.8;
+    }
+
+    .norm-line {
+      position: absolute;
+      top: 45%;
+      left: 8px;
+      right: 8px;
+      border-top: 1px dashed rgba(251, 191, 36, 0.5);
+    }
+
+    .norm-label {
+      position: absolute;
+      top: 42%;
+      right: 12px;
+      font-size: 11px;
+      color: var(--status-warning);
+    }
+
+    [data-zone="Z-QUICK-LINKS"] {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Z-INSIGHT */
+    [data-zone="Z-INSIGHT"] {
+      width: var(--insight-w);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .ai-panel {
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      box-shadow: var(--glow-violet);
+      border-left: 2px solid var(--accent-cyan);
+    }
+
+    .ai-panel-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 16px;
+    }
+
+    .ai-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+
+    .insight-item {
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .insight-item:last-of-type { border-bottom: none; }
+
+    .insight-tag {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+
+    .insight-tag.danger { color: var(--status-danger); }
+    .insight-tag.warning { color: var(--status-warning); }
+    .insight-tag.success { color: var(--status-success); }
+
+    .insight-text {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .preview-badge {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card-deep);
+      border: 1px solid var(--border-glass);
+      font-size: 11px;
+      color: var(--text-muted);
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="preview-badge">Preview · PAGE-002 · design-system-preview</div>
+
+  <div class="app">
+    <!-- Z-SIDEBAR -->
+    <aside class="glass" data-zone="Z-SIDEBAR">
+      <div class="logo">
+        <div class="logo-mark" aria-hidden="true"></div>
+        <span>AI Sales OS</span>
+      </div>
+
+      <a class="nav-item active" href="#"><span class="nav-icon">▦</span> Дашборд</a>
+      <a class="nav-item" href="#"><span class="nav-icon">◎</span> Клиенты к разбору</a>
+      <a class="nav-item" href="#"><span class="nav-icon">☰</span> История разборов</a>
+      <a class="nav-item" href="#"><span class="nav-icon">↗</span> AI-аналитика</a>
+      <a class="nav-item" href="#"><span class="nav-icon">✦</span> AI-агент</a>
+      <a class="nav-item" href="#"><span class="nav-icon">⚙</span> Настройки</a>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="sidebar-footer">
+        <div class="select-wrap">
+          <label>Подразделение</label>
+          <select aria-label="Подразделение">
+            <option>ОП Москва</option>
+            <option>ОП СПб</option>
+          </select>
+        </div>
+        <a class="nav-item" href="#"><span class="nav-icon">⚙</span> Настройки</a>
+        <a class="nav-item" href="#"><span class="nav-icon">⎋</span> Выход</a>
+      </div>
+    </aside>
+
+    <!-- Z-MAIN -->
+    <main data-zone="Z-MAIN">
+      <header data-zone="Z-PAGE-HEADER">
+        <h1>Дашборд подразделения</h1>
+        <p class="subtitle">Сводка по ОП · CRM + телефония + отчётность</p>
+      </header>
+
+      <div data-zone="Z-TOOLBAR">
+        <div class="chips">
+          <button type="button" class="chip active">Сегодня</button>
+          <button type="button" class="chip">Неделя</button>
+          <button type="button" class="chip">Месяц</button>
+        </div>
+        <div class="toolbar-selects">
+          <select aria-label="Подразделение"><option>ОП Москва</option></select>
+          <select aria-label="Сотрудник"><option>Все сотрудники</option><option>Иванов</option></select>
+        </div>
+        <button type="button" class="btn-primary">Клиенты к разбору</button>
+      </div>
+
+      <div data-zone="Z-CONTENT">
+        <!-- Z-KPI-TODAY -->
+        <div class="kpi-row" data-zone="Z-KPI-TODAY">
+          <div class="glass-deep metric-card">
+            <div class="metric-label">Звонки · сегодня</div>
+            <div class="metric-value">142</div>
+            <div class="metric-delta up">+8% к вчера</div>
+          </div>
+          <div class="glass-deep metric-card">
+            <div class="metric-label">Касания</div>
+            <div class="metric-value">89</div>
+            <div class="metric-delta down">−3% к норме</div>
+          </div>
+          <div class="glass-deep metric-card">
+            <div class="metric-label">Качество общения</div>
+            <div class="metric-value">78%</div>
+            <div class="metric-delta up">+2 п.п.</div>
+          </div>
+          <div class="glass-deep metric-card">
+            <div class="metric-label">Выполнение плана</div>
+            <div class="metric-value">92%</div>
+            <div class="metric-delta up">на уровне нормы</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <!-- Z-KPI-PERIOD -->
+          <div class="glass-deep metric-card" data-zone="Z-KPI-PERIOD" style="padding: 20px;">
+            <div class="section-title">Неделя / месяц</div>
+            <div style="margin-bottom: 16px;">
+              <div class="metric-label">Касаний за неделю</div>
+              <div class="metric-value" style="font-size: 24px;">412</div>
+              <div class="metric-delta down">−5% к плану</div>
+            </div>
+            <div>
+              <div class="metric-label">Качество · месяц</div>
+              <div class="metric-value" style="font-size: 24px;">81%</div>
+              <div class="sparkline" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <!-- Z-TREND -->
+          <div class="glass-deep metric-card" data-zone="Z-TREND" style="padding: 20px;">
+            <div class="section-title">Динамика показателей</div>
+            <div class="chart-placeholder">
+              <div class="chart-line" aria-hidden="true"></div>
+              <div class="norm-line" aria-hidden="true"></div>
+              <span class="norm-label">норма</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Z-DRILLDOWN + Z-QUICK-LINKS -->
+        <div data-zone="Z-DRILLDOWN" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <span style="color: var(--text-muted); font-size: 13px;">Детализация:</span>
+          <select style="width: 160px;"><option>ОП Москва</option></select>
+          <select style="width: 160px;"><option>Иванов А.</option></select>
+        </div>
+
+        <div data-zone="Z-QUICK-LINKS">
+          <button type="button" class="btn-ghost">Провести разбор</button>
+          <button type="button" class="btn-ghost">AI-аналитика по сотруднику</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Z-INSIGHT -->
+    <aside data-zone="Z-INSIGHT">
+      <div class="glass ai-panel">
+        <div class="ai-panel-header">
+          <span class="ai-dot" aria-hidden="true"></span>
+          AI-сводка
+        </div>
+
+        <div class="insight-item">
+          <div class="insight-tag danger">Просадка</div>
+          <p class="insight-text">Качество общения просело у 3 менеджеров за последние 2 дня. Стоит разобрать до влияния на воронку.</p>
+        </div>
+
+        <div class="insight-item">
+          <div class="insight-tag warning">Контроль</div>
+          <p class="insight-text">Иванов, Петров — отставание от нормы касаний. Рекомендуется разбор на этой неделе.</p>
+        </div>
+
+        <div class="insight-item">
+          <div class="insight-tag success">Похвалить</div>
+          <p class="insight-text">Сидорова — стабильный рост качества (+12% за месяц).</p>
+        </div>
+
+        <button type="button" class="btn-ghost" style="width: 100%; margin-top: 12px;">Подробнее →</button>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

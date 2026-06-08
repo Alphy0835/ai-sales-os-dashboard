@@ -2,15 +2,29 @@ Doc ID: DESIGN-WORK-RULES-001
 Status: draft
 Source of truth: yes
 Owner: design
-Related docs: docs/project/design-guide/pages-map.md, docs/project/design-guide/design-system-format/work-rules-design-system-format.md, docs/project/design-guide/design-system-preview/work-rules-design-system-preview.md, docs/project/design-guide/design-system-preview/design-system-preview.md
-Update together with: pages-map.md, design-system-preview.md
-Update trigger: изменение структуры design-guide, правил preview или связи с pages-map
+Related docs: pages-map.md, design-system-format/ui-kit.md, design-system-preview/design-system-preview.md
+Update together with: pages-map.md, design-system-format/ui-kit.md, design-system-preview.md
+Update trigger: изменение структуры design-guide, правил preview или visual direction
 Review required: design, product
 Maturity: L1
 
 # Work Rules — Design Guide
 
-Правила папки `design-guide`: как описывать экраны, готовить ASCII-макеты и HTML-preview до реализации во frontend.
+Правила папки `design-guide`: визуальный стиль, экраны, ASCII-preview и HTML до frontend.
+
+## Visual Direction
+
+**AI Control Dashboard** — premium dark glassmorphism SaaS для B2B.
+
+| Doc | Content |
+|---|---|
+| `design-system-format/ui-kit.md` | общий стиль, do/avoid, spacing, radius |
+| `design-system-format/colors.md` | palette + glow rules |
+| `design-system-format/typography.md` | Inter scale |
+| `design-system-format/page-layout-rules.md` | sidebar + main + insight |
+| `design-system-format/components-guidelines.md` | glass, nav, buttons, cards |
+| `references/` | moodboard PNG (не копировать 1:1) |
+| `visual-iteration.md` | план v1 → v2 visual refresh |
 
 ## Структура папки
 
@@ -76,7 +90,7 @@ flowchart LR
 ## Правила ASCII
 
 - Использовать box-drawing: `+`, `-`, `|`.
-- Подписывать зоны как в `pages-map.md`: `Z-HEADER`, `Z-NAV`, `Z-MAIN` и т.д.
+- Подписывать зоны как в `pages-map.md`: `Z-SIDEBAR`, `Z-CONTENT`, `Z-INSIGHT` и т.д.
 - Не рисовать пиксель-perfect UI — только компоновку и иерархию блоков.
 - Один ASCII на страницу; варианты состояний — отдельными маленькими блоками при необходимости.
 
@@ -84,7 +98,7 @@ flowchart LR
 
 - Один HTML на страницу; имя совпадает со slug `.md`.
 - Семантическая разметка: `header`, `nav`, `main`, `section` по зонам.
-- Стили — минимальные, из `design-system-format/` (когда заполнены); до этого — нейтральный wireframe CSS.
+- Стили — из `design-system-format/` (colors, typography, components-guidelines).
 - HTML не добавляет блоки, которых нет в ASCII-спеке.
 
 ## Что не делать
