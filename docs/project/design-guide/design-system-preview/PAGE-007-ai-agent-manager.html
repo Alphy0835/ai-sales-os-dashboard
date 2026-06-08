@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PAGE-007 — AI Agent (Manager) | AI Sales OS</title>
+  <link rel="stylesheet" href="preview-base.css" />
+</head>
+<body>
+  <div class="ambient"></div>
+  <div class="preview-tag">PAGE-007 · SHELL-MANAGER · no-insight</div>
+
+  <div class="app no-insight">
+    <aside data-zone="Z-SIDEBAR">
+      <div class="logo"><div class="logo-icon"></div> AI Sales OS</div>
+      <a class="nav-item" href="PAGE-002-manager-dashboard.html">▦ Дашборд</a>
+      <a class="nav-item" href="PAGE-003-clients-to-review.html">◎ Клиенты к разбору</a>
+      <a class="nav-item" href="PAGE-004-review-history.html">☰ История разборов</a>
+      <a class="nav-item" href="PAGE-005-ai-analytics.html">↗ AI-аналитика</a>
+      <a class="nav-item active" href="PAGE-007-ai-agent-manager.html">✦ AI-агент</a>
+      <a class="nav-item" href="PAGE-006-system-settings.html">⚙ Настройки</a>
+      <div class="nav-spacer"></div>
+      <div class="sidebar-foot">
+        <div class="workspace-label">Подразделение</div>
+        <select><option>ОП Москва</option></select>
+        <a class="nav-item" href="PAGE-001-login.html">⎋ Выход</a>
+      </div>
+    </aside>
+
+    <div data-zone="Z-MAIN">
+      <header data-zone="Z-PAGE-HEADER">
+        <h1 class="page-title">AI-агент</h1>
+        <p class="page-subtitle">Обсуждение клиента и подготовка разбора</p>
+      </header>
+
+      <div data-zone="Z-CONTENT">
+        <div class="chat-layout">
+          <div class="card card-pad" data-zone="Z-CONTEXT">
+            <div class="section-head"><h3>Контекст</h3></div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Клиент</label>
+                <select class="input"><option>ООО «Вектор»</option><option>АО «Север»</option></select>
+              </div>
+              <div class="form-field">
+                <label>Сотрудник</label>
+                <select class="input"><option>Иванов А.</option></select>
+              </div>
+              <div class="form-field">
+                <label>Комментарий</label>
+                <textarea class="input" placeholder="Контекст для AI…"></textarea>
+              </div>
+              <button class="btn-secondary" type="button">Прикрепить запись</button>
+            </div>
+          </div>
+
+          <div class="card card-pad chat-panel" data-zone="Z-CHAT">
+            <div class="ai-head">
+              <span class="ai-badge">AI Agent</span>
+              <span class="confidence">Knowledge Match 94%</span>
+            </div>
+            <div class="chat-messages">
+              <div class="msg ai">По клиенту «Вектор» качество звонков Иванова снизилось до 68%. Хотите разбор по этапам или список рекомендаций?</div>
+              <div class="msg user">Покажи проблемные этапы за последнюю неделю.</div>
+              <div class="msg ai">Основная просадка на «выявление потребности» — 3 из 5 записей без уточняющих вопросов. Могу подготовить черновик разбора.</div>
+            </div>
+            <div class="chat-input-row">
+              <input class="input" type="text" placeholder="Сообщение AI-агенту…" />
+              <button class="btn-primary" type="button">Отправить</button>
+            </div>
+            <details data-zone="Z-SOURCES" class="collapsible">
+              <summary>Использованные материалы (3)</summary>
+              <div class="collapsible-body">
+                <span class="source-tag">Критерии оценки v2</span>
+                <span class="source-tag">Запись 04.06 — Вектор</span>
+                <span class="source-tag">Скрипт выявления потребности</span>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

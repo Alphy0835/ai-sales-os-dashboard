@@ -1,14 +1,14 @@
 Doc ID: DESIGN-PREVIEW-PAGE-002
 Page ID: PAGE-002
 Shell: SHELL-MANAGER
-Status: review (v2.5)
+Status: active (v2.5.1)
 Source of truth: yes
 Owner: design
 Related docs: ../design-system-format/ui-design-direction.md, ../pages-map.md, PAGE-002-manager-dashboard.html
 Update together with: PAGE-002-manager-dashboard.html
 Maturity: L2
 
-# Manager Dashboard — PAGE-002 (v2.5)
+# Manager Dashboard — PAGE-002 (v2.5.1)
 
 Texture `bacground.png` on app bg + cards/sidebar/wells. Shadows and blue glow preserved.
 
@@ -17,9 +17,9 @@ Texture `bacground.png` on app bg + cards/sidebar/wells. Shadows and blue glow p
 | Surface | Overlay | Texture position |
 |---|---|---|
 | App (`.ambient`) | dark vignette + blue radials | `center`, fixed |
-| Cards | `--texture-overlay-card` | `38% 24%` |
-| Highlight cards | `--texture-overlay-card-hi` | `45% 18%` |
-| Sidebar | `--texture-overlay-shell` | `62% 48%` |
+| Cards | `--texture-overlay-card` (alpha **0.72–0.84**) + tint **0.42** | `38% 24%` |
+| Highlight cards | `--texture-overlay-card-hi` (**0.74–0.85**) + tint **0.44** | `45% 18%` |
+| Sidebar | `--texture-overlay-shell` (**0.64–0.82**) + tint **0.47** | `62% 48%` |
 | Wells (chart, mini KPI) | `--texture-overlay-well` | `72% 68%` |
 
 ## Zones

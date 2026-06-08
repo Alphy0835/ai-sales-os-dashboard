@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PAGE-006 — System Settings | AI Sales OS</title>
+  <link rel="stylesheet" href="preview-base.css" />
+</head>
+<body>
+  <div class="ambient"></div>
+  <div class="preview-tag">PAGE-006 · SHELL-MANAGER</div>
+
+  <div class="app no-insight">
+    <aside data-zone="Z-SIDEBAR">
+      <div class="logo"><div class="logo-icon"></div> AI Sales OS</div>
+      <a class="nav-item" href="PAGE-002-manager-dashboard.html">▦ Дашборд</a>
+      <a class="nav-item" href="PAGE-003-clients-to-review.html">◎ Клиенты к разбору</a>
+      <a class="nav-item" href="PAGE-004-review-history.html">☰ История разборов</a>
+      <a class="nav-item" href="PAGE-005-ai-analytics.html">↗ AI-аналитика</a>
+      <a class="nav-item" href="PAGE-007-ai-agent-manager.html">✦ AI-агент</a>
+      <a class="nav-item active" href="PAGE-006-system-settings.html">⚙ Настройки</a>
+      <div class="nav-spacer"></div>
+      <div class="sidebar-foot">
+        <div class="workspace-label">Подразделение</div>
+        <select><option>ОП Москва</option></select>
+        <a class="nav-item" href="PAGE-001-login.html">⎋ Выход</a>
+      </div>
+    </aside>
+
+    <div data-zone="Z-MAIN">
+      <header data-zone="Z-PAGE-HEADER">
+        <h1 class="page-title">Настройки</h1>
+        <p class="page-subtitle">Критерии оценки, отчёты, база знаний и доступы</p>
+      </header>
+
+      <div data-zone="Z-CONTENT">
+        <div class="tabs">
+          <button class="tab on" type="button" data-zone="Z-SET-CRITERIA">Критерии оценки</button>
+          <button class="tab" type="button" data-zone="Z-SET-REPORTS">Кастомные отчёты</button>
+          <button class="tab" type="button" data-zone="Z-SET-KB">База знаний</button>
+          <button class="tab" type="button" data-zone="Z-SET-ACCESS">Права доступа</button>
+        </div>
+
+        <div class="card card-pad" data-zone="Z-SET-CRITERIA">
+          <div class="section-head">
+            <h3>Критерии оценки качества</h3>
+            <button class="btn-primary" type="button">Сохранить</button>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Критерий</th><th>Вес</th><th>Этап</th><th>Статус</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Приветствие и представление</td><td>10%</td><td>Начало</td><td><span class="badge badge-ok">Активен</span></td></tr>
+              <tr><td>Выявление потребности</td><td>25%</td><td>Диагностика</td><td><span class="badge badge-ok">Активен</span></td></tr>
+              <tr><td>Презентация решения</td><td>20%</td><td>Продажа</td><td><span class="badge badge-ok">Активен</span></td></tr>
+              <tr><td>Работа с возражениями</td><td>25%</td><td>Закрытие</td><td><span class="badge badge-warn">Черновик</span></td></tr>
+              <tr><td>Договорённость о следующем шаге</td><td>20%</td><td>Финал</td><td><span class="badge badge-ok">Активен</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PAGE-004 — Review History | AI Sales OS</title>
+  <link rel="stylesheet" href="preview-base.css" />
+</head>
+<body>
+  <div class="ambient"></div>
+  <div class="preview-tag">PAGE-004 · SHELL-MANAGER</div>
+
+  <div class="app no-insight">
+    <aside data-zone="Z-SIDEBAR">
+      <div class="logo"><div class="logo-icon"></div> AI Sales OS</div>
+      <a class="nav-item" href="PAGE-002-manager-dashboard.html">▦ Дашборд</a>
+      <a class="nav-item" href="PAGE-003-clients-to-review.html">◎ Клиенты к разбору</a>
+      <a class="nav-item active" href="PAGE-004-review-history.html">☰ История разборов</a>
+      <a class="nav-item" href="PAGE-005-ai-analytics.html">↗ AI-аналитика</a>
+      <a class="nav-item" href="PAGE-007-ai-agent-manager.html">✦ AI-агент</a>
+      <a class="nav-item" href="PAGE-006-system-settings.html">⚙ Настройки</a>
+      <div class="nav-spacer"></div>
+      <div class="sidebar-foot">
+        <div class="workspace-label">Подразделение</div>
+        <select><option>ОП Москва</option></select>
+        <a class="nav-item" href="PAGE-001-login.html">⎋ Выход</a>
+      </div>
+    </aside>
+
+    <div data-zone="Z-MAIN">
+      <header data-zone="Z-PAGE-HEADER">
+        <h1 class="page-title">История разборов</h1>
+        <p class="page-subtitle">Записи разборов с комментариями и задачами для сотрудников</p>
+      </header>
+
+      <div data-zone="Z-FILTERS" class="filter-row">
+        <select><option>Подразделение: ОП Москва</option></select>
+        <select><option>Сотрудник: все</option><option>Иванов А.</option></select>
+        <button class="btn-primary" type="button">Новый разбор</button>
+      </div>
+
+      <div data-zone="Z-CONTENT">
+        <div class="card card-pad" data-zone="Z-REVIEWS-TABLE">
+          <table>
+            <thead>
+              <tr><th>Дата</th><th>Сотрудник</th><th>Комментарий</th><th>Задачи</th><th>Статус</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>08.06.2026</td><td>Иванов А.</td><td>Разбор по качеству на этапе выявления потребности</td><td>2</td><td><span class="badge badge-warn">В работе</span></td>
+              </tr>
+              <tr>
+                <td>05.06.2026</td><td>Петров С.</td><td>Обсудили план касаний на неделю</td><td>1</td><td><span class="badge badge-ok">Выполнено</span></td>
+              </tr>
+              <tr>
+                <td>01.06.2026</td><td>Сидорова М.</td><td>Похвала за рост качества +12%</td><td>0</td><td><span class="badge badge-ok">Закрыто</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

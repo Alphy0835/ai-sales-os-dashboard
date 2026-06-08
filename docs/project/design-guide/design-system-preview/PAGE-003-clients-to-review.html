@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PAGE-003 — Clients To Review | AI Sales OS</title>
+  <link rel="stylesheet" href="preview-base.css" />
+</head>
+<body>
+  <div class="ambient"></div>
+  <div class="preview-tag">PAGE-003 · SHELL-MANAGER</div>
+
+  <div class="app">
+    <aside data-zone="Z-SIDEBAR">
+      <div class="logo"><div class="logo-icon"></div> AI Sales OS</div>
+      <a class="nav-item" href="PAGE-002-manager-dashboard.html">▦ Дашборд</a>
+      <a class="nav-item active" href="PAGE-003-clients-to-review.html">◎ Клиенты к разбору</a>
+      <a class="nav-item" href="PAGE-004-review-history.html">☰ История разборов</a>
+      <a class="nav-item" href="PAGE-005-ai-analytics.html">↗ AI-аналитика</a>
+      <a class="nav-item" href="PAGE-007-ai-agent-manager.html">✦ AI-агент</a>
+      <a class="nav-item" href="PAGE-006-system-settings.html">⚙ Настройки</a>
+      <div class="nav-spacer"></div>
+      <div class="sidebar-foot">
+        <div class="workspace-label">Подразделение</div>
+        <select><option>ОП Москва</option></select>
+        <a class="nav-item" href="PAGE-001-login.html">⎋ Выход</a>
+      </div>
+    </aside>
+
+    <div data-zone="Z-MAIN">
+      <header data-zone="Z-PAGE-HEADER">
+        <h1 class="page-title">Клиенты к разбору</h1>
+        <p class="page-subtitle">Клиенты с просадкой качества или отклонением от нормы</p>
+      </header>
+
+      <div data-zone="Z-FILTERS" class="filter-row card card-pad">
+        <select><option>Подразделение: все</option><option>ОП Москва</option></select>
+        <select><option>Сотрудник: все</option><option>Иванов А.</option><option>Петров С.</option></select>
+        <select><option>Статус: все</option><option>Новые</option><option>В работе</option></select>
+      </div>
+
+      <div data-zone="Z-CONTENT">
+        <div class="card card-pad" data-zone="Z-CLIENT-LIST">
+          <div class="section-head"><h3>Очередь разборов</h3><span class="badge badge-warn">3 клиента</span></div>
+          <table>
+            <thead>
+              <tr><th>Клиент</th><th>Сотрудник</th><th>Причина</th><th>Действия</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ООО «Вектор»</td><td>Иванов А.</td><td>Качество 68% · 3 звонка</td>
+                <td data-zone="Z-ROW-ACTIONS"><div class="row-actions"><a class="link-btn" href="PAGE-004-review-history.html">Разбор</a><a class="link-btn" href="PAGE-007-ai-agent-manager.html">AI</a></div></td>
+              </tr>
+              <tr>
+                <td>АО «Север»</td><td>Петров С.</td><td>Нет касаний 5 дней</td>
+                <td data-zone="Z-ROW-ACTIONS"><div class="row-actions"><a class="link-btn" href="PAGE-004-review-history.html">Разбор</a><a class="link-btn" href="PAGE-007-ai-agent-manager.html">AI</a></div></td>
+              </tr>
+              <tr>
+                <td>ИП Козлов</td><td>Козлов Д.</td><td>Риск по воронке</td>
+                <td data-zone="Z-ROW-ACTIONS"><div class="row-actions"><a class="link-btn" href="PAGE-004-review-history.html">Разбор</a><a class="link-btn" href="PAGE-007-ai-agent-manager.html">AI</a></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <aside data-zone="Z-INSIGHT">
+      <div class="card insight-card">
+        <h4>Быстрая сводка</h4>
+        <div class="insight-list">
+          <div class="insight-item"><strong class="text-warning">3</strong> клиента в очереди</div>
+          <div class="insight-item">Приоритет: Иванов — 2 записи за неделю</div>
+          <div class="insight-item">AI: рекомендуется разбор до пятницы</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

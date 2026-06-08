@@ -279,17 +279,17 @@ Sidebar items (Z-SIDEBAR) → Page ID:
 
 | Page ID | Preview MD | Preview HTML | Status |
 |---|---|---|---|
-| PAGE-001 | planned | planned | draft |
-| PAGE-002 | `PAGE-002-manager-dashboard.md` | `PAGE-002-manager-dashboard.html` | review |
-| PAGE-003 | planned | planned | draft |
-| PAGE-004 | planned | planned | draft |
-| PAGE-005 | planned | planned | draft |
-| PAGE-006 | planned | planned | draft |
-| PAGE-007 | planned | planned | draft |
-| PAGE-008 | planned | planned | draft |
-| PAGE-009 | planned | planned | draft |
+| PAGE-001 | `PAGE-001-login.md` | `PAGE-001-login.html` | draft preview |
+| PAGE-002 | `PAGE-002-manager-dashboard.md` | `PAGE-002-manager-dashboard.html` | **active** (v2.5.1) |
+| PAGE-003 | `PAGE-003-clients-to-review.md` | `PAGE-003-clients-to-review.html` | draft preview |
+| PAGE-004 | `PAGE-004-review-history.md` | `PAGE-004-review-history.html` | draft preview |
+| PAGE-005 | `PAGE-005-ai-analytics.md` | `PAGE-005-ai-analytics.html` | draft preview |
+| PAGE-006 | `PAGE-006-system-settings.md` | `PAGE-006-system-settings.html` | draft preview |
+| PAGE-007 | `PAGE-007-ai-agent-manager.md` | `PAGE-007-ai-agent-manager.html` | draft preview |
+| PAGE-008 | `PAGE-008-employee-dashboard.md` | `PAGE-008-employee-dashboard.html` | draft preview |
+| PAGE-009 | `PAGE-009-ai-agent-employee.md` | `PAGE-009-ai-agent-employee.html` | draft preview |
 
-Следующий шаг: создать preview `.md` по приоритету MVP — PAGE-002, PAGE-008, PAGE-001.
+Следующий шаг: точечная доработка preview по приоритету MVP (см. `design-system-preview/design-system-preview.md`).
 
 ## Related Docs
 

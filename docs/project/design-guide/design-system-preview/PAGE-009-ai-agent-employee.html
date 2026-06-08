@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PAGE-009 — AI Agent (Employee) | AI Sales OS</title>
+  <link rel="stylesheet" href="preview-base.css" />
+</head>
+<body>
+  <div class="ambient"></div>
+  <div class="preview-tag">PAGE-009 · SHELL-EMPLOYEE</div>
+
+  <div class="app no-insight">
+    <aside data-zone="Z-SIDEBAR">
+      <div class="logo"><div class="logo-icon"></div> AI Sales OS</div>
+      <a class="nav-item" href="PAGE-008-employee-dashboard.html">▦ Дашборд</a>
+      <a class="nav-item active" href="PAGE-009-ai-agent-employee.html">✦ AI-агент</a>
+      <div class="nav-spacer"></div>
+      <div class="sidebar-foot">
+        <a class="nav-item" href="#">👤 Иванов А.</a>
+        <a class="nav-item" href="PAGE-001-login.html">⎋ Выход</a>
+      </div>
+    </aside>
+
+    <div data-zone="Z-MAIN">
+      <header data-zone="Z-PAGE-HEADER">
+        <h1 class="page-title">AI-агент</h1>
+        <p class="page-subtitle">Помощник по продажам и задачам</p>
+      </header>
+
+      <div data-zone="Z-CONTENT">
+        <div class="banner" data-zone="Z-LIMIT-NOTICE">
+          Часть материалов базы знаний недоступна — обратитесь к руководителю для расширения доступа.
+        </div>
+
+        <div class="chat-layout">
+          <div class="card card-pad" data-zone="Z-CONTEXT">
+            <div class="section-head"><h3>Контекст</h3></div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Клиент (опционально)</label>
+                <select class="input"><option>— не выбран —</option><option>ООО «Вектор»</option></select>
+              </div>
+              <button class="btn-secondary" type="button">Прикрепить комментарий</button>
+            </div>
+          </div>
+
+          <div class="card card-pad chat-panel" data-zone="Z-CHAT">
+            <div class="ai-head">
+              <span class="ai-badge">AI Agent</span>
+            </div>
+            <div class="chat-messages">
+              <div class="msg ai">Привет! Могу помочь с задачами, скриптами и разбором ваших звонков. Что хотите улучшить?</div>
+              <div class="msg user">Как лучше задавать вопросы на этапе выявления потребности?</div>
+              <div class="msg ai">Начните с открытых вопросов о текущей ситуации клиента. Пример: «Расскажите, как сейчас организован процесс…» Затем уточняйте боли и приоритеты.</div>
+            </div>
+            <div class="chat-input-row">
+              <input class="input" type="text" placeholder="Ваш вопрос…" />
+              <button class="btn-primary" type="button">Отправить</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

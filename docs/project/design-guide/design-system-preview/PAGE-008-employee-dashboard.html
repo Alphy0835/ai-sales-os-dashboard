@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PAGE-008 — Employee Dashboard | AI Sales OS</title>
+  <link rel="stylesheet" href="preview-base.css" />
+</head>
+<body>
+  <div class="ambient"></div>
+  <div class="preview-tag">PAGE-008 · SHELL-EMPLOYEE</div>
+
+  <div class="app no-insight">
+    <aside data-zone="Z-SIDEBAR">
+      <div class="logo"><div class="logo-icon"></div> AI Sales OS</div>
+      <a class="nav-item active" href="PAGE-008-employee-dashboard.html">▦ Дашборд</a>
+      <a class="nav-item" href="PAGE-009-ai-agent-employee.html">✦ AI-агент</a>
+      <div class="nav-spacer"></div>
+      <div class="sidebar-foot">
+        <a class="nav-item" href="#">👤 Иванов А.</a>
+        <a class="nav-item" href="PAGE-001-login.html">⎋ Выход</a>
+      </div>
+    </aside>
+
+    <div data-zone="Z-MAIN">
+      <header data-zone="Z-PAGE-HEADER">
+        <h1 class="page-title">Мой дашборд</h1>
+        <p class="page-subtitle">Личные показатели и задачи на сегодня</p>
+      </header>
+
+      <div data-zone="Z-CONTENT">
+        <div class="grid-3" data-zone="Z-KPI">
+          <div class="card metric-card">
+            <div class="kpi-label">Качество</div>
+            <div class="val">74%</div>
+            <div class="kpi-delta down">−4% к норме</div>
+          </div>
+          <div class="card metric-card">
+            <div class="kpi-label">Касания</div>
+            <div class="val">19</div>
+            <div class="kpi-delta down">−3 к плану</div>
+          </div>
+          <div class="card metric-card">
+            <div class="kpi-label">План месяца</div>
+            <div class="val">82%</div>
+            <div class="kpi-delta up">на уровне нормы</div>
+          </div>
+        </div>
+
+        <div class="card card-pad" data-zone="Z-TREND">
+          <div class="section-head">
+            <h3>Динамика качества</h3>
+            <div class="chips">
+              <button class="chip on" type="button">7д</button>
+              <button class="chip" type="button">30д</button>
+            </div>
+          </div>
+          <div class="chart-area">
+            <div class="chart-grid"></div>
+            <div class="chart-fill"></div>
+            <div class="chart-line-glow"></div>
+            <div class="chart-line"></div>
+          </div>
+          <p class="chart-insight">Просадка на этапе «выявление потребности» — 3 дня подряд.</p>
+        </div>
+
+        <div class="card card-pad" data-zone="Z-TASKS">
+          <div class="section-head"><h3>Задачи от руководителя</h3><span class="badge badge-warn">2 активных</span></div>
+          <div class="task-item">
+            <span>Отработать скрипт выявления потребности</span>
+            <span class="badge badge-warn">В работе</span>
+          </div>
+          <div class="task-item">
+            <span>Провести 5 касаний до пятницы</span>
+            <span class="badge badge-ok">Новая</span>
+          </div>
+          <div class="task-item">
+            <span>Разбор от 05.06 — выполнено</span>
+            <span class="badge badge-ok">Закрыта</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
