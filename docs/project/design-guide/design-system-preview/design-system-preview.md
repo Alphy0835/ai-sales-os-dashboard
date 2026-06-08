@@ -22,9 +22,9 @@ Source of truth для макета страницы — `.md` файл. HTML �
 | Page ID | Page Name | Markdown Spec | HTML Preview | Shell | Status |
 |---|---|---|---|---|---|
 | PAGE-001 | Login | `PAGE-001-login.md` | `PAGE-001-login.html` | SHELL-AUTH | planned |
-| PAGE-002 | Manager Dashboard | `PAGE-002-manager-dashboard.md` | `PAGE-002-manager-dashboard.html` | SHELL-MANAGER | review (v1) |
+| PAGE-002 | Manager Dashboard | `PAGE-002-manager-dashboard.md` | `PAGE-002-manager-dashboard.html` | SHELL-MANAGER | review (v2) |
 
-> Visual refresh v2: `../visual-iteration.md` · новые refs → `../references/v2/`
+> Direction: `../design-system-format/ui-design-direction.md`
 | PAGE-003 | Clients To Review | `PAGE-003-clients-to-review.md` | `PAGE-003-clients-to-review.html` | SHELL-MANAGER | planned |
 | PAGE-004 | Review History | `PAGE-004-review-history.md` | `PAGE-004-review-history.html` | SHELL-MANAGER | planned |
 | PAGE-005 | AI Analytics | `PAGE-005-ai-analytics.md` | `PAGE-005-ai-analytics.html` | SHELL-MANAGER | planned |

@@ -1,153 +1,93 @@
 Doc ID: DESIGN-COMPONENTS-001
-Status: draft
+Status: active
 Source of truth: yes
 Owner: design
-Related docs: ui-kit.md, colors.md, typography.md, page-layout-rules.md
-Update together with: ui-kit.md, colors.md
-Update trigger: новый компонент или изменение states/interaction
+Related docs: colors.md, ui-design-direction.md
+Update together with: colors.md
+Update trigger: новый component pattern
 Review required: design
-Maturity: L1
+Maturity: L2
 
 # Components Guidelines
 
-Компоненты AI Control Dashboard. Preview и frontend следуют этим правилам.
+## Card (base) — 3D volume
 
-## Glass Panel
+Reference: `references/ref-04-card-volume-3d.png` — **volume/depth only**, not color.
 
-Base container for sidebar, cards, modals.
+**Raised card** (`.card`):
 
-| Property | Value |
-|---|---|
-| background | `--bg-panel` |
-| border | 1px solid `--border-glass` |
-| backdrop-filter | blur(20px) |
-| border-radius | `--radius-lg` to `--radius-xl` |
-| shadow | none default; `--glow-*` only when `.is-active` or `.is-primary` |
-
-Variants:
-
-| Variant | Background | Glow |
-|---|---|---|
-| default | `--bg-panel` | no |
-| deep | `--bg-card-deep` | no |
-| active | `--bg-panel` | `--glow-blue` |
-| ai-focus | `--bg-panel` | `--glow-violet` + left border 2px `--accent-cyan` |
-
-## Sidebar Navigation
-
-| State | Style |
-|---|---|
-| default | `--text-muted`, transparent bg |
-| hover | `--text-secondary`, `rgba(255,255,255,0.04)` bg |
-| active | `--text-primary`, pill bg `rgba(59,108,255,0.15)`, `--glow-blue`, icon `--accent-blue` |
-
-Item: icon 20px + label Body sm, height 44px, radius-md, gap 12px.
-
-Footer block: Settings + Logout separated by 1px `--border-glass`.
-
-## Buttons
-
-### Primary
-
-- bg: linear-gradient(135deg, `--accent-blue`, `#2B5AE0`)
-- text: `--text-primary`
-- radius: `--radius-md`
-- padding: 12px 20px
-- glow: `--glow-blue` on hover only
-- use: one main action per toolbar
-
-### Secondary (Ghost)
-
-- bg: transparent
-- border: 1px `--border-glass`
-- text: `--text-secondary`
-- hover: `rgba(255,255,255,0.06)` bg
-
-### Danger
-
-- bg: `rgba(248, 113, 113, 0.15)`
-- text: `--status-danger`
-- no glow unless destructive confirm
-
-## Inputs
-
-- bg: `rgba(0,0,0,0.25)` inside glass card
-- border: 1px `--border-glass`
-- focus: border `--accent-blue`, subtle `--glow-blue`
-- placeholder: `--text-muted`
-- height: 44px (default), radius-sm
-
-Search in header: full-width in top of Z-MAIN optional, icon left.
-
-## Filter Chips
-
-- height: 32px, radius-full or radius-sm
-- default: ghost border
-- selected: `rgba(59,108,255,0.2)` bg, `--accent-blue` text
-- use: period (today/week/month), status filters
-
-## Cards
-
-### Metric Card
-
-```
-+---------------------------+
-| label (caption)           |
-| METRIC VALUE (metric lg)  |
-| delta + sparkline         |
-+---------------------------+
+```css
+background: var(--surface-card);
+border: 1px solid rgba(255,255,255,0.05);
+border-bottom-color: rgba(0,0,0,0.35);
+border-right-color: rgba(0,0,0,0.25);
+border-radius: 28px;
+box-shadow: var(--shadow-raised), var(--shadow-raised-bevel);
 ```
 
-- deep glass variant
-- delta green/red per `--status-*`
-- optional mini chart bottom 40px height
+Optional `::before` — cool radial overlay at top-right (`--gradient-card-cool`).
 
-### List Card (clients, reviews)
+**Highlighted card** (`.card-highlight`): `--surface-card-highlight`, `--shadow-active`, `--accent-contour` border.
 
-- row height 56–64px
-- hover: `rgba(255,255,255,0.03)`
-- row actions: ghost icon buttons right
+**Recessed well** (`.recessed`): inputs, chart areas, mini-metrics, tags inside cards.
 
-### AI Insight Card
+```css
+background: linear-gradient(180deg, rgba(6,7,8,0.95), rgba(14,16,18,0.75));
+border: 1px solid rgba(0,0,0,0.4);
+border-bottom-color: rgba(255,255,255,0.03);
+box-shadow: var(--shadow-recessed);
+```
 
-- ai-focus variant
-- icon cyan + short bullet list
-- max 5 lines before «подробнее»
+**Rules:** light source top-left; soft wide outer shadows; inset shadows for carved elements; no sharp high-contrast shadows.
 
-## Tables
+## MetricCard / Circular KPI
 
-- header: Caption uppercase, `--text-muted`
-- row border-bottom: `rgba(255,255,255,0.06)`
-- zebra: optional `rgba(255,255,255,0.02)`
-- sticky header inside scrollable deep glass container
+- label (meta), large number, delta (green/red only for data)
+- optional circular progress ring — **contour arc** cyan stroke + recessed inner disc
+- optional sparkline (cyan, muted)
 
-## Chat (AI Agent)
+## ChartCard
 
-| Zone | Component |
-|---|---|
-| message list | scrollable deep glass |
-| user bubble | `--bg-elevated`, align right |
-| ai bubble | ai-focus left border, align left |
-| input bar | fixed bottom, input + send primary icon button |
-| context attach | chips above input |
+- cyan line (`--accent-cyan`) + subtle `--gradient-chart-fill`
+- muted grid, no rainbow
+- short AI insight line below chart
 
-## Status Badges
+## AIInsightCard
 
-- padding 4px 10px, radius-full, Caption weight 500
-- success / warning / danger / info — fill 12% opacity + matching text
+- label «AI Recommendation» — **contour badge**
+- confidence badge, source tags (contour pills)
+- suggested action (secondary contour button)
+- highlighted card: `--accent-contour` border, no violet fill
 
-## Loading / Empty / Error
+## TableCard
 
-| State | Pattern |
-|---|---|
-| loading | skeleton bars on glass, shimmer subtle |
-| empty | centered icon muted + Body sm + secondary CTA |
-| partial | banner top of Z-CONTENT, `--status-warning` border |
-| error | `--status-danger` icon + retry secondary button |
-| forbidden | lock icon + «Нет доступа» Body |
+- compact dark rows, hover `rgba(255,255,255,0.03)`
+- status badges: success/warning/error tokens only
 
-## Related Docs
+## Primary Button
 
-- `ui-kit.md`
-- `colors.md`
-- `page-layout-rules.md`
+- **contour CTA**: transparent/dark fill, `--accent-contour-strong` border, `--accent-cyan` text
+- radius 16px, soft hover glow
+- **one per screen**
+
+## Secondary Button
+
+- contour outline: `--accent-contour` border, transparent bg, cyan-muted text
+
+## Input / Search
+
+- **recessed well** styling (`--shadow-recessed`), not flat transparent
+- focus: cyan contour border + subtle outer ring
+
+## Sidebar Nav Item
+
+- inactive: `--text-muted`
+- active: contour border `--accent-contour`, subtle `rgba(107,163,199,0.05)` bg, cyan text
+
+## Badge
+
+- pill, 11–13px, **contour** style: transparent bg + 1px border in status color
+
+## AI Explainability Block
+
+Every AI output shows: analyzed scope · confidence · sources · suggested action · optional warning

@@ -17,6 +17,7 @@ Moodboard для AI Control Dashboard. Использовать для наст�
 | `ref-01-task-dashboard.png` | sidebar nav, glass task cards, soft active glow |
 | `ref-02-finance-dashboard.png` | financial widgets, right column insights, warm glass |
 | `ref-03-analytics-dashboard.png` | dark navy, metric grid, cyan accent, data density |
+| `ref-04-card-volume-3d.png` | **3D card volume** — layered shadows, bevel highlights, recessed gauges/wells (depth only, not palette) |
 
 **v1** — базовые moodboard. **v2** — см. `v2/` (visual refresh, in progress).
 

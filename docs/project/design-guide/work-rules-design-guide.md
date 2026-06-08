@@ -24,7 +24,8 @@ Maturity: L1
 | `design-system-format/page-layout-rules.md` | sidebar + main + insight |
 | `design-system-format/components-guidelines.md` | glass, nav, buttons, cards |
 | `references/` | moodboard PNG (не копировать 1:1) |
-| `visual-iteration.md` | план v1 → v2 visual refresh |
+| `ui-design-direction.md` | product UI design direction (v2) |
+| `visual-iteration.md` | v1 → v2 plan |
 
 ## Структура папки
 
