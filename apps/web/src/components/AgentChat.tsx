@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { sendAgentMessage, type AgentMessage, type AgentSession } from "@/lib/agent-api";
 
 type Props = {
@@ -15,12 +15,17 @@ export function AgentChatView({ variant }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSources, setShowSources] = useState(true);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const messages = session?.messages ?? [];
 
+  const focusInput = () => {
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   const onSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
     setLoading(true);
     setError(null);
     try {
@@ -36,6 +41,7 @@ export function AgentChatView({ variant }: Props) {
       setError(err instanceof Error ? err.message : "Ошибка отправки");
     } finally {
       setLoading(false);
+      focusInput();
     }
   };
 
@@ -95,11 +101,13 @@ export function AgentChatView({ variant }: Props) {
 
             <form className="flex gap-2" onSubmit={onSend}>
               <input
+                ref={inputRef}
                 className="input flex-1"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ваш вопрос…"
                 disabled={loading}
+                autoFocus
               />
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? "…" : "Отправить"}

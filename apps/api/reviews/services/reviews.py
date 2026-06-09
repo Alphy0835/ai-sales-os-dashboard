@@ -81,6 +81,8 @@ def resolve_client(actor: User, client_id: str | None) -> ClientToReview | None:
         return None
     if not user_in_scope(actor, client.employee):
         return None
+    if client.status == ClientToReview.Status.DONE:
+        return None
     return client
 
 

@@ -82,8 +82,8 @@ class ManagerReviewsView(APIView):
 
         log_review_create(actor=request.user, target_user=employee, review_id=review.id)
 
-        if client and client.status != client.Status.DONE:
-            client.status = client.Status.IN_PROGRESS
+        if client:
+            client.status = client.Status.DONE
             client.save(update_fields=["status"])
 
         return Response(ReviewListSerializer(review).data, status=201)

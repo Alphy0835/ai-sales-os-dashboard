@@ -95,7 +95,24 @@ class Stage004TestCase(TestCase):
             ).exists()
         )
         self.client_row.refresh_from_db()
-        self.assertEqual(self.client_row.status, ClientToReview.Status.IN_PROGRESS)
+        self.assertEqual(self.client_row.status, ClientToReview.Status.DONE)
+
+    def test_reviewed_client_hidden_from_queue(self):
+        self._login("mgr@test.local")
+        self.api.post(
+            "/api/v1/manager/reviews/",
+            {
+                "employee_id": str(self.employee.id),
+                "workspace_id": str(self.workspace.id),
+                "client_id": str(self.client_row.id),
+                "comment": "Done",
+                "tasks": [],
+            },
+            format="json",
+        )
+        listing = self.api.get("/api/v1/manager/clients/")
+        self.assertEqual(listing.status_code, status.HTTP_200_OK)
+        self.assertEqual(listing.data["count"], 0)
 
     def test_view_only_manager_cannot_create(self):
         self._login("viewmgr@test.local")

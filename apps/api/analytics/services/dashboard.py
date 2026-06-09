@@ -213,6 +213,8 @@ def clients_queryset(actor: User, *, workspace_id: str | None = None, employee_i
         qs = qs.filter(employee_id=employee_id)
     if status:
         qs = qs.filter(status=status)
+    else:
+        qs = qs.exclude(status=ClientToReview.Status.DONE)
     return qs
 
 

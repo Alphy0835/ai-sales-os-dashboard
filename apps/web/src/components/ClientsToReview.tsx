@@ -9,9 +9,15 @@ export function ClientsToReviewView() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchManagerClients()
-      .then((res) => setClients(res.results))
-      .finally(() => setLoading(false));
+    const load = () => {
+      setLoading(true);
+      fetchManagerClients()
+        .then((res) => setClients(res.results))
+        .finally(() => setLoading(false));
+    };
+    load();
+    window.addEventListener("focus", load);
+    return () => window.removeEventListener("focus", load);
   }, []);
 
   return (
@@ -29,6 +35,8 @@ export function ClientsToReviewView() {
           </div>
           {loading ? (
             <p className="text-secondary">Загрузка…</p>
+          ) : clients.length === 0 ? (
+            <p className="text-secondary">Все клиенты из очереди разобраны</p>
           ) : (
             <table className="dash-table">
               <thead>
