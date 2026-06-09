@@ -18,7 +18,7 @@ Maps features and critical flows to automated tests, environments, and release g
 
 | Suite | Tool | Location | Count | CI job |
 |---|---|---|---|---|
-| API integration | Django `TestCase` | `apps/api/**/tests/` | **103** (3 skipped on SQLite) | `api`, `api-postgres` |
+| API integration | Django `TestCase` | `apps/api/**/tests/` | **109** (3 skipped on SQLite) | `api`, `api-postgres` |
 | Web unit | Vitest | `apps/web/src/lib/__tests__/` | **23** | `web` (`npm run test:unit`) |
 | E2E | Playwright | `apps/web/e2e/*.spec.ts` | **2** specs | `e2e` |
 | Web lint | ESLint | `apps/web` | — | `web` (`npm run lint`) |
@@ -49,6 +49,13 @@ Maps features and critical flows to automated tests, environments, and release g
 | P4c CRM query | `integrations/tests/test_crm_query.py` | 6 | scoped filters, vocabulary |
 | P4c sync throttle | `integrations/tests/test_sync_throttle.py` | 5 | interval skip, force bypass |
 | P4c agent CRM | `ai/tests/test_agent_crm.py` | 3 | NL→query, `as_of` in reply |
+| Cross-tenant IDOR | `core/tests/test_tenant_idor.py` | 5 | agent CRM, source sync, recordings |
+| Registration | `accounts/tests/test_registration.py` | 6 | invite validation, tenant binding |
+| Login throttle | `accounts/tests/test_auth_throttle.py` | 1 | 429 on login rate limit |
+| Agent throttle | `ai/tests/test_agent_throttle.py` | 1 | 429 on agent rate limit |
+| LLM throttles | `ai/tests/test_llm_throttles.py` | 3 | analytics run, custom report, upload |
+| Upload validation | `integrations/tests/test_upload_validation.py` | 2 | size/extension edge cases |
+| LLM fallback | `ai/tests/test_llm_fallback.py` | 1 | rule-based fallback without API key |
 
 ### Web unit tests
 
@@ -67,7 +74,7 @@ Unit · Integration (API) · E2E · Manual smoke · Security regression · Migra
 
 | Environment | Automated suites | Manual |
 |---|---|---|
-| local | API 103 + Vitest 23 + optional E2E 2 | UI polish |
+| local | API 109 + Vitest 23 + optional E2E 2 | UI polish |
 | CI (GitHub Actions) | API + api-postgres + lint + Vitest + E2E 2 + build + migrations | — |
 | staging / production | smoke only | login → dashboard → analytics |
 
@@ -100,11 +107,11 @@ Unit · Integration (API) · E2E · Manual smoke · Security regression · Migra
 
 | Gap ID | Area | Missing Coverage | Risk | Action | Status |
 |---|---|---|---|---|---|
-| GAP-001 | Auth | Cross-tenant IDOR (2 tenants) | high | Expand `test_tenant_idor` (agent CRM, source sync) | partial |
+| GAP-001 | Auth | Cross-tenant IDOR (2 tenants) | high | Expand `test_tenant_idor` (remaining endpoints) | partial |
 | GAP-002 | Web lint | `npm run lint` not in CI | medium | Add to CI web job (P3-D4 T7) | closed |
 | GAP-003 | E2E | Employee flow + logout | low | Second Playwright spec (P3-D4 T8) | open |
 | GAP-004 | Vitest | `dashboard.ts`, `reviews.ts` query builders | low | Unit tests (P3-D4 T9) | open |
-| GAP-005 | Throttle | 429 login/agent tests | medium | P3-D4 T4 | open |
+| GAP-005 | Throttle | 429 login/agent/LLM tests | medium | `test_auth_throttle`, `test_agent_throttle`, `test_llm_throttles` | partial |
 | GAP-006 | Upload | Size/extension edge cases | medium | P3-D4 T5 | open |
 | GAP-007 | P4c CRM | Query service, sync throttle, agent CRM tool | medium | P4c-8 tests | closed |
 

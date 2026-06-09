@@ -310,7 +310,24 @@ curl -X POST -b cookies.txt \
 
 ---
 
-## 12. Pilot gate (кратко)
+## 12. Before go-live — DPA & OpenRouter
+
+**Обязательно до первых реальных пользователей и до загрузки PII в LLM/RAG/STT.**
+
+OpenRouter получает данные tenant'а при включённом `OPENROUTER_API_KEY`: транскрипты звонков, статьи базы знаний, промпты и ответы AI-агента, аналитические отчёты. Это **передача персональных и деловых данных третьей стороне** (OpenRouter и выбранные model providers).
+
+| Шаг | Действие |
+|---|---|
+| 1 | Подписать [DPA](../legal/data-processing-agreement.md) с tenant (или включить пункт в договор) |
+| 2 | Получить **письменное согласие** tenant на передачу соответствующих категорий данных в OpenRouter |
+| 3 | Зафиксировать в onboarding: какие данные уходят в LLM (KB, транскрипты, CRM-контекст в agent) |
+| 4 | Без DPA/согласия — **не** задавать `OPENROUTER_API_KEY`; UI работает на keyword/demo fallback |
+
+Опционально: `SENTRY_DSN` в `.env` для error reporting API (без PII, `send_default_pii=false`). См. `.env.example`.
+
+---
+
+## 13. Pilot gate (кратко)
 
 - [ ] Health ready 200 через BFF
 - [ ] Admin доступен по `https://app.example.com/admin/`
@@ -319,7 +336,7 @@ curl -X POST -b cookies.txt \
 - [ ] Пользователь зарегистрирован, CRM sync OK
 - [ ] Agent отвечает с `as_of`
 - [ ] Backup cron настроен — [backup-and-restore.md](backup-and-restore.md)
-- [ ] DPA подписан до реальных PII в LLM
+- [ ] DPA подписан и согласие tenant на OpenRouter — см. §12
 
 ---
 

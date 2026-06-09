@@ -1,6 +1,6 @@
 # Production Readiness Audit — AI Sales OS
 
-Дата: 2026-06-10 · Коммит: `fd4f703` (P0) + P5-3 partial  
+Дата: 2026-06-10 · Коммиты: `fd4f703` (P0), `6ee0c9c` (P1)  
 Сценарий: **VPS + первые pilot-пользователи** (Google Sheets CRM, invite-only, integrator в Admin)  
 Метод: код + docs + 5 параллельных аудитов (backend, frontend, security, RAG/LLM, docs/PRD)
 
@@ -10,11 +10,11 @@
 
 | Метрика | Балл |
 |---|---:|
-| **Готовность к VPS + первым пользователям** | **75 / 100** |
-| **Pilot path с integrator'ом** (Admin + Sheets, без телефонии) | **78 / 100** |
+| **Готовность к VPS + первым пользователям** | **~78 / 100** |
+| **Pilot path с integrator'ом** (Admin + Sheets, без телефонии) | **~82 / 100** |
 | **Production-grade** (SLO, staging, полный PRD, compliance) | **45 / 100** |
 
-**Вердикт:** **P0 code blockers закрыты** (`fd4f703`); к **ограниченному пилоту на VPS** можно идти после integrator checklist (prod `.env`, DPA, smoke). Полноценный prod — ещё 1–2 итерации (P1 hardening + P5 Sentry/staging + QA-AC pilot sign-off).
+**Вердикт:** **P0 code blockers закрыты** (`fd4f703`); **P1 hardening** частично (`6ee0c9c` — throttles, IDOR tests, upload validation). К **ограниченному пилоту на VPS** можно идти после integrator ops checklist (prod `.env`, DPA, restore drill, smoke). Полноценный prod — staging, Sentry full ops, QA-AC pilot sign-off.
 
 ---
 
@@ -25,15 +25,15 @@
 | 1 | **Backend** | 7.5 | 75 | Prod settings, Redis throttle cache, LLM limits на reports/custom-reports/upload, CRM query — зрелые. Минус: Sheets не даёт KPI дашборда |
 | 2 | **Frontend** | 7.5 | 75 | BFF cookies + Admin/static proxy, basic CSP headers, CI build/lint/e2e. Минус: mobile, route guards, error boundaries |
 | 3 | **User flow** | 6.5 | 65 | FLOW-001…007 в коде; pilot = Admin + invites + Sheets. Нет password reset, review edit, upload в агент |
-| 4 | **Стабильность** | 7.0 | 70 | 106 API tests, health/ready, backup docs, Redis-backed throttles in prod. Минус: нет Sentry/staging, Beat без мониторинга |
+| 4 | **Стабильность** | 7.5 | 75 | 109 API tests, health/ready, backup docs, Redis-backed throttles, optional `SENTRY_DSN`. Минус: staging, Beat без мониторинга |
 | 5 | **Документация** | 7.5 | 75 | Runbook, release-checklist, test-matrix, **definition-of-done** заполнены. Минус: PRD/QA-AC dashboard `draft`, support runbook |
-| 6 | **Безопасность (требования)** | 7.5 | 75 | Tenant isolation, httpOnly JWT, scope, Fernet, LLM throttles, **basic CSP**. Минус: strict CSP nonce, Sentry, audit gaps |
+| 6 | **Безопасность (требования)** | 8.0 | 80 | Tenant isolation, httpOnly JWT, scope, Fernet, LLM throttles, **basic CSP**, IDOR/throttle tests. Минус: strict CSP nonce, Sentry full ops, audit gaps |
 | 7 | **Риски** (взлом, ключи, DDoS, prompt injection) | 6.5 | 65 | LLM abuse mitigated; CSP partial. См. матрицу рисков ниже |
 | 8 | **RAG + vector** | 6.0 | 60 | pgvector end-to-end в prod CI; нет index/chunking/monitoring embed failures |
 | 9 | **Зрелость процесса** | 6.5 | 65 | DoD + release checklist L2; QA-AC pilot sign-off и Legal L1 |
 | 10 | **Этапы до прода** | 7.5 | 75 | P0 code closed; integrator runbook; 8 фаз ниже — шаг 1 ✅ |
 
-**Среднее (равные веса): 75/100**
+**Среднее (равные веса): ~78/100**
 
 ---
 
@@ -42,21 +42,23 @@
 | ID | Блокер | Статус |
 |---|---|---|
 | **P0-1** | **Django Admin через BFF** | ✅ `/admin/` + `/static/` proxy в `next.config.ts` (`fd4f703`) |
-| **P0-2** | **Prod secrets** | ⚙️ Integrator checklist — `DJANGO_SECRET_KEY`, `AI_CREDENTIALS_KEY`, `POSTGRES_PASSWORD`, `ALLOWED_HOSTS`, `CORS` (runbook §1) |
+| **P0-2** | **Prod secrets** | ⚙️ **ops-only** — integrator checklist: `DJANGO_SECRET_KEY`, `AI_CREDENTIALS_KEY`, `POSTGRES_PASSWORD`, `ALLOWED_HOSTS`, `CORS` (runbook §1) |
 | **P0-3** | **LLM/STT cost abuse** | ✅ Redis `CACHES` + throttles: analytics run, custom-reports POST/PATCH, recording upload (`fd4f703`) |
-| **P0-4** | **OpenRouter + PII** | ⚙️ DPA/согласие с tenant до реальных данных (runbook §0) |
+| **P0-4** | **OpenRouter + PII** | ⚙️ **ops-only** — DPA/согласие с tenant до реальных данных (runbook §12) |
 | **P0-5** | **Integrator runbook** | ✅ [`docs/operations/integrator-vps-pilot.md`](docs/operations/integrator-vps-pilot.md) (`fd4f703`) |
 
 ---
 
-## P1 — важно для пилота
+## P1 — важно для пилота (`6ee0c9c`)
 
 - ~~Throttle cache → **Redis**~~ ✅ при `REDIS_URL` (`fd4f703`)
+- ~~**GAP-001** cross-tenant IDOR~~ ✅ partial — `test_tenant_idor` (`6ee0c9c`)
+- ~~**GAP-005** login/agent/LLM throttle 429~~ ✅ partial — `test_auth_throttle`, `test_agent_throttle`, `test_llm_throttles` (`6ee0c9c`)
+- ~~Upload validation tests~~ ✅ `test_upload_validation` (`6ee0c9c`)
 - **Beat/Redis** без healthcheck и persistence volume
 - **Dashboard KPI** пустой при только Google Sheets (hero metrics = demo telephony или empty)
 - **Python 3.12 (Docker) vs 3.13 (CI)** — выровнять
 - **requirements.txt vs lock** в Dockerfile
-- **GAP-001** cross-tenant IDOR — расширить тесты
 - **Docs drift:** `release-checklist.md`, `roadmap-data-integration.md`, PRD все `draft`
 - **Нет staging** — прямой deploy на VPS
 
@@ -127,13 +129,13 @@
 | Ops deploy/backup | **L2** |
 | QA process / DoD | **L2** |
 | Legal / support runbooks | **L1** |
-| Monitoring / Sentry | **L1** |
+| Monitoring / Sentry | **L1** (optional `SENTRY_DSN` in API; full ops TBD) |
 
 ---
 
 ## 8 этапов до первых пользователей на VPS
 
-1. **Закрыть P0** — ✅ code (`fd4f703`); integrator: prod `.env`, DPA, smoke
+1. **Закрыть P0** — ✅ code (`fd4f703`); **ops-only:** prod `.env`, DPA, restore drill, smoke
 2. **Runbook** — [`docs/operations/integrator-vps-pilot.md`](docs/operations/integrator-vps-pilot.md)
 3. **VPS** — Docker, TLS, firewall, `docker-compose.prod.yml` (api, worker, **beat**, web, postgres, redis)
 4. **Smoke** — `/api/v1/health/ready/`, backup cron, restore drill
@@ -167,15 +169,15 @@
 |---|---|
 | P4b | Telephony — **не интегрируем** до продуктового решения |
 | P4b | Reporting adapters |
-| P5 | Sentry, staging, CSP strict (basic ✅), Integration UI |
+| P5 | Sentry full ops (env-gated ✅), staging, CSP strict (basic ✅), Integration UI |
 
 ---
 
 ## Тесты и CI
 
-**106** API (3 pgvector skipped on SQLite) · **23** Vitest · **2** Playwright E2E · lint · **api-postgres**
+**109** API (3 pgvector skipped on SQLite) · **23** Vitest · **2** Playwright E2E · lint · **api-postgres**
 
-Gaps: recording upload throttle 429 test, prod compose smoke, cross-tenant IDOR matrix.
+Gaps: prod compose smoke, cross-tenant IDOR matrix (partial ✅), recording upload throttle covered in `test_llm_throttles`.
 
 ---
 
@@ -197,6 +199,6 @@ Gaps: recording upload throttle 429 test, prod compose smoke, cross-tenant IDOR 
 
 **Pilot CRM = Google Sheets cache + on-demand agent queries**, не batch LLM и не 24/7 realtime sync.
 
-**75/100** — P0 code blockers закрыты; продуктовый MVP + integrator runbook + DoD на месте. Остаётся integrator ops (secrets, DPA) и P1 hardening перед масштабированием пилота. **Controlled pilot** (~78/100 по pilot path) реалистичен с dedicated integrator.
+**~78/100 VPS-ready** — P0 code blockers закрыты (`fd4f703`); P1 hardening частично (`6ee0c9c`). Остаётся **ops-only:** secrets, DPA, restore drill; wishlist: telephony; **staging / Sentry full ops.** **Controlled pilot** (~82/100 с integrator) реалистичен.
 
 **План:** `plan_0.md` (локально) — P4b-GS ✅ · P4c ✅ · P4b telephony = wishlist.
