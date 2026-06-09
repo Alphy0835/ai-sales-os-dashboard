@@ -75,6 +75,13 @@ class User(AbstractUser):
     )
     full_name = models.CharField(max_length=255)
     role = models.CharField(max_length=16, choices=Role.choices)
+    manager = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="direct_reports",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: list[str] = []
@@ -114,3 +121,46 @@ class ModulePermission(models.Model):
 
     def __str__(self):
         return f"{self.user.email}:{self.module}={self.level}"
+
+
+class ManagerScope(models.Model):
+    """Workspaces a manager can access (hierarchy scope)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="manager_scopes")
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="manager_scopes")
+
+    class Meta:
+        unique_together = [["user", "workspace"]]
+
+    def __str__(self):
+        return f"{self.user.email} → {self.workspace.name}"
+
+
+class AuditLog(models.Model):
+    class Action(models.TextChoices):
+        PERMISSION_CHANGE = "permission_change", "Permission change"
+        SCOPE_DENIED = "scope_denied", "Scope denied"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="audit_logs")
+    actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="audit_actions")
+    target_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="audit_targets",
+        null=True,
+        blank=True,
+    )
+    action = models.CharField(max_length=32, choices=Action.choices)
+    module = models.CharField(max_length=32, blank=True, default="")
+    old_level = models.CharField(max_length=16, blank=True, default="")
+    new_level = models.CharField(max_length=16, blank=True, default="")
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.action} by {self.actor.email} at {self.created_at}"

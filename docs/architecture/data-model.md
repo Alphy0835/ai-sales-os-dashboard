@@ -20,6 +20,8 @@ Maturity: L2
 | Workspace | Subdivision scope | PostgreSQL | FEAT-001 | internal |
 | User | Login identity + role | PostgreSQL | FEAT-001 | personal |
 | ModulePermission | Granular module access | PostgreSQL | FEAT-001 | internal |
+| ManagerScope | Manager workspace scope | PostgreSQL | FEAT-001 | internal |
+| AuditLog | Permission and scope-denied events | PostgreSQL | FEAT-001 | internal |
 
 ## Entity: Tenant
 
@@ -86,6 +88,7 @@ User Level account (Manager or Employee). Extends Django auth with tenant scope.
 | password_hash | string | yes | Django hashed |
 | full_name | string | yes | Display |
 | role | enum | yes | `manager` \| `employee` |
+| manager_id | UUID FK User | no | Parent manager (hierarchy) |
 | is_active | bool | yes | |
 | is_staff | bool | yes | Django admin (integrator) |
 | created_at | datetime | yes | |
@@ -98,7 +101,50 @@ User Level account (Manager or Employee). Extends Django auth with tenant scope.
 ### Validation
 
 - Email globally unique on MVP (login by email only); tenant scoping via `tenant_id` on user row.
-- Employee cannot receive permission broader than grantor (ceiling rule) — enforced in service layer on grant API (STAGE-001 follow-up).
+- Employee cannot receive permission broader than grantor (ceiling rule) — enforced in `accounts/services/grant.py` on `PUT /permissions/users/{id}/`.
+
+---
+
+## Entity: ManagerScope
+
+### Purpose
+
+Links a manager to workspaces they can access (hierarchy scope). Sub-manager scope must be a subset of parent manager scope.
+
+### Fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | yes | PK |
+| user_id | UUID FK | yes | Manager user |
+| workspace_id | UUID FK | yes | Accessible workspace |
+
+### Relations
+
+- Unique (`user_id`, `workspace_id`).
+
+---
+
+## Entity: AuditLog
+
+### Purpose
+
+Audit trail for permission changes and scope-denied access attempts (REQ-NFR-001).
+
+### Fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | yes | PK |
+| tenant_id | UUID FK | yes | Tenant |
+| actor_id | UUID FK | yes | User who performed action |
+| target_user_id | UUID FK | no | Affected user |
+| action | enum | yes | `permission_change` \| `scope_denied` |
+| module | string | no | Module key (permission changes) |
+| old_level | string | no | Previous level |
+| new_level | string | no | New level |
+| ip_address | string | no | Client IP |
+| created_at | datetime | yes | |
 
 ---
 

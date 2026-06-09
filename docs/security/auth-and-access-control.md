@@ -10,7 +10,7 @@ Maturity: L2
 
 # Auth and Access Control
 
-Техническая реализация User Level auth (STAGE-001, in progress). Продуктовые правила — `docs/project/user-roles.md`.
+Техническая реализация User Level auth (STAGE-001, done). Продуктовые правила — `docs/project/user-roles.md`.
 
 > API контракты: [api-contracts.md](../architecture/api-contracts.md) · Модель данных: [data-model.md](../architecture/data-model.md)
 
@@ -22,7 +22,7 @@ Maturity: L2
 | Login | `POST /api/v1/auth/login/` — email + password |
 | Session storage (client) | `localStorage` access/refresh (Next.js) |
 | Token claims | `tenant_id`, `role` in JWT payload |
-| Me / context | `GET /api/v1/auth/me/` — user, workspace, module permissions |
+| Me / context | `GET /api/v1/auth/me/` — user, workspace, module permissions, scope workspaces |
 
 ## Roles (User Level)
 
@@ -41,7 +41,17 @@ Granular access per module (`ModulePermission`):
 |---|---|
 | dashboard, clients, reviews, analytics, settings, agent | `none` · `view` · `edit` · `run` · `use` |
 
-Returned in `/auth/me/` as `permissions` object. UI gating — frontend; enforcement — backend on each endpoint (STAGE-001+).
+Returned in `/auth/me/` as `permissions` object. Grant via `PUT /api/v1/permissions/users/{id}/` (requires `settings: edit`).
+
+## Manager Hierarchy & Scope
+
+- `User.manager` — parent manager (multi-level hierarchy).
+- `ManagerScope` — workspaces a manager can access.
+- Sub-manager workspace scope must be subset of parent scope.
+- Employees visible to manager if `employee.workspace` ∈ manager scoped workspaces.
+- Scope API: `GET /api/v1/scope/`, check: `GET /api/v1/scope/users/{id}/` (403 + audit on violation).
+
+Implementation: `apps/api/accounts/services/scope.py`.
 
 ## Multi-tenant Isolation
 
@@ -51,20 +61,21 @@ Returned in `/auth/me/` as `permissions` object. UI gating — frontend; enforce
 
 ## Ceiling Rule (REQ-014)
 
-**Product rule:** grantor cannot assign permission broader than their own.
+Grantor cannot assign permission broader than their own per module. Enforced in `accounts/services/grant.py`. Violations → HTTP 400.
 
-**Status:** specified in PRD/user-roles; **API for grant/revoke not implemented yet** (PAGE-006 settings).
+## Audit
+
+Permission changes and scope-denied attempts logged to `AuditLog`. See [audit-logging.md](audit-logging.md).
 
 ## Not Yet Implemented
 
-- Manager hierarchy (multi-level scope)
-- Permission grant/revoke API
-- Audit log on permission changes
 - Refresh token blacklist / server-side logout
 - Rate limiting on login
+- PAGE-006 settings UI (frontend)
 
 ## Related Docs
 
 - [FEAT-001](../features/access-permissions/access-permissions.md)
+- [roadmap-access-permissions.md](../project/roadmap-access-permissions.md)
 - [backend-docs.md](../backend/backend-docs.md) — Django apps
 - [frontend-docs.md](../frontend/frontend-docs.md) — auth states, ProtectedShell

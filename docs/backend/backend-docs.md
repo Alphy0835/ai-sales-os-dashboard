@@ -45,7 +45,7 @@ Planned apps (by roadmap): `integrations`, `analytics`, `reviews`, `ai`.
 | Django app | Responsibility | Main entities | Roadmap | Feature |
 |---|---|---|---|---|
 | `core` | Tenant middleware, health, timestamps | — | STAGE-001 | — |
-| `accounts` | Auth, RBAC, scope, ceiling rule | Tenant, Workspace, User, ModulePermission | STAGE-001 | FEAT-001 |
+| `accounts` | Auth, RBAC, scope, ceiling rule, audit | Tenant, Workspace, User, ModulePermission, ManagerScope, AuditLog | STAGE-001 | FEAT-001 |
 | `integrations` | CRM/telephony sync, webhooks | IntegrationConfig, SyncJob | STAGE-002 | FEAT-002 |
 | `analytics` | KPI aggregates, dashboard API | MetricSnapshot | STAGE-003 | FEAT-003 |
 | `reviews` | Reviews, tasks | Review, Task | STAGE-004 | FEAT-004 |
@@ -56,6 +56,9 @@ Planned apps (by roadmap): `integrations`, `analytics`, `reviews`, `ai`.
 | Route group | App | Auth | Contract doc |
 |---|---|---|---|
 | `/api/v1/auth/*` | accounts | public / JWT | API-AUTH-* |
+| `/api/v1/scope/*` | accounts | JWT | API-SCOPE-* |
+| `/api/v1/permissions/*` | accounts | JWT + settings | API-PERM-* |
+| `/api/v1/audit/permissions/` | accounts | JWT + settings | API-AUDIT-001 |
 | `/api/v1/health/` | core | public | API-HEALTH-001 |
 | `/api/v1/manager/*` | analytics, reviews, … | JWT + manager role | TBD per stage |
 | `/api/v1/employee/*` | analytics, reviews, … | JWT + employee role | TBD per stage |

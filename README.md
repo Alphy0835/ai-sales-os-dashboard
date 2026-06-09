@@ -34,7 +34,7 @@ npm run dev
 
 - Web: http://localhost:3000  
 - API: http://localhost:8000/api/v1/health/  
-- Demo login: `manager@demo.local` / `demo1234`
+- Demo: `manager@demo.local` / `demo1234` (top manager) · `regional@demo.local` · `employee@demo.local` · `employee-spb@demo.local`
 
 ## Docker (all services)
 
@@ -45,4 +45,4 @@ docker compose up --build
 
 ## Roadmap
 
-Implementation follows [`docs/project/roadmap.md`](docs/project/roadmap.md). Current code: **STAGE-001** (auth + shells).
+Implementation follows [`docs/project/roadmap.md`](docs/project/roadmap.md). **STAGE-001 done** (auth, scope, permissions, audit). Next: **STAGE-002** Data Integration.

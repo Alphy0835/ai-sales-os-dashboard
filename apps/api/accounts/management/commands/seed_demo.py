@@ -1,12 +1,21 @@
 from django.core.management.base import BaseCommand
 
-from accounts.models import ModulePermission, Tenant, User, Workspace
+from accounts.models import ManagerScope, ModulePermission, Tenant, User, Workspace
 
 MANAGER_PERMISSIONS = {
     ModulePermission.Module.DASHBOARD: ModulePermission.Level.VIEW,
     ModulePermission.Module.CLIENTS: ModulePermission.Level.VIEW,
     ModulePermission.Module.REVIEWS: ModulePermission.Level.EDIT,
     ModulePermission.Module.ANALYTICS: ModulePermission.Level.RUN,
+    ModulePermission.Module.SETTINGS: ModulePermission.Level.EDIT,
+    ModulePermission.Module.AGENT: ModulePermission.Level.USE,
+}
+
+REGIONAL_MANAGER_PERMISSIONS = {
+    ModulePermission.Module.DASHBOARD: ModulePermission.Level.VIEW,
+    ModulePermission.Module.CLIENTS: ModulePermission.Level.VIEW,
+    ModulePermission.Module.REVIEWS: ModulePermission.Level.VIEW,
+    ModulePermission.Module.ANALYTICS: ModulePermission.Level.VIEW,
     ModulePermission.Module.SETTINGS: ModulePermission.Level.EDIT,
     ModulePermission.Module.AGENT: ModulePermission.Level.USE,
 }
@@ -30,34 +39,65 @@ def set_permissions(user, mapping):
         )
 
 
+def set_manager_scope(user, workspaces):
+    for workspace in workspaces:
+        ManagerScope.objects.update_or_create(user=user, workspace=workspace)
+
+
 class Command(BaseCommand):
-    help = "Seed demo tenant, workspace, manager and employee users"
+    help = "Seed demo tenant, workspaces, hierarchy, manager and employee users"
 
     def handle(self, *args, **options):
         tenant, _ = Tenant.objects.get_or_create(
             slug="demo",
             defaults={"name": "Demo Company"},
         )
-        workspace, _ = Workspace.objects.get_or_create(
+        moscow, _ = Workspace.objects.get_or_create(
             tenant=tenant,
             name="ОП Москва",
             defaults={"is_active": True},
         )
+        spb, _ = Workspace.objects.get_or_create(
+            tenant=tenant,
+            name="ОП СПб",
+            defaults={"is_active": True},
+        )
 
-        manager, created = User.objects.get_or_create(
+        top_manager, created = User.objects.get_or_create(
             tenant=tenant,
             email="manager@demo.local",
             defaults={
                 "full_name": "Demo Manager",
                 "role": User.Role.MANAGER,
-                "workspace": workspace,
+                "workspace": moscow,
                 "is_active": True,
             },
         )
         if created:
-            manager.set_password("demo1234")
-            manager.save()
-        set_permissions(manager, MANAGER_PERMISSIONS)
+            top_manager.set_password("demo1234")
+            top_manager.save()
+        set_permissions(top_manager, MANAGER_PERMISSIONS)
+        set_manager_scope(top_manager, [moscow, spb])
+
+        regional_manager, created = User.objects.get_or_create(
+            tenant=tenant,
+            email="regional@demo.local",
+            defaults={
+                "full_name": "Regional Manager",
+                "role": User.Role.MANAGER,
+                "workspace": moscow,
+                "manager": top_manager,
+                "is_active": True,
+            },
+        )
+        if created:
+            regional_manager.set_password("demo1234")
+            regional_manager.save()
+        else:
+            regional_manager.manager = top_manager
+            regional_manager.save(update_fields=["manager"])
+        set_permissions(regional_manager, REGIONAL_MANAGER_PERMISSIONS)
+        set_manager_scope(regional_manager, [moscow])
 
         employee, created = User.objects.get_or_create(
             tenant=tenant,
@@ -65,7 +105,7 @@ class Command(BaseCommand):
             defaults={
                 "full_name": "Demo Employee",
                 "role": User.Role.EMPLOYEE,
-                "workspace": workspace,
+                "workspace": moscow,
                 "is_active": True,
             },
         )
@@ -74,6 +114,23 @@ class Command(BaseCommand):
             employee.save()
         set_permissions(employee, EMPLOYEE_PERMISSIONS)
 
+        spb_employee, created = User.objects.get_or_create(
+            tenant=tenant,
+            email="employee-spb@demo.local",
+            defaults={
+                "full_name": "SPB Employee",
+                "role": User.Role.EMPLOYEE,
+                "workspace": spb,
+                "is_active": True,
+            },
+        )
+        if created:
+            spb_employee.set_password("demo1234")
+            spb_employee.save()
+        set_permissions(spb_employee, EMPLOYEE_PERMISSIONS)
+
         self.stdout.write(self.style.SUCCESS("Demo data ready:"))
-        self.stdout.write("  manager@demo.local / demo1234")
-        self.stdout.write("  employee@demo.local / demo1234")
+        self.stdout.write("  manager@demo.local / demo1234 (top manager, both workspaces)")
+        self.stdout.write("  regional@demo.local / demo1234 (sub-manager, ОП Москва only)")
+        self.stdout.write("  employee@demo.local / demo1234 (ОП Москва)")
+        self.stdout.write("  employee-spb@demo.local / demo1234 (ОП СПб, outside regional scope)")
