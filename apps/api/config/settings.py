@@ -1,10 +1,13 @@
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+TESTING = "test" in sys.argv
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-insecure-change-me")
 DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
@@ -106,6 +109,11 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Rate=None disables the throttle (used in tests).
+    "DEFAULT_THROTTLE_RATES": {
+        "login": None if TESTING else os.environ.get("THROTTLE_LOGIN", "10/min"),
+        "agent": None if TESTING else os.environ.get("THROTTLE_AGENT", "30/min"),
+    },
 }
 
 SIMPLE_JWT = {

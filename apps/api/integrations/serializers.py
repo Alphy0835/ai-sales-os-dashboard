@@ -60,12 +60,29 @@ class ConversationRecordingSerializer(serializers.ModelSerializer):
         read_only_fields = ("status", "created_at", "transcription")
 
 
+AUDIO_MAX_SIZE_MB = 100
+AUDIO_ALLOWED_EXTENSIONS = {".mp3", ".wav", ".ogg", ".m4a", ".flac", ".webm"}
+
+
 class RecordingCreateSerializer(serializers.Serializer):
     client_name = serializers.CharField(max_length=255)
     client_external_id = serializers.CharField(max_length=128, required=False, default="")
-    duration_seconds = serializers.IntegerField(required=False, default=0)
+    duration_seconds = serializers.IntegerField(required=False, default=0, min_value=0)
     employee_id = serializers.UUIDField()
     audio_file = serializers.FileField(required=False)
+
+    def validate_audio_file(self, value):
+        if value is None:
+            return value
+        if value.size > AUDIO_MAX_SIZE_MB * 1024 * 1024:
+            raise serializers.ValidationError(f"File too large (max {AUDIO_MAX_SIZE_MB} MB)")
+        import os
+
+        ext = os.path.splitext(value.name)[1].lower()
+        if ext not in AUDIO_ALLOWED_EXTENSIONS:
+            allowed = ", ".join(sorted(AUDIO_ALLOWED_EXTENSIONS))
+            raise serializers.ValidationError(f"Unsupported file type {ext or '(none)'}. Allowed: {allowed}")
+        return value
 
     def validate_employee_id(self, value):
         actor = self.context["request"].user

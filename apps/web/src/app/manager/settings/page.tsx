@@ -5,29 +5,37 @@ import { QualityCriteriaSettingsView } from "@/components/QualityCriteriaSetting
 import { KnowledgeBaseSettingsView } from "@/components/KnowledgeBaseSettings";
 import { CustomReportsSettingsView } from "@/components/CustomReportsSettings";
 
+type SettingsTab = "criteria" | "knowledge" | "custom-reports";
+
 export default function ManagerSettingsPage() {
-  const [tab, setTab] = useState<"criteria" | "knowledge" | "custom-reports">("criteria");
+  const [tab, setTab] = useState<SettingsTab>("criteria");
 
   return (
-    <>
-      <header>
+    <div className="manager-main">
+      <header className="settings-header">
         <h1 className="page-title">Настройки</h1>
-        <p className="page-subtitle">Критерии качества, база знаний и кастомные отчёты</p>
+        <div className="chips">
+          <button type="button" className={`chip${tab === "criteria" ? " on" : ""}`} onClick={() => setTab("criteria")}>
+            Критерии качества
+          </button>
+          <button type="button" className={`chip${tab === "knowledge" ? " on" : ""}`} onClick={() => setTab("knowledge")}>
+            База знаний
+          </button>
+          <button
+            type="button"
+            className={`chip${tab === "custom-reports" ? " on" : ""}`}
+            onClick={() => setTab("custom-reports")}
+          >
+            Кастомные отчёты
+          </button>
+        </div>
       </header>
-      <div className="chips mb-4">
-        <button type="button" className={`chip${tab === "criteria" ? " on" : ""}`} onClick={() => setTab("criteria")}>
-          Критерии качества
-        </button>
-        <button type="button" className={`chip${tab === "knowledge" ? " on" : ""}`} onClick={() => setTab("knowledge")}>
-          База знаний
-        </button>
-        <button type="button" className={`chip${tab === "custom-reports" ? " on" : ""}`} onClick={() => setTab("custom-reports")}>
-          Кастомные отчёты
-        </button>
+
+      <div className="card card-pad settings-panel">
+        {tab === "criteria" && <QualityCriteriaSettingsView />}
+        {tab === "knowledge" && <KnowledgeBaseSettingsView />}
+        {tab === "custom-reports" && <CustomReportsSettingsView />}
       </div>
-      {tab === "criteria" && <QualityCriteriaSettingsView />}
-      {tab === "knowledge" && <KnowledgeBaseSettingsView />}
-      {tab === "custom-reports" && <CustomReportsSettingsView />}
-    </>
+    </div>
   );
 }

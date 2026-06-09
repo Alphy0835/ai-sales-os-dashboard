@@ -1,5 +1,6 @@
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from accounts.models import User
@@ -22,6 +23,7 @@ from ai.services.permissions import (
     can_view_criteria,
     can_view_reports,
     criteria_queryset,
+    reports_queryset,
     resolve_report_scope,
 )
 from ai.services.reports import generate_analytics_report
@@ -30,6 +32,10 @@ from ai.services.reports import generate_analytics_report
 def require_manager(user):
     if user.role != User.Role.MANAGER:
         raise PermissionDenied("Manager role required")
+
+
+class AgentRateThrottle(UserRateThrottle):
+    scope = "agent"
 
 
 class QualityCriteriaListCreateView(APIView):
@@ -81,7 +87,7 @@ class AnalyticsReportsView(APIView):
         require_manager(request.user)
         if not can_view_reports(request.user):
             raise PermissionDenied("Analytics view permission required")
-        qs = AnalyticsReport.objects.filter(tenant_id=request.user.tenant_id).select_related(
+        qs = reports_queryset(request.user).select_related(
             "workspace", "employee", "author", "custom_report"
         )[:50]
         return Response({"count": qs.count(), "results": AnalyticsReportSerializer(qs, many=True).data})
@@ -178,6 +184,8 @@ class KnowledgeArticleDetailView(APIView):
 
 
 class ManagerAgentChatView(APIView):
+    throttle_classes = [AgentRateThrottle]
+
     def post(self, request):
         require_manager(request.user)
         if not can_use_agent(request.user):
@@ -185,18 +193,23 @@ class ManagerAgentChatView(APIView):
         serializer = AgentChatRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        session = chat_with_agent(
-            actor=request.user,
-            message=data["message"],
-            session_id=str(data["session_id"]) if data.get("session_id") else None,
-            client_name=data.get("client_name", ""),
-            client_note=data.get("client_note", ""),
-        )
+        try:
+            session = chat_with_agent(
+                actor=request.user,
+                message=data["message"],
+                session_id=str(data["session_id"]) if data.get("session_id") else None,
+                client_name=data.get("client_name", ""),
+                client_note=data.get("client_note", ""),
+            )
+        except AgentChatSession.DoesNotExist:
+            raise NotFound("Chat session not found")
         session = AgentChatSession.objects.prefetch_related("messages").get(id=session.id)
         return Response(AgentChatSessionSerializer(session).data)
 
 
 class EmployeeAgentChatView(APIView):
+    throttle_classes = [AgentRateThrottle]
+
     def post(self, request):
         if request.user.role != User.Role.EMPLOYEE:
             raise PermissionDenied("Employee role required")
@@ -205,13 +218,16 @@ class EmployeeAgentChatView(APIView):
         serializer = AgentChatRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        session = chat_with_agent(
-            actor=request.user,
-            message=data["message"],
-            session_id=str(data["session_id"]) if data.get("session_id") else None,
-            client_name=data.get("client_name", ""),
-            client_note=data.get("client_note", ""),
-        )
+        try:
+            session = chat_with_agent(
+                actor=request.user,
+                message=data["message"],
+                session_id=str(data["session_id"]) if data.get("session_id") else None,
+                client_name=data.get("client_name", ""),
+                client_note=data.get("client_note", ""),
+            )
+        except AgentChatSession.DoesNotExist:
+            raise NotFound("Chat session not found")
         session = AgentChatSession.objects.prefetch_related("messages").get(id=session.id)
         return Response(AgentChatSessionSerializer(session).data)
 

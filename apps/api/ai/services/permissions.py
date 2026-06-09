@@ -39,6 +39,16 @@ def criteria_queryset(actor: User):
     return QualityCriterion.objects.filter(tenant_id=actor.tenant_id)
 
 
+def reports_queryset(actor: User):
+    from ai.models import AnalyticsReport
+
+    scoped_ids = [ws.id for ws in get_scoped_workspaces(actor)]
+    return AnalyticsReport.objects.filter(
+        tenant_id=actor.tenant_id,
+        workspace_id__in=scoped_ids,
+    )
+
+
 def resolve_report_scope(actor: User, *, workspace_id: str, employee_id: str | None = None):
     from accounts.models import Workspace
 

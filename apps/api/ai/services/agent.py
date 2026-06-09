@@ -1,18 +1,14 @@
 from accounts.models import User
 from ai.models import AgentChatMessage, AgentChatSession
 from ai.services.knowledge import search_knowledge
-from integrations.models import ConversationRecording, Transcription
+from integrations.models import Transcription
+from integrations.services.scope import recordings_queryset
 
 
 def _recording_context(actor: User, client_name: str) -> str:
     if not client_name:
         return ""
-    qs = ConversationRecording.objects.filter(
-        tenant_id=actor.tenant_id,
-        client_name__icontains=client_name,
-    ).select_related("transcription", "employee")
-    if actor.role == User.Role.EMPLOYEE:
-        qs = qs.filter(employee=actor)
+    qs = recordings_queryset(actor).filter(client_name__icontains=client_name)
     lines = []
     for rec in qs[:3]:
         if hasattr(rec, "transcription") and rec.transcription.status == Transcription.Status.COMPLETED:
@@ -101,7 +97,11 @@ def chat_with_agent(
     )
 
     if session_id:
-        session = AgentChatSession.objects.get(id=session_id, tenant_id=actor.tenant_id, user=actor)
+        session = AgentChatSession.objects.filter(
+            id=session_id, tenant_id=actor.tenant_id, user=actor
+        ).first()
+        if session is None:
+            raise AgentChatSession.DoesNotExist("Session not found")
     else:
         session = AgentChatSession.objects.create(
             tenant=actor.tenant,

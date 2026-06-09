@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -45,13 +46,19 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 
+class LoginRateThrottle(AnonRateThrottle):
+    scope = "login"
+
+
 class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [LoginRateThrottle]
 
 
 class RefreshView(TokenRefreshView):
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
 
 class MeView(APIView):
@@ -178,6 +185,9 @@ class PermissionAuditView(APIView):
         if target_user_id:
             qs = qs.filter(target_user_id=target_user_id)
 
-        limit = min(int(request.query_params.get("limit", 50)), 200)
+        try:
+            limit = min(int(request.query_params.get("limit", 50)), 200)
+        except (TypeError, ValueError):
+            limit = 50
         logs = qs[:limit]
         return Response({"results": AuditLogSerializer(logs, many=True).data})

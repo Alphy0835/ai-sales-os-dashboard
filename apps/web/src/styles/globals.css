@@ -491,3 +491,87 @@ select.input option,
   text-decoration: none;
   font-size: 11px;
 }
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+  height: calc(100vh - 140px);
+  max-height: 720px;
+}
+
+.settings-panel-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.settings-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.settings-panel-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.settings-add-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text-primary);
+  background: rgba(126, 184, 216, 0.14);
+  box-shadow: 0 0 16px rgba(126, 184, 216, 0.08);
+}
+
+.settings-add-btn:hover {
+  background: rgba(126, 184, 216, 0.22);
+}
+
+.settings-add-btn-close {
+  font-size: 22px;
+}
+
+.settings-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.settings-add-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.settings-add-head h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-add-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}

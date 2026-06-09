@@ -9,6 +9,7 @@ import {
   fetchKnowledgeArticles,
   type KnowledgeArticle,
 } from "@/lib/agent-api";
+import { SettingsAddPanel, SettingsPanelShell } from "@/components/SettingsPanelShell";
 
 const CATEGORIES = [
   { value: "product", label: "Продукт" },
@@ -61,32 +62,54 @@ export function KnowledgeBaseSettingsView() {
   };
 
   return (
-    <div className="card card-pad">
-      {canEdit && (
-        <form className="mb-4" onSubmit={onCreate}>
-          <h3 className="mb-3">Новый материал</h3>
+    <SettingsPanelShell
+      footer={
+        <SettingsAddPanel label="Новый материал" canEdit={canEdit} onSubmit={onCreate}>
           <div className="grid gap-3 md:grid-cols-2 mb-3">
-            <input className="input" placeholder="Название" required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+            <input
+              className="input"
+              placeholder="Название"
+              required
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            />
             <select className="input" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
               {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
               ))}
             </select>
           </div>
-          <textarea className="input w-full mb-3 min-h-[80px]" placeholder="Содержание" required value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} />
-          <div className="flex gap-3 mb-3">
-            <input className="input flex-1" placeholder="Теги через запятую" value={form.tags} onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))} />
+          <textarea
+            className="input w-full mb-3 min-h-[80px]"
+            placeholder="Содержание"
+            required
+            value={form.content}
+            onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
+          />
+          <div className="flex gap-3">
+            <input
+              className="input flex-1"
+              placeholder="Теги через запятую"
+              value={form.tags}
+              onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
+            />
             <select className="input" value={form.access_level} onChange={(e) => setForm((f) => ({ ...f, access_level: e.target.value }))}>
               {ACCESS.map((a) => (
-                <option key={a.value} value={a.value}>{a.label}</option>
+                <option key={a.value} value={a.value}>
+                  {a.label}
+                </option>
               ))}
             </select>
           </div>
-          <button type="submit" className="btn btn-primary">Добавить</button>
-        </form>
-      )}
+        </SettingsAddPanel>
+      }
+    >
       {loading ? (
         <p className="text-secondary">Загрузка…</p>
+      ) : articles.length === 0 ? (
+        <p className="text-secondary">Материалов пока нет</p>
       ) : (
         <table className="dash-table">
           <thead>
@@ -100,17 +123,24 @@ export function KnowledgeBaseSettingsView() {
           <tbody>
             {articles.map((a) => (
               <tr key={a.id}>
-                <td><div>{a.title}</div><div className="text-[11px] text-muted">{a.content.slice(0, 80)}…</div></td>
+                <td>
+                  <div>{a.title}</div>
+                  <div className="text-[11px] text-muted">{a.content.slice(0, 80)}…</div>
+                </td>
                 <td>{a.category_label}</td>
                 <td>{a.access_label}</td>
                 {canEdit && (
-                  <td><button type="button" className="link-btn" onClick={() => deleteKnowledgeArticle(a.id).then(load)}>Удалить</button></td>
+                  <td>
+                    <button type="button" className="link-btn" onClick={() => deleteKnowledgeArticle(a.id).then(load)}>
+                      Удалить
+                    </button>
+                  </td>
                 )}
               </tr>
             ))}
           </tbody>
         </table>
       )}
-    </div>
+    </SettingsPanelShell>
   );
 }

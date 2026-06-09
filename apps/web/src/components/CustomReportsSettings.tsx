@@ -9,6 +9,7 @@ import {
   fetchCustomReports,
   type CustomReport,
 } from "@/lib/analytics-api";
+import { SettingsAddPanel, SettingsPanelShell } from "@/components/SettingsPanelShell";
 
 export function CustomReportsSettingsView() {
   const [reports, setReports] = useState<CustomReport[]>([]);
@@ -41,10 +42,9 @@ export function CustomReportsSettingsView() {
   };
 
   return (
-    <div className="card card-pad">
-      {canEdit && (
-        <form className="mb-4" onSubmit={onCreate}>
-          <h3 className="mb-3">Новый кастомный отчёт</h3>
+    <SettingsPanelShell
+      footer={
+        <SettingsAddPanel label="Новый кастомный отчёт" canEdit={canEdit} onSubmit={onCreate}>
           <input
             className="input w-full mb-3"
             placeholder="Название"
@@ -53,17 +53,15 @@ export function CustomReportsSettingsView() {
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
           />
           <textarea
-            className="input w-full mb-3 min-h-[100px]"
+            className="input w-full min-h-[100px]"
             placeholder="Опишите отчёт простым языком: что анализировать, на каких этапах воронки"
             required
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           />
-          <button type="submit" className="btn btn-primary">
-            Сохранить отчёт
-          </button>
-        </form>
-      )}
+        </SettingsAddPanel>
+      }
+    >
       {loading ? (
         <p className="text-secondary">Загрузка…</p>
       ) : reports.length === 0 ? (
@@ -89,11 +87,7 @@ export function CustomReportsSettingsView() {
                 </td>
                 {canEdit && (
                   <td>
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={() => deleteCustomReport(r.id).then(load)}
-                    >
+                    <button type="button" className="link-btn" onClick={() => deleteCustomReport(r.id).then(load)}>
                       Удалить
                     </button>
                   </td>
@@ -103,6 +97,6 @@ export function CustomReportsSettingsView() {
           </tbody>
         </table>
       )}
-    </div>
+    </SettingsPanelShell>
   );
 }
