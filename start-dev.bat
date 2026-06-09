@@ -18,7 +18,9 @@ set ERR=%ERRORLEVEL%
 if %ERR% NEQ 0 (
     echo.
     echo  ERROR: launch failed ^(code %ERR%^).
-    echo  Try: start-dev.bat -RunTests   ^(tests only, no Docker^)
+    echo  Try: start-dev.bat -RunTests        ^(tests only, no Docker^)
+    echo       start-dev.bat -NonInteractive  ^(LOCAL mode, no Docker menu^)
+    echo       start-dev.bat -CleanWeb        ^(fix Next.js cache errors^)
     echo.
     pause
     exit /b %ERR%

@@ -5,13 +5,15 @@
 #         .\start-dev.ps1 -RequireDocker   # fail if Docker unavailable
 #         .\start-dev.ps1 -InstallDocker   # try winget install (Windows)
 #         .\start-dev.ps1 -NonInteractive  # no prompts, LOCAL mode if no Docker
+#         .\start-dev.ps1 -CleanWeb        # delete apps/web/.next before dev server
 
 param(
     [switch]$DockerAll,
     [switch]$RunTests,
     [switch]$RequireDocker,
     [switch]$InstallDocker,
-    [switch]$NonInteractive
+    [switch]$NonInteractive,
+    [switch]$CleanWeb
 )
 
 $ErrorActionPreference = "Stop"
@@ -44,8 +46,7 @@ function Wait-Postgres {
     Write-Step "Waiting for PostgreSQL..."
     $deadline = (Get-Date).AddMinutes(2)
     while ((Get-Date) -lt $deadline) {
-        docker compose exec -T postgres pg_isready -U ai_sales_os 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) {
+        if ((Invoke-DockerCli "compose", "exec", "-T", "postgres", "pg_isready", "-U", "ai_sales_os") -eq 0) {
             Write-Host "PostgreSQL is ready." -ForegroundColor Green
             return
         }
@@ -101,7 +102,9 @@ $useLocalMode = $false
 Write-Step "Starting Docker services..."
 if ($DockerAll) {
     if (-not $dockerReady) { throw "Docker not available. Start Docker Desktop or run without -DockerAll." }
-    docker compose up --build -d
+    if ((Invoke-DockerCli "compose", "up", "--build", "-d") -ne 0) {
+        throw "docker compose up failed. Is Docker Desktop running?"
+    }
     Wait-Postgres
     Write-Host ""
     Write-Host "All services run in Docker." -ForegroundColor Green
@@ -139,8 +142,7 @@ if (-not $dockerReady) {
 }
 
 if ($dockerReady) {
-    docker compose up -d postgres redis
-    if ($LASTEXITCODE -ne 0) {
+    if ((Invoke-DockerCli "compose", "up", "-d", "postgres", "redis") -ne 0) {
         if ($RequireDocker) { throw "docker compose failed. Is Docker Desktop running?" }
         Write-Host "docker compose failed - falling back to LOCAL mode." -ForegroundColor Yellow
         Set-LocalDevMode -ApiDir $ApiDir
@@ -176,6 +178,11 @@ if ($RunTests) {
     Write-Host ""
     Write-Host "All tests passed." -ForegroundColor Green
     exit 0
+}
+
+if ($CleanWeb -and (Test-Path (Join-Path $WebDir ".next"))) {
+    Write-Step "Clearing Next.js cache (.next)..."
+    Remove-Item -Recurse -Force (Join-Path $WebDir ".next") -ErrorAction SilentlyContinue
 }
 
 if (-not (Test-Path (Join-Path $WebDir "node_modules"))) {
