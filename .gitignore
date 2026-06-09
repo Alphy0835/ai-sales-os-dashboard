@@ -52,6 +52,9 @@ temp/
 .dev-logs/
 *.zip
 
+# Local planning (do not push)
+plan_0.md
+
 # Playwright
 test-results/
 playwright-report/

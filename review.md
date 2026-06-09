@@ -1,7 +1,12 @@
 # Code Review — AI Sales OS
 
-Дата: 2026-06-09 · Объём: backend (Django 5 + DRF), frontend (Next.js 15), docs, инфраструктура
-Состояние: STAGE-001…007 + **P0/P1/P2 закрыты** (2026-06-09), **51** API-тестов, **12** Vitest, Playwright E2E в CI.
+Дата: 2026-06-10 (полный аудит) · Предыдущий: 2026-06-09  
+Объём: backend (Django 5 + DRF), frontend (Next.js 15), docs, инфраструктура  
+Состояние: STAGE-001…007 + **P0/P1/P2 закрыты**; CI зелёный на `master` (`06297b4`).
+
+**Тесты:** 51 API · 12 Vitest · 1 Playwright E2E (CI) · `test.bat` гоняет 46 (без `core.tests`).
+
+**План закрытия дыр:** локальный `plan_0.md` (не в git).
 
 ---
 
@@ -10,141 +15,201 @@
 ### Что хорошо
 
 - Монорепо консистентно: `apps/api` (6 Django-приложений), `apps/web`, `docs/`, лаунчеры.
-- Все **45** API-тестов проходят (включая knowledge grants, security scope).
-- Multi-tenant фильтрация (`tenant_id`) применяется во всех queryset'ах последовательно.
-- Права (`ModulePermission`) проверяются в каждой view; есть scope-иерархия руководителей и аудит-лог.
-- Сквозные сценарии работают: очередь клиентов → разбор → задачи сотрудника → AI-аналитика → кастомные отчёты.
+- **51** API-тест + **12** Vitest + E2E в CI — регрессия по STAGE-001…007.
+- Multi-tenant (`tenant_id`) + manager scope + ceiling rule последовательны.
+- httpOnly JWT через Next.js BFF + `CookieJWTAuthentication` + refresh blacklist на logout.
+- Сквозные сценарии: клиенты → разбор → задачи → AI-аналитика → кастомные отчёты → Access UI.
 
-### Проблемы целостности
+### Проблемы целостности (открытые)
 
 | # | Проблема | Где | Серьёзность |
 |---|---|---|---|
-| C1 | ~~Refresh-токен без flow обновления~~ — **исправлено**: центральный `authFetch` с refresh на 401 | `apps/web/src/lib/api.ts` | — |
-| C2 | `TenantMiddleware` ставит `request.tenant`, но views используют `user.tenant_id` напрямую — middleware фактически декоративный. `data-model.md` утверждает «enforced via middleware + custom managers», что не соответствует коду | `apps/api/core/middleware.py` | Средняя |
-| C3 | ~~JWT в localStorage~~ — **исправлено**: httpOnly cookies через Next.js BFF proxy + `CookieJWTAuthentication` | `apps/web/next.config.ts`, `accounts/cookies.py` | — |
-| C4 | ~~Нет rate limiting / throttling на `/auth/login/`~~ — **исправлено** (см. §1.1) | DRF settings | — |
-| C5 | ~~Незакоммичены изменения редизайна настроек~~ — **исправлено** | — | — |
+| C2 | `TenantMiddleware` декоративный — изоляция на уровне views/services, не middleware/managers | `core/middleware.py`, `data-model.md` | Средняя |
+| C6 | Модуль **`clients`** grantable, но API/UI проверяют только `dashboard: view` | `analytics/views.py`, `AppShell.tsx` | Средняя |
+| C7 | Nav не скрывает модули с `permissions: none` — 403 вместо forbidden UX | `AppShell.tsx` | Средняя |
+| C8 | `fetchMe()` failure → logout вместо forbidden для inactive/403 | `ProtectedShell.tsx` | Средняя |
 
-### 1.1. Security-аудит кода (2026-06-09) — найдено и исправлено
+### Закрытые (C1, C3–C5)
 
-Углублённая проверка авторизации, межтенантной изоляции и обработки ввода.
-
-| # | Уязвимость | Было | Исправление |
-|---|---|---|---|
-| S1 | **Утечка scope через AI-агента**: `_recording_context` фильтровал записи только по `tenant_id` — региональный менеджер мог получить контекст транскрипций чужих подразделений через имя клиента | `ai/services/agent.py` | Используется `recordings_queryset(actor)` с полной scope-фильтрацией |
-| S2 | **Список AI-отчётов tenant-wide**: менеджер с `analytics: view` видел отчёты (summary, canvas) всех подразделений тенанта вне своего scope | `ai/views.py` | Новый `reports_queryset(actor)` — фильтр по workspace из scope менеджера |
-| S3 | **Brute force на логин**: throttling отсутствовал | `accounts/views.py`, settings | `LoginRateThrottle` 10/min на login/refresh (env `THROTTLE_LOGIN`), `AgentRateThrottle` 30/min на агент-чаты (env `THROTTLE_AGENT`); в тестах отключено |
-| S4 | **Загрузка файлов без валидации**: `audio_file` принимал любой тип и размер | `integrations/serializers.py` | Лимит 100 MB + whitelist расширений (mp3/wav/ogg/m4a/flac/webm), `duration_seconds >= 0` |
-| S5 | 500 вместо 404: несуществующий/чужой `session_id` в агент-чате ронял запрос | `ai/services/agent.py`, `ai/views.py` | Обработка `DoesNotExist` → 404 |
-| S6 | 500 на `?limit=abc` в аудите прав | `accounts/views.py` | Безопасный парсинг с fallback 50 |
-
-Регрессионные тесты: `ai/tests/test_security_scope.py` (4 теста — изоляция scope для отчётов и контекста агента, 404 на неизвестную сессию).
-
-### Проверено — уязвимостей не найдено
-
-- **Межтенантная изоляция**: все queryset'ы фильтруют `tenant_id`, межтенантных дыр нет.
-- **IDOR**: detail-views проверяют tenant + scope (`can_access_recording`, `resolve_client`, `_get_target`).
-- **SQL-инъекции**: только ORM, raw SQL отсутствует.
-- **XSS**: `dangerouslySetInnerHTML` не используется, React экранирует вывод.
-- **Эскалация прав**: ceiling-проверка в `grant_permissions` + аудит отказов scope.
-
----
-
-## 2. Корректность стека (заявленное vs реальное)
-
-`docs/architecture/stack.md` заявляет компоненты, которые **не используются в коде**:
-
-| Заявлено | Фактически | Риск |
+| # | Было | Статус |
 |---|---|---|
-| PostgreSQL 16 + **pgvector** | **Реализовано** (PostgreSQL): `VectorField` на `KnowledgeArticle`, Celery embed, vector search с keyword fallback | SQLite dev — keyword only |
-| AI Adapter → **OpenRouter** | **Реализовано**: `llm_adapter.py` + tenant/workspace keys (Django Admin, Fernet); fallback rule-based | Без ключа — rule-based |
-| **S3-compatible storage** | **Не используется по решению**: аудио не хранится; только транскрипты 90 дней | Осознанный отказ от S3 |
-| Транскрипция | Demo-текст в `content_json`; **ASR отложен** — pluggable STT, transient audio | Следующий спринт |
+| C1 | Refresh flow | ✅ cookies + `authFetch` refresh on 401 |
+| C3 | JWT localStorage | ✅ httpOnly BFF cookies |
+| C4 | No throttling | ✅ login 10/min, agent 30/min |
+| C5 | Settings redesign uncommitted | ✅ в git |
 
-Это осознанные MVP-срезы (помечены в roadmap-доках как «Not in this slice»), но в `stack.md` стоит явно пометить статус «planned», иначе документация вводит в заблуждение.
+### 1.1. Security-аудит (2026-06-09) — исправлено
 
-### Инфраструктурные несоответствия
+| # | Уязвимость | Исправление |
+|---|---|---|
+| S1 | Scope leak в AI-агенте | `recordings_queryset(actor)` |
+| S2 | Tenant-wide AI-отчёты | `reports_queryset(actor)` |
+| S3 | Brute force login | `LoginRateThrottle`, `AgentRateThrottle` |
+| S4 | Upload без валидации | 100 MB + whitelist расширений |
+| S5 | 500 на bad session_id | 404 |
+| S6 | 500 на `?limit=abc` | Safe parse |
 
-- ~~Прод-компоуза нет~~ — **исправлено**: `docker-compose.prod.yml` (gunicorn без reload, без seed, migrate + collectstatic).
-- ~~Lock-файл и CI~~ — **исправлено**: `requirements.lock.txt`, `.github/workflows/ci.yml`, Dependabot.
-- ~~Prod Django settings~~ — **исправлено**: fail-fast SECRET_KEY ≥32, DEBUG=false, HSTS/secure-cookies, WhiteNoise.
-- Dev `docker-compose.yml` по-прежнему с `--reload` и `seed_demo` — нормально для локальной разработки.
+Тесты: `ai/tests/test_security_scope.py` (4).
+
+### 1.2. Полный аудит (2026-06-10) — остаточные риски
+
+| # | Риск | Severity | Статус |
+|---|---|---|---|
+| R1 | Cross-tenant IDOR — код фильтрует, **нет regression-теста** | Medium | Открыт |
+| R2 | Cookie refresh/logout — **1 API-тест**, нет refresh-via-cookie/blacklist suite | Medium | Открыт |
+| R3 | LLM fallback не assert'ится при `LlmAdapterError` | Low | Открыт |
+| R4 | Throttling не тестируется (отключён в TESTING) | Low | Открыт |
+| R5 | Upload validation — код есть, **тестов нет** | Low | Открыт |
+| R6 | Demo transcripts/metrics в prod — продуктовый риск | High (product) | Осознан defer |
+
+### Проверено — CVE-класс не найден
+
+- Межтенантная изоляция в queryset'ах · IDOR на detail-views · ORM-only · XSS (нет `dangerouslySetInnerHTML`) · ceiling + audit.
 
 ---
 
-## 3. Дыры в документации
+## 2. Backend vs документация
 
-### Хорошо синхронизировано (source of truth актуален)
+**Совпадает:** все STAGE endpoints, scope, permissions, KB grants (API-PERM-004), health/ready, retention, pgvector (PostgreSQL).
 
-`roadmap.md` + 7 implementation-доков, `product-requirements.md`, `api-contracts.md`, `data-model.md`, `acceptance-criteria.md`, feature-docs, `user-flow.md`, design-guide, **`operations/deployment.md`**, **`operations/rollback.md`**, **`operations/backup-and-restore.md`** (заполнены в P0).
+**Критичные расхождения docs ↔ code:**
 
-### Пустые шаблоны — ~57 файлов
+| ID | Проблема | Файлы |
+|---|---|---|
+| B-H1 | Auth docs описывают Bearer/localStorage; код — **cookies primary** | `auth-and-access-control.md`, `api-contracts.md`, `frontend-docs.md` |
+| B-H2 | `threat-model.md` L28 всё ещё «JWT в localStorage» | `docs/security/threat-model.md` |
+| B-H3 | `api-contracts.md` index неполный (нет REV/AI/KB/AGENT/PERM-004) | `api-contracts.md` |
+| B-M1 | `data-model.md` index устарел (нет Review, AI entities) | `data-model.md` |
+| B-M2 | `backend-docs.md`: integrations planned, S3, wrong Celery task name | `backend-docs.md` |
+| B-M3 | `roadmap.md` index: STAGE-007 «planned» vs body «done» | `roadmap.md` |
+| B-M4 | Audit API только `permission_change`; в коде есть `review_create` | `accounts/views.py` |
 
-Критичные для прода (ещё не заполнены):
+---
 
-| Документ | Почему критичен |
-|---|---|
-| ~~`operations/deployment.md`~~ | **заполнен** |
-| ~~`operations/rollback.md`~~ | **заполнен** |
-| ~~`operations/backup-and-restore.md`~~ | **заполнен** |
-| `operations/monitoring-and-alerts.md` | Мониторинга нет ни в коде, ни в доке |
-| `security/security-checklist.md` | Roadmap ссылается на «Auth / Access» секцию — файл пуст |
-| `security/threat-model.md`, `incident-response.md` | Для SaaS с записями разговоров — обязательны |
-| `quality/testing-strategy.md`, `release-checklist.md` | Definition of Done ссылается в никуда |
-| ~~`legal/privacy-policy-notes.md`~~ | **заполнен** (MVP) |
-| ~~`security/data-retention.md`~~ | **заполнен** (90d transcripts) |
+## 3. Frontend vs документация
 
-Менее срочные: marketing/*, support/*, product/* — можно заполнять по мере выхода на рынок.
+**Совпадает:** PAGE-001…009, BFF cookies, PAGE-006 (4 вкладки), основные flows.
+
+**Критичные gaps:**
+
+| ID | Проблема | Файлы |
+|---|---|---|
+| F-H1 | Permission-based nav отсутствует | `AppShell.tsx` |
+| F-H2 | Forbidden/inactive → logout | `ProtectedShell.tsx`, `api.ts` |
+| F-H3 | `deployment.md` советует cross-origin API URL — **ломает BFF cookies** | `deployment.md` vs `.env.example` |
+| F-H4 | Cross-page links из `pages-map.md` не реализованы | `ClientsToReview`, `ManagerDashboard`, `AiAnalytics` |
+
+**Средние:** нет Z-FILTERS (clients), Z-TREND (employee), слабые error/retry states, нет `middleware.ts`.
+
+---
+
+## 4. Тестирование
+
+| Слой | Count | CI | Gaps |
+|---|---|---|---|
+| API | 51 | ✅ | cookie lifecycle, cross-tenant, throttle, upload validation |
+| Vitest | 12 | ✅ | только `auth.ts`/`api.ts`, моки |
+| Playwright | 1 | ✅ | employee flow, logout, permission denied |
+| Lint | — | ❌ не в CI | `npm run lint` |
+
+**Локально:** `test.bat` / `start-dev.ps1 -RunTests` → **46** тестов (пропускает `core.tests`).
+
+**Docs:** `testing-strategy.md` ✅ · `test-matrix.md` пуст · `release-checklist.md` skeleton · `security-checklist.md` частично устарел vs код.
+
+---
+
+## 5. Документация — статус
+
+### Заполнено (P0–P2)
+
+`deployment.md`, `rollback.md`, `backup-and-restore.md`, `data-retention.md`, `privacy-policy-notes.md`, `data-processing-agreement.md`, `threat-model.md`, `security-checklist.md`, `incident-response.md`, `monitoring-and-alerts.md`, `testing-strategy.md`, sync `stack.md` / `data-model.md`.
+
+### Ещё пустые / skeleton (~50 файлов)
+
+`test-matrix.md`, `release-checklist.md`, `definition-of-done.md`, marketing/*, support/*, `environments.md` (staging TBD).
 
 ### Прочие несоответствия
 
-- `data-model.md`: заявляет custom managers для tenant-фильтрации (см. C2).
-- ~~QA-AC-013/014~~ — **passed**: вкладка Access в PAGE-006, API-PERM-004 knowledge grants.
+- Auth/security docs отстают от httpOnly cookies (см. B-H1, B-H2).
+- `data-model.md`: custom managers (C2).
+- QA-AC-013/014 — **passed**.
 
 ---
 
-## 4. План докрутки до прод-реализации
+## 6. Roadmap P0–P2 — статус реализации
 
-### P0 — блокеры прода ✅ **закрыт** (2026-06-09)
+### P0 ✅ закрыт (2026-06-09)
 
-1. ~~**Token refresh flow**~~ — `authFetch()` + `refreshAccessToken()` в `apps/web/src/lib/api.ts`.
-2. ~~**Прод-конфиг Django**~~ — `IS_PRODUCTION`, fail-fast SECRET_KEY, HSTS/secure-cookies, WhiteNoise.
-3. ~~**Throttling**~~ — login 10/min, agent 30/min.
-4. ~~**CI**~~ — `.github/workflows/ci.yml` (41 tests + migration check + web build).
-5. ~~**Lock-файл + Dependabot**~~ — `requirements.lock.txt`, `.github/dependabot.yml`.
-6. ~~**Прод-compose + deploy docs**~~ — `docker-compose.prod.yml`, `deployment.md`, `rollback.md`.
-7. ~~**Бэкапы Postgres**~~ — `scripts/backup-postgres.sh/.ps1`, `backup-and-restore.md`.
+Token refresh → cookies · prod Django · throttling · CI · lock file · prod compose · backups.
 
-### P1 — реальная функциональность ✅ **частично закрыт** (2026-06-09)
+### P1 ✅ частично (2026-06-09)
 
-8. **ASR-транскрипция** — **отложено**; demo + `content_json`, аудио не персистится; STT adapter — следующий этап.
-9. ~~**LLM-адаптер**~~ — OpenRouter-compatible, tenant→workspace keys, agent/custom reports/analytics summary + fallback.
-10. ~~**Embeddings + pgvector**~~ — `VectorField`, Celery embed, vector search + keyword fallback.
-11. **Интеграции** — **пропущено** по решению (demo sync остаётся).
-12. ~~**REQ-013/014 UI**~~ — PAGE-006 Access: модули + audit + KB grants (API-PERM-004).
+| # | Статус |
+|---|---|
+| 8 ASR | ⏸ отложено (demo `content_json`) |
+| 9 LLM | ✅ OpenRouter adapter + fallback |
+| 10 pgvector | ✅ embeddings + vector search |
+| 11 Integrations | ⏸ demo sync |
+| 12 Access UI | ✅ PAGE-006 + API-PERM-004 |
 
-**Дополнительно:** retention 90d (`purge_expired_transcripts`), legal/data-retention docs.
+### P2 ✅ закрыт (2026-06-09, без Sentry)
 
-### P2 — наблюдаемость, качество, документация ✅ **закрыт** (2026-06-09)
+JSON logs · `/health/ready/` · E2E + Vitest · security/legal docs · stack sync · httpOnly BFF.
 
-13. ~~**JSON logging + healthcheck**~~ — `/health/ready/` (DB/Redis/Celery), JSON stdout logs; **Sentry пропущен** по решению.
-14. ~~**E2E + unit**~~ — Playwright `manager-critical-flow`, Vitest `auth.ts`/`api.ts`, CI job `e2e`.
-15. ~~**Security docs**~~ — `threat-model.md`, `security-checklist.md`, `incident-response.md`.
-16. ~~**Legal DPA**~~ — `data-processing-agreement.md` из privacy/retention notes.
-17. ~~**stack.md + data-model.md**~~ — синхронизированы с кодом.
-18. ~~**httpOnly JWT**~~ — BFF proxy + cookie auth + token blacklist logout.
+### P3 — deploy + prod gaps (новый, см. `plan_0.md`)
 
-### Рекомендуемый порядок
+Deploy blockers, doc sync, frontend UX, test gaps, ASR/integrations product work.
+
+---
+
+## 7. Готовность к продакшену
+
+**Вердикт:** pilot/staging с ручным ops — **после P3-deploy blockers**. Unattended B2B SaaS — **рано**.
+
+### Готово
+
+Prod compose · prod settings · backups scripts · health/ready · rate limits · httpOnly JWT · CI · JSON logs.
+
+### Deploy blockers (P3-D0)
+
+| # | Блокер |
+|---|---|
+| D1 | `docker-compose.prod.yml`: нет `API_BACKEND_URL=http://api:8000`, `NEXT_PUBLIC_API_URL=` |
+| D2 | `SECURE_SSL_REDIRECT` без `SECURE_PROXY_SSL_HEADER` → redirect loop за nginx/Caddy |
+| D3 | Docker healthcheck API может получить 301 на HTTP |
+| D4 | Celery Beat / cron для `purge_expired_transcripts` не настроен |
+| D5 | Backups — скрипты есть, cron/off-host вручную |
+| D6 | Reverse proxy + TLS + firewall (только 80/443) |
+| D7 | Web: `npm run build` на каждый start — не baked image |
+
+### Продуктовые defer (осознанно)
+
+Demo ASR · demo integrations · agent chat retention indefinite · Sentry optional.
+
+### VPS sizing (single-node Docker)
+
+| Профиль | vCPU | RAM | Disk |
+|---|---|---|---|
+| Pilot min | 2 | 4 GB | 40 GB SSD |
+| Recommended | 4 | 8 GB | 80 GB SSD |
+| Growth 50+ | 4–8 | 16 GB | 160 GB+ |
+
+LLM/STT — внешние (OpenRouter). Нагрузка: Postgres embeddings, Gunicorn, Celery, Next.
+
+---
+
+## 8. Рекомендуемый порядок (обновлён)
 
 ```
-✅ Спринт 1 (P0): закрыт
-✅ Спринт 2–3 (P1): LLM + pgvector + Access UI — закрыт; ASR + интеграции — отложены
-✅ Спринт 4 (P2): закрыт (без Sentry)
-Следующее: ASR, реальные интеграции, Sentry (опционально)
+✅ P0–P2 roadmap: закрыт (кроме ASR, integrations, Sentry)
+→ P3-D0: deploy blockers (7 пунктов) — перед VPS
+→ P3-D1: doc sync + frontend UX + tests
+→ P4: ASR + real integrations
+→ P5: Sentry, staging env, CSP, agent retention policy
 ```
 
 ---
 
 ## Резюме
 
-User Level MVP + **P0/P1/P2** реализованы. **ASR** и **реальные интеграции** — следующий этап. Опционально: Sentry, monitoring alerts automation.
+User Level MVP + P0/P1/P2 **реализованы и покрыты CI**. Остаётся: **deploy blockers на VPS**, **doc drift (auth)**, **frontend permission UX**, **test gaps (cookies, cross-tenant)**, **ASR/integrations** для реального продукта. Детальный план — `plan_0.md` (локально).
