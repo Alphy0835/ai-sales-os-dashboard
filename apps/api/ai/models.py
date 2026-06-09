@@ -41,6 +41,7 @@ class AnalyticsReport(models.Model):
     class Template(models.TextChoices):
         STANDARD_QUALITY = "standard_quality", "Standard quality"
         FUNNEL_DYNAMICS = "funnel_dynamics", "Funnel dynamics"
+        CUSTOM = "custom", "Custom"
 
     class Status(models.TextChoices):
         COMPLETED = "completed", "Completed"
@@ -63,6 +64,13 @@ class AnalyticsReport(models.Model):
     canvas = models.JSONField(default=dict, blank=True)
     error_message = models.TextField(blank=True, default="")
     recordings_analyzed = models.PositiveSmallIntegerField(default=0)
+    custom_report = models.ForeignKey(
+        "CustomReport",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="runs",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -139,3 +147,21 @@ class AgentChatMessage(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+
+
+class CustomReport(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("accounts.Tenant", on_delete=models.CASCADE, related_name="custom_reports")
+    author = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="custom_reports_authored")
+    title = models.CharField(max_length=255)
+    description = models.TextField(help_text="Natural language report description from manager")
+    structured_query = models.JSONField(default=dict, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return self.title

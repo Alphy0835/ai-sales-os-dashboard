@@ -437,9 +437,21 @@ Requires `analytics: view` or `run`.
 
 ### `POST /api/v1/manager/analytics/reports/run/`
 
-Requires `analytics: run`. Body: `workspace_id`, optional `employee_id`, `template`.
+Requires `analytics: run`. Body: `workspace_id`, optional `employee_id`, `template`, optional `custom_report_id`.
 
-Returns canvas with stage scores, criteria breakdown, recommendations. Fails with 400 if no transcriptions.
+Returns canvas with stage scores, criteria breakdown, recommendations. Fails with 400 if no transcriptions. When `custom_report_id` is set, template becomes `custom` and criteria are filtered by structured query focus stages.
+
+---
+
+## API-CR-001 — Custom AI reports
+
+### `GET/POST /api/v1/manager/settings/custom-reports/`
+
+Requires `settings: view` (GET) or `settings: edit` (POST). POST body: `title`, `description`. Server structures `structured_query` (MVP: rule-based stage keywords).
+
+### `GET/PATCH/DELETE .../custom-reports/{id}/`
+
+Requires `settings: view` (GET) or `settings: edit` (PATCH/DELETE).
 
 ---
 

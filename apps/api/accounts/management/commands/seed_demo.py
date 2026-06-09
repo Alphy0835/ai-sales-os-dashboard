@@ -136,6 +136,7 @@ class Command(BaseCommand):
         call_command("seed_reviews")
         call_command("seed_ai")
         call_command("seed_knowledge")
+        call_command("seed_custom_reports")
 
         self.stdout.write(self.style.SUCCESS("Demo data ready:"))
         self.stdout.write("  manager@demo.local / demo1234 (top manager, both workspaces)")

@@ -16,6 +16,7 @@ export type AnalyticsReport = {
   id: string;
   template: string;
   template_label: string;
+  custom_report_title: string | null;
   status: string;
   workspace_id: string;
   workspace_name: string;
@@ -89,9 +90,40 @@ export function runAnalyticsReport(payload: {
   workspace_id: string;
   employee_id?: string;
   template?: string;
+  custom_report_id?: string;
 }): Promise<AnalyticsReport> {
   return authFetch("/api/v1/manager/analytics/reports/run/", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export type CustomReport = {
+  id: string;
+  title: string;
+  description: string;
+  structured_query: {
+    focus_stages?: string[];
+    focus_keywords?: string[];
+    engine?: string;
+  };
+  is_active: boolean;
+  author_name: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export function fetchCustomReports(): Promise<{ count: number; results: CustomReport[] }> {
+  return authFetch("/api/v1/manager/settings/custom-reports/");
+}
+
+export function createCustomReport(payload: { title: string; description: string }): Promise<CustomReport> {
+  return authFetch("/api/v1/manager/settings/custom-reports/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteCustomReport(id: string): Promise<void> {
+  return authFetch(`/api/v1/manager/settings/custom-reports/${id}/`, { method: "DELETE" });
 }

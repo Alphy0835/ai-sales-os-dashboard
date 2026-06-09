@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchMe } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { fetchManagerDashboard } from "@/lib/dashboard";
-import { fetchAnalyticsReports, runAnalyticsReport, type AnalyticsReport } from "@/lib/analytics-api";
+import { fetchAnalyticsReports, fetchCustomReports, runAnalyticsReport, type AnalyticsReport, type CustomReport } from "@/lib/analytics-api";
 
 const TEMPLATES = [
   { value: "standard_quality", label: "Стандартный отчёт по качеству" },
@@ -16,6 +16,8 @@ export function AiAnalyticsView() {
   const [workspaceId, setWorkspaceId] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const [template, setTemplate] = useState("standard_quality");
+  const [customReportId, setCustomReportId] = useState("");
+  const [customReports, setCustomReports] = useState<CustomReport[]>([]);
   const [workspaces, setWorkspaces] = useState<Array<{ id: string; name: string }>>([]);
   const [employees, setEmployees] = useState<Array<{ id: string; full_name: string }>>([]);
   const [canRun, setCanRun] = useState(false);
@@ -30,14 +32,16 @@ export function AiAnalyticsView() {
     setError(null);
     try {
       const token = getAccessToken();
-      const [dash, reports, me] = await Promise.all([
+      const [dash, reports, custom, me] = await Promise.all([
         fetchManagerDashboard({ workspace_id: workspaceId || undefined }),
         fetchAnalyticsReports(),
+        fetchCustomReports().catch(() => ({ count: 0, results: [] as CustomReport[] })),
         token ? fetchMe(token) : Promise.resolve(null),
       ]);
       setWorkspaces(dash.filters.workspaces);
       setEmployees(dash.filters.employees);
       setHistory(reports.results);
+      setCustomReports(custom.results);
       const level = me?.permissions.analytics;
       setCanRun(level === "run" || level === "edit");
       if (!workspaceId && dash.filters.workspaces[0]) {
@@ -62,7 +66,9 @@ export function AiAnalyticsView() {
       const result = await runAnalyticsReport({
         workspace_id: workspaceId,
         employee_id: employeeId || undefined,
-        template,
+        ...(customReportId
+          ? { custom_report_id: customReportId }
+          : { template }),
       });
       setReport(result);
       await load();
@@ -83,7 +89,7 @@ export function AiAnalyticsView() {
       <div className="manager-main">
         <header>
           <h1 className="page-title">AI-аналитика</h1>
-          <p className="page-subtitle">Стандартные отчёты по качеству общения на основе транскрипций</p>
+          <p className="page-subtitle">Стандартные и кастомные отчёты по качеству общения на основе транскрипций</p>
         </header>
 
         <div className="card card-pad mb-4">
@@ -111,12 +117,33 @@ export function AiAnalyticsView() {
             </label>
             <label className="flex flex-col gap-1 text-[11px] text-muted">
               Шаблон
-              <select className="input" value={template} onChange={(e) => setTemplate(e.target.value)}>
+              <select
+                className="input"
+                value={customReportId ? `custom:${customReportId}` : template}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value.startsWith("custom:")) {
+                    setCustomReportId(value.slice(7));
+                  } else {
+                    setCustomReportId("");
+                    setTemplate(value);
+                  }
+                }}
+              >
                 {TEMPLATES.map((t) => (
                   <option key={t.value} value={t.value}>
                     {t.label}
                   </option>
                 ))}
+                {customReports.length > 0 && (
+                  <optgroup label="Кастомные отчёты">
+                    {customReports.map((r) => (
+                      <option key={r.id} value={`custom:${r.id}`}>
+                        {r.title}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </label>
             {canRun ? (

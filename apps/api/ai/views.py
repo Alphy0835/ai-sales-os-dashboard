@@ -3,15 +3,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.models import User
-from ai.models import AgentChatSession, AnalyticsReport, KnowledgeArticle, QualityCriterion
+from ai.models import AgentChatSession, AnalyticsReport, CustomReport, KnowledgeArticle, QualityCriterion
 from ai.serializers import (
     AgentChatRequestSerializer,
     AgentChatSessionSerializer,
     AnalyticsReportSerializer,
+    CustomReportSerializer,
     KnowledgeArticleSerializer,
     QualityCriterionSerializer,
     ReportRunSerializer,
 )
+from ai.services.custom_reports import structure_custom_report
 from ai.services.agent import chat_with_agent
 from ai.services.knowledge import articles_editable_queryset, can_use_agent
 from ai.services.permissions import (
@@ -80,7 +82,7 @@ class AnalyticsReportsView(APIView):
         if not can_view_reports(request.user):
             raise PermissionDenied("Analytics view permission required")
         qs = AnalyticsReport.objects.filter(tenant_id=request.user.tenant_id).select_related(
-            "workspace", "employee", "author"
+            "workspace", "employee", "author", "custom_report"
         )[:50]
         return Response({"count": qs.count(), "results": AnalyticsReportSerializer(qs, many=True).data})
 
@@ -103,11 +105,27 @@ class AnalyticsReportRunView(APIView):
         if err:
             raise ValidationError(err)
 
+        custom_report = None
+        if data.get("custom_report_id"):
+            try:
+                custom_report = CustomReport.objects.get(
+                    id=data["custom_report_id"],
+                    tenant_id=request.user.tenant_id,
+                    is_active=True,
+                )
+            except CustomReport.DoesNotExist:
+                raise ValidationError({"custom_report_id": "Custom report not found."})
+
+        template = data.get("template") or AnalyticsReport.Template.STANDARD_QUALITY
+        if custom_report:
+            template = AnalyticsReport.Template.CUSTOM
+
         report = generate_analytics_report(
             actor=request.user,
             workspace=workspace,
             employee=employee,
-            template=data["template"],
+            template=template,
+            custom_report=custom_report,
         )
         payload = AnalyticsReportSerializer(report).data
         if report.status == AnalyticsReport.Status.FAILED:
@@ -196,3 +214,69 @@ class EmployeeAgentChatView(APIView):
         )
         session = AgentChatSession.objects.prefetch_related("messages").get(id=session.id)
         return Response(AgentChatSessionSerializer(session).data)
+
+
+class CustomReportListCreateView(APIView):
+    def get(self, request):
+        require_manager(request.user)
+        if not can_view_criteria(request.user):
+            raise PermissionDenied("Settings view permission required")
+        qs = CustomReport.objects.filter(tenant_id=request.user.tenant_id).order_by("-updated_at")
+        return Response({"count": qs.count(), "results": CustomReportSerializer(qs, many=True).data})
+
+    def post(self, request):
+        require_manager(request.user)
+        if not can_edit_criteria(request.user):
+            raise PermissionDenied("Settings edit permission required")
+        serializer = CustomReportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        structured = structure_custom_report(title=data["title"], description=data["description"])
+        report = CustomReport.objects.create(
+            tenant_id=request.user.tenant_id,
+            author=request.user,
+            title=data["title"],
+            description=data["description"],
+            structured_query=structured,
+        )
+        return Response(CustomReportSerializer(report).data, status=201)
+
+
+class CustomReportDetailView(APIView):
+    def _get(self, request, report_id):
+        require_manager(request.user)
+        if not can_view_criteria(request.user):
+            raise PermissionDenied("Settings view permission required")
+        try:
+            return CustomReport.objects.get(id=report_id, tenant_id=request.user.tenant_id)
+        except CustomReport.DoesNotExist:
+            raise NotFound("Custom report not found")
+
+    def get(self, request, report_id):
+        return Response(CustomReportSerializer(self._get(request, report_id)).data)
+
+    def patch(self, request, report_id):
+        require_manager(request.user)
+        if not can_edit_criteria(request.user):
+            raise PermissionDenied("Settings edit permission required")
+        report = self._get(request, report_id)
+        serializer = CustomReportSerializer(report, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        if "title" in data or "description" in data:
+            report.structured_query = structure_custom_report(
+                title=data.get("title", report.title),
+                description=data.get("description", report.description),
+            )
+        for field in ("title", "description", "is_active"):
+            if field in data:
+                setattr(report, field, data[field])
+        report.save()
+        return Response(CustomReportSerializer(report).data)
+
+    def delete(self, request, report_id):
+        require_manager(request.user)
+        if not can_edit_criteria(request.user):
+            raise PermissionDenied("Settings edit permission required")
+        self._get(request, report_id).delete()
+        return Response(status=204)

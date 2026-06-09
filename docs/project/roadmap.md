@@ -195,7 +195,7 @@ Maturity: L1
 
 ## Stage: STAGE-007 — Custom AI Reports
 
-**Status:** planned
+**Status:** done
 
 **Goal:** дать руководителю возможность описывать кастомные отчёты простым языком и повторно их запускать.
 
@@ -213,7 +213,7 @@ Maturity: L1
 - Руководитель описывает кастомный отчёт; система сохраняет и позволяет повторный запуск в AI-аналитике.
 - QA-AC-009 в статусе passed.
 
-**Implementation doc:** — *(создаётся после завершения: `roadmap-custom-ai-reports.md`)*
+**Implementation doc:** [roadmap-custom-ai-reports.md](roadmap-custom-ai-reports.md)
 
 ---
 

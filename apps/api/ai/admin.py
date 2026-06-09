@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from ai.models import AgentChatMessage, AgentChatSession, AnalyticsReport, KnowledgeArticle, QualityCriterion
+from ai.models import AgentChatMessage, AgentChatSession, AnalyticsReport, CustomReport, KnowledgeArticle, QualityCriterion
 
 
 @admin.register(QualityCriterion)
@@ -19,6 +19,12 @@ class AnalyticsReportAdmin(admin.ModelAdmin):
 class KnowledgeArticleAdmin(admin.ModelAdmin):
     list_display = ("title", "category", "access_level", "tenant", "is_active")
     list_filter = ("category", "access_level")
+
+
+@admin.register(CustomReport)
+class CustomReportAdmin(admin.ModelAdmin):
+    list_display = ("title", "author", "tenant", "is_active", "updated_at")
+    list_filter = ("is_active",)
 
 
 @admin.register(AgentChatSession)

@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from accounts.models import User
-from ai.models import AnalyticsReport, QualityCriterion
+from ai.models import AnalyticsReport, CustomReport, QualityCriterion
 from integrations.models import Transcription
 
 
@@ -65,10 +65,16 @@ def generate_analytics_report(
     workspace,
     employee: User | None,
     template: str,
+    custom_report: CustomReport | None = None,
 ) -> AnalyticsReport:
     criteria = list(
         QualityCriterion.objects.filter(tenant_id=actor.tenant_id, is_active=True).order_by("sort_order", "name")
     )
+    if custom_report and custom_report.structured_query.get("focus_stages"):
+        focus = set(custom_report.structured_query["focus_stages"])
+        filtered = [c for c in criteria if c.funnel_stage in focus]
+        if filtered:
+            criteria = filtered
     transcripts = list(
         _transcripts_queryset(
             tenant_id=actor.tenant_id,
@@ -87,6 +93,7 @@ def generate_analytics_report(
             status=AnalyticsReport.Status.FAILED,
             error_message="No quality criteria configured. Add criteria in Settings.",
             canvas={},
+            custom_report=custom_report,
         )
 
     if not transcripts:
@@ -99,6 +106,7 @@ def generate_analytics_report(
             status=AnalyticsReport.Status.FAILED,
             error_message="No completed transcriptions for the selected scope.",
             canvas={},
+            custom_report=custom_report,
         )
 
     texts = [t.text for t in transcripts if t.text]
@@ -131,6 +139,8 @@ def generate_analytics_report(
 
     target_name = employee.full_name if employee else workspace.name
     summary = f"Проанализировано записей: {len(transcripts)}. "
+    if custom_report:
+        summary = f"Кастомный отчёт «{custom_report.title}». " + summary
     if overall is not None:
         summary += f"Средняя оценка качества по критериям: {overall}%. "
     if recommendations:
@@ -140,6 +150,9 @@ def generate_analytics_report(
 
     canvas = {
         "template": template,
+        "custom_report_id": str(custom_report.id) if custom_report else None,
+        "custom_report_title": custom_report.title if custom_report else None,
+        "structured_query": custom_report.structured_query if custom_report else None,
         "overall_score": overall,
         "stages": stages,
         "criteria": criterion_scores,
@@ -163,6 +176,8 @@ def generate_analytics_report(
             {"type": "info", "text": f"Активных критериев: {len(criteria)}"},
         ],
     }
+    if custom_report:
+        canvas["highlights"].insert(0, {"type": "info", "text": custom_report.description[:120]})
 
     return AnalyticsReport.objects.create(
         tenant=actor.tenant,
@@ -174,4 +189,5 @@ def generate_analytics_report(
         summary_text=summary,
         canvas=canvas,
         recordings_analyzed=len(transcripts),
+        custom_report=custom_report,
     )

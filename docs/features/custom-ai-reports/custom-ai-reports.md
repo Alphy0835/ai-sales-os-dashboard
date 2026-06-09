@@ -1,9 +1,9 @@
 Doc ID: FEAT-007
-Status: draft
+Status: active
 Related requirements: REQ-009
 Related user flows: FLOW-004, FLOW-003
-Related API: TBD — `docs/architecture/api-contracts.md`
-Related data model: TBD — `docs/architecture/data-model.md`
+Related API: `docs/architecture/api-contracts.md` — API-CR-001
+Related data model: `docs/architecture/data-model.md` — CustomReport
 Related security: FEAT-001
 Related tests: QA-AC-009
 Update trigger: изменение формата кастомных отчётов или правил структурирования промптов

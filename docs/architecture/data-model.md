@@ -253,9 +253,23 @@ Stored AI analytics result with JSON canvas (REQ-007).
 
 | Field | Type | Description |
 |---|---|---|
-| template | enum | standard_quality, funnel_dynamics |
+| template | enum | standard_quality, funnel_dynamics, custom |
+| custom_report_id | FK | Optional link to saved CustomReport |
 | canvas | json | stages, criteria scores, recommendations |
 | employee_id | FK | Optional drill-down subject |
+
+---
+
+## Entity: CustomReport
+
+Saved natural-language report definition (REQ-009). MVP structuring via rule-based keyword → funnel stage mapping.
+
+| Field | Type | Description |
+|---|---|---|
+| title | string | Display name |
+| description | text | Manager's natural language prompt |
+| structured_query | json | `focus_stages`, `focus_keywords`, `engine` |
+| is_active | bool | Available for analytics run |
 
 ---
 

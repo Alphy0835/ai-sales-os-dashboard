@@ -3,6 +3,8 @@ from django.urls import path
 from ai.views import (
     AnalyticsReportRunView,
     AnalyticsReportsView,
+    CustomReportDetailView,
+    CustomReportListCreateView,
     EmployeeAgentChatView,
     KnowledgeArticleDetailView,
     KnowledgeArticleListCreateView,
@@ -26,6 +28,12 @@ urlpatterns = [
     ),
     path("manager/analytics/reports/", AnalyticsReportsView.as_view(), name="analytics-reports"),
     path("manager/analytics/reports/run/", AnalyticsReportRunView.as_view(), name="analytics-report-run"),
+    path("manager/settings/custom-reports/", CustomReportListCreateView.as_view(), name="custom-reports"),
+    path(
+        "manager/settings/custom-reports/<uuid:report_id>/",
+        CustomReportDetailView.as_view(),
+        name="custom-report-detail",
+    ),
     path("manager/agent/chat/", ManagerAgentChatView.as_view(), name="manager-agent-chat"),
     path("employee/agent/chat/", EmployeeAgentChatView.as_view(), name="employee-agent-chat"),
 ]
