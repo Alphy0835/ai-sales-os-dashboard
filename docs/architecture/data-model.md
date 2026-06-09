@@ -259,6 +259,24 @@ Stored AI analytics result with JSON canvas (REQ-007).
 
 ---
 
+## Entity: KnowledgeArticle
+
+RAG material for AI agents (REQ-010).
+
+| Field | Type | Description |
+|---|---|---|
+| category | enum | product, objection, infopovod, case, other |
+| access_level | enum | all, manager, employee |
+| tags | text | Comma-separated search tokens |
+
+---
+
+## Entity: AgentChatSession / AgentChatMessage
+
+Agent dialog state (REQ-011, REQ-012). Messages include `sources` JSON on assistant replies.
+
+---
+
 ## Multi-tenant rule
 
 Every query on tenant-scoped tables MUST filter by authenticated user's `tenant_id`. Enforced via middleware + custom managers (see `apps/api/core`).

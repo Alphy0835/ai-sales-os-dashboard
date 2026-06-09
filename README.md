@@ -88,4 +88,4 @@ docker compose up --build
 
 ## Roadmap
 
-Implementation follows [`docs/project/roadmap.md`](docs/project/roadmap.md). **STAGE-001–005 done**. Next: **STAGE-006** Knowledge Base & AI Agents.
+Implementation follows [`docs/project/roadmap.md`](docs/project/roadmap.md). **STAGE-001–006 done**. Next: **STAGE-007** Custom AI Reports.

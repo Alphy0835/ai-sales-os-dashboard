@@ -23,7 +23,7 @@ Maturity: L1
 | STAGE-003 | Manager Dashboard | **done** | REQ-001, REQ-002, REQ-003, REQ-004 | yes |
 | STAGE-004 | Review Cycle | **done** | REQ-005, REQ-006 | yes |
 | STAGE-005 | Quality & AI Analytics | **done** | REQ-007, REQ-008 | yes |
-| STAGE-006 | Knowledge Base & AI Agents | planned | REQ-010, REQ-011, REQ-012 | yes |
+| STAGE-006 | Knowledge Base & AI Agents | **done** | REQ-010, REQ-011, REQ-012 | yes |
 | STAGE-007 | Custom AI Reports | planned | REQ-009 | no |
 
 ---
@@ -168,7 +168,7 @@ Maturity: L1
 
 ## Stage: STAGE-006 — Knowledge Base & AI Agents
 
-**Status:** planned
+**Status:** **done**
 
 **Goal:** наполнить базу знаний и запустить AI-агентов для руководителя и сотрудника с учётом прав и RAG.
 
@@ -189,7 +189,7 @@ Maturity: L1
 - Success Criteria MVP из product-requirements (п. 4) выполнен.
 - QA-AC этапа в статусе passed.
 
-**Implementation doc:** — *(создаётся после завершения: `roadmap-knowledge-ai-agents.md`)*
+**Implementation doc:** [roadmap-knowledge-ai-agents.md](roadmap-knowledge-ai-agents.md)
 
 ---
 

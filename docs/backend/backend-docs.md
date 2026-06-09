@@ -53,7 +53,7 @@ Planned apps (by roadmap): — *(ai implemented STAGE-005; knowledge/RAG STAGE-0
 | `integrations` | CRM/telephony sync, recordings, transcription | IntegrationSource, MetricSnapshot, ConversationRecording, Transcription | STAGE-002 | FEAT-002 |
 | `analytics` | KPI aggregates, dashboard API | MetricSnapshot, ClientToReview | STAGE-003 | FEAT-003 |
 | `reviews` | Reviews, tasks | Review, ReviewTask | STAGE-004 | FEAT-004 |
-| `ai` | Quality criteria, analytics reports | QualityCriterion, AnalyticsReport | STAGE-005 | FEAT-005 |
+| `ai` | Quality criteria, analytics reports, knowledge, agents | QualityCriterion, AnalyticsReport, KnowledgeArticle, AgentChatSession | STAGE-005–006 | FEAT-005–006 |
 
 ## API Handlers (map)
 
@@ -70,6 +70,9 @@ Planned apps (by roadmap): — *(ai implemented STAGE-005; knowledge/RAG STAGE-0
 | `/api/v1/manager/analytics/reports/` | ai | JWT + manager + analytics | API-AI-002 |
 | `/api/v1/manager/analytics/reports/run/` | ai | JWT + manager + analytics run | API-AI-003 |
 | `/api/v1/manager/settings/quality-criteria/` | ai | JWT + manager + settings | API-AI-001 |
+| `/api/v1/manager/settings/knowledge/` | ai | JWT + manager + settings | API-KB-001 |
+| `/api/v1/manager/agent/chat/` | ai | JWT + agent use | API-AGENT-001 |
+| `/api/v1/employee/agent/chat/` | ai | JWT + agent use | API-AGENT-001 |
 | `/api/v1/employee/dashboard/` | analytics | JWT + employee | API-EMP-001 |
 | `/api/v1/employee/tasks/{id}/` | reviews | JWT + employee | API-REV-002 |
 | `/api/v1/health/` | core | public | API-HEALTH-001 |

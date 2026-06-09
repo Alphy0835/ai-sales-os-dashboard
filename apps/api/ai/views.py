@@ -3,8 +3,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.models import User
-from ai.models import AnalyticsReport, QualityCriterion
-from ai.serializers import AnalyticsReportSerializer, QualityCriterionSerializer, ReportRunSerializer
+from ai.models import AgentChatSession, AnalyticsReport, KnowledgeArticle, QualityCriterion
+from ai.serializers import (
+    AgentChatRequestSerializer,
+    AgentChatSessionSerializer,
+    AnalyticsReportSerializer,
+    KnowledgeArticleSerializer,
+    QualityCriterionSerializer,
+    ReportRunSerializer,
+)
+from ai.services.agent import chat_with_agent
+from ai.services.knowledge import articles_editable_queryset, can_use_agent
 from ai.services.permissions import (
     can_edit_criteria,
     can_run_reports,
@@ -104,3 +113,86 @@ class AnalyticsReportRunView(APIView):
         if report.status == AnalyticsReport.Status.FAILED:
             return Response(payload, status=400)
         return Response(payload, status=201)
+
+
+class KnowledgeArticleListCreateView(APIView):
+    def get(self, request):
+        require_manager(request.user)
+        if not can_view_criteria(request.user):
+            raise PermissionDenied("Settings view permission required")
+        qs = articles_editable_queryset(request.user)
+        return Response({"count": qs.count(), "results": KnowledgeArticleSerializer(qs, many=True).data})
+
+    def post(self, request):
+        require_manager(request.user)
+        if not can_edit_criteria(request.user):
+            raise PermissionDenied("Settings edit permission required")
+        serializer = KnowledgeArticleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        article = serializer.save(tenant=request.user.tenant)
+        return Response(KnowledgeArticleSerializer(article).data, status=201)
+
+
+class KnowledgeArticleDetailView(APIView):
+    def _get(self, request, article_id):
+        try:
+            return articles_editable_queryset(request.user).get(id=article_id)
+        except KnowledgeArticle.DoesNotExist:
+            raise NotFound("Article not found.")
+
+    def patch(self, request, article_id):
+        require_manager(request.user)
+        if not can_edit_criteria(request.user):
+            raise PermissionDenied("Settings edit permission required")
+        article = self._get(request, article_id)
+        serializer = KnowledgeArticleSerializer(article, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, article_id):
+        require_manager(request.user)
+        if not can_edit_criteria(request.user):
+            raise PermissionDenied("Settings edit permission required")
+        article = self._get(request, article_id)
+        article.delete()
+        return Response(status=204)
+
+
+class ManagerAgentChatView(APIView):
+    def post(self, request):
+        require_manager(request.user)
+        if not can_use_agent(request.user):
+            raise PermissionDenied("Agent use permission required")
+        serializer = AgentChatRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        session = chat_with_agent(
+            actor=request.user,
+            message=data["message"],
+            session_id=str(data["session_id"]) if data.get("session_id") else None,
+            client_name=data.get("client_name", ""),
+            client_note=data.get("client_note", ""),
+        )
+        session = AgentChatSession.objects.prefetch_related("messages").get(id=session.id)
+        return Response(AgentChatSessionSerializer(session).data)
+
+
+class EmployeeAgentChatView(APIView):
+    def post(self, request):
+        if request.user.role != User.Role.EMPLOYEE:
+            raise PermissionDenied("Employee role required")
+        if not can_use_agent(request.user):
+            raise PermissionDenied("Agent use permission required")
+        serializer = AgentChatRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        session = chat_with_agent(
+            actor=request.user,
+            message=data["message"],
+            session_id=str(data["session_id"]) if data.get("session_id") else None,
+            client_name=data.get("client_name", ""),
+            client_note=data.get("client_note", ""),
+        )
+        session = AgentChatSession.objects.prefetch_related("messages").get(id=session.id)
+        return Response(AgentChatSessionSerializer(session).data)

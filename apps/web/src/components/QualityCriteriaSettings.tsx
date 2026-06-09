@@ -73,11 +73,6 @@ export function QualityCriteriaSettingsView() {
 
   return (
     <>
-      <header>
-        <h1 className="page-title">Настройки</h1>
-        <p className="page-subtitle">Критерии оценки качества для AI-аналитики</p>
-      </header>
-
       {error && <div className="text-error mb-3">{error}</div>}
 
       {canEdit && (

@@ -1,9 +1,9 @@
 Doc ID: FEAT-006
-Status: draft
+Status: active
 Related requirements: REQ-010, REQ-011, REQ-012
 Related user flows: FLOW-004, FLOW-005, FLOW-007
-Related API: TBD — `docs/architecture/api-contracts.md`
-Related data model: TBD — `docs/architecture/data-model.md`
+Related API: `docs/architecture/api-contracts.md` — API-KB-001, API-AGENT-001
+Related data model: `docs/architecture/data-model.md` — KnowledgeArticle, AgentChatSession
 Related security: FEAT-001 (доступ к материалам RAG)
 Related tests: QA-AC-010, QA-AC-011, QA-AC-012
 Update trigger: изменение базы знаний, поведения AI-агентов или прав на материалы

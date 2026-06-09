@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from ai.models import AnalyticsReport, QualityCriterion
+from ai.models import AgentChatMessage, AgentChatSession, AnalyticsReport, KnowledgeArticle, QualityCriterion
 
 
 class QualityCriterionSerializer(serializers.ModelSerializer):
@@ -65,3 +65,52 @@ class AnalyticsReportSerializer(serializers.ModelSerializer):
 
     def get_template_label(self, obj):
         return dict(AnalyticsReport.Template.choices).get(obj.template, obj.template)
+
+
+class KnowledgeArticleSerializer(serializers.ModelSerializer):
+    category_label = serializers.SerializerMethodField()
+    access_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = KnowledgeArticle
+        fields = [
+            "id",
+            "title",
+            "category",
+            "category_label",
+            "content",
+            "tags",
+            "access_level",
+            "access_label",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
+
+    def get_category_label(self, obj):
+        return dict(KnowledgeArticle.Category.choices).get(obj.category, obj.category)
+
+    def get_access_label(self, obj):
+        return dict(KnowledgeArticle.AccessLevel.choices).get(obj.access_level, obj.access_level)
+
+
+class AgentChatRequestSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    session_id = serializers.UUIDField(required=False, allow_null=True)
+    client_name = serializers.CharField(required=False, allow_blank=True, default="")
+    client_note = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class AgentChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AgentChatMessage
+        fields = ["id", "role", "content", "sources", "created_at"]
+
+
+class AgentChatSessionSerializer(serializers.ModelSerializer):
+    messages = AgentChatMessageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = AgentChatSession
+        fields = ["id", "client_name", "client_note", "messages", "created_at", "updated_at"]

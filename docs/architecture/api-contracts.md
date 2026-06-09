@@ -443,6 +443,28 @@ Returns canvas with stage scores, criteria breakdown, recommendations. Fails wit
 
 ---
 
+## API-KB-001 — Knowledge base
+
+### `GET/POST /api/v1/manager/settings/knowledge/`
+
+Requires `settings: view` / `edit`. Materials used by AI agents (RAG keyword search).
+
+### `PATCH/DELETE .../knowledge/{id}/`
+
+Article fields: `title`, `category`, `content`, `tags`, `access_level` (`all` | `manager` | `employee`).
+
+---
+
+## API-AGENT-001 — AI agent chat
+
+### `POST /api/v1/manager/agent/chat/` · `POST /api/v1/employee/agent/chat/`
+
+Requires `agent: use`. Body: `message`, optional `session_id`, `client_name`, `client_note`.
+
+Response: session with `messages` and `sources` on assistant replies.
+
+---
+
 ## Related Docs
 
 - [data-model.md](data-model.md) — Tenant, User, integrations entities

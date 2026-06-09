@@ -71,3 +71,71 @@ class AnalyticsReport(models.Model):
     def __str__(self):
         target = self.employee.full_name if self.employee_id else self.workspace.name
         return f"{self.template} — {target}"
+
+
+class KnowledgeArticle(models.Model):
+    class Category(models.TextChoices):
+        PRODUCT = "product", "Product"
+        OBJECTION = "objection", "Objection handling"
+        INFOPOVOD = "infopovod", "Infopovod"
+        CASE = "case", "Case study"
+        OTHER = "other", "Other"
+
+    class AccessLevel(models.TextChoices):
+        ALL = "all", "All users"
+        MANAGER = "manager", "Managers only"
+        EMPLOYEE = "employee", "Employees only"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("accounts.Tenant", on_delete=models.CASCADE, related_name="knowledge_articles")
+    title = models.CharField(max_length=255)
+    category = models.CharField(max_length=32, choices=Category.choices, default=Category.OTHER)
+    content = models.TextField()
+    tags = models.CharField(max_length=500, blank=True, default="")
+    access_level = models.CharField(max_length=16, choices=AccessLevel.choices, default=AccessLevel.ALL)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["category", "title"]
+
+    def __str__(self):
+        return self.title
+
+    def tag_list(self) -> list[str]:
+        return [t.strip().lower() for t in self.tags.split(",") if t.strip()]
+
+
+class AgentChatSession(models.Model):
+    class AgentRole(models.TextChoices):
+        MANAGER = "manager", "Manager"
+        EMPLOYEE = "employee", "Employee"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("accounts.Tenant", on_delete=models.CASCADE, related_name="agent_sessions")
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="agent_sessions")
+    agent_role = models.CharField(max_length=16, choices=AgentRole.choices)
+    client_name = models.CharField(max_length=255, blank=True, default="")
+    client_note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+
+class AgentChatMessage(models.Model):
+    class Role(models.TextChoices):
+        USER = "user", "User"
+        ASSISTANT = "assistant", "Assistant"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session = models.ForeignKey(AgentChatSession, on_delete=models.CASCADE, related_name="messages")
+    role = models.CharField(max_length=16, choices=Role.choices)
+    content = models.TextField()
+    sources = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
