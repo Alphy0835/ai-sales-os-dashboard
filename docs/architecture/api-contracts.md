@@ -15,7 +15,7 @@ Format: JSON
 Auth default: `Authorization: Bearer {access_token}`  
 OpenAPI: `/api/schema/` (drf-spectacular)
 
-> STAGE-001 scope only. Dashboard/integration endpoints — later stages.
+> STAGE-001 auth/scope + STAGE-002 integrations. Dashboard UI endpoints — STAGE-003.
 
 ## API Index
 
@@ -32,6 +32,13 @@ OpenAPI: `/api/schema/` (drf-spectacular)
 | API-PERM-002 | GET | `/permissions/users/{id}/` | User permissions detail | yes (settings view/edit) | FEAT-001 |
 | API-PERM-003 | PUT | `/permissions/users/{id}/` | Grant permissions (ceiling rule) | yes (settings edit) | FEAT-001 |
 | API-AUDIT-001 | GET | `/audit/permissions/` | Permission change audit log | yes (settings view/edit) | FEAT-001 |
+| API-INT-001 | GET | `/integrations/sources/` | Integration sources + health | yes (dashboard view) | FEAT-002 |
+| API-INT-002 | GET | `/integrations/metrics/` | Aggregated metrics + completeness | yes (dashboard view) | FEAT-002 |
+| API-INT-003 | GET | `/integrations/recordings/` | Recordings in scope | yes (dashboard view) | FEAT-002 |
+| API-INT-004 | POST | `/integrations/recordings/` | Manual recording upload | yes (dashboard view) | FEAT-002 |
+| API-INT-005 | GET | `/integrations/recordings/{id}/` | Recording detail | yes (dashboard view) | FEAT-002 |
+| API-INT-006 | GET | `/integrations/recordings/{id}/transcription/` | Transcription text | yes (dashboard view) | FEAT-002 |
+| API-INT-007 | POST | `/integrations/recordings/{id}/transcription/` | Queue (re)transcription | yes (dashboard view) | FEAT-002 |
 
 ---
 
@@ -292,7 +299,40 @@ User object with updated `permissions`.
 
 ---
 
+## API-INT-002 — Metrics summary
+
+### Query params
+
+| Param | Values | Description |
+|---|---|---|
+| `period` | `today` (default), `week`, `month` | Aggregation window |
+| `workspace_id` | UUID | Filter by workspace (manager scope) |
+| `user_id` | UUID | Filter by employee |
+
+### Response `200`
+
+```json
+{
+  "period": "today",
+  "as_of": "2026-06-09T12:00:00Z",
+  "completeness": "partial",
+  "completeness_reason": "частично: telephony",
+  "sources": [
+    { "source_type": "crm", "status": "connected", "last_sync_at": "..." },
+    { "source_type": "telephony", "status": "degraded", "last_error": null }
+  ],
+  "metrics": {
+    "calls": { "label": "Звонки", "value": 8.0, "available": true, "sources": ["telephony"], "reason": null },
+    "quality_score": { "label": "Оценка качества", "value": null, "available": false, "reason": "telephony_degraded" }
+  }
+}
+```
+
+`completeness`: `full` | `partial` | `empty` — REQ-NFR-003.
+
+---
+
 ## Related Docs
 
-- [data-model.md](data-model.md) — Tenant, User, ModulePermission, ManagerScope, AuditLog
+- [data-model.md](data-model.md) — Tenant, User, integrations entities
 - [pages-map.md](../project/design-guide/pages-map.md) — routes after login

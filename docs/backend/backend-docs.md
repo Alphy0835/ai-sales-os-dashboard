@@ -34,6 +34,7 @@ apps/api/
 ├── config/           # settings, urls, celery, wsgi
 ├── core/             # health, middleware, base models
 ├── accounts/         # STAGE-001: tenant, user, permissions
+├── integrations/     # STAGE-002: sources, metrics, recordings
 ├── manage.py
 └── requirements.txt
 ```
@@ -46,7 +47,7 @@ Planned apps (by roadmap): `integrations`, `analytics`, `reviews`, `ai`.
 |---|---|---|---|---|
 | `core` | Tenant middleware, health, timestamps | — | STAGE-001 | — |
 | `accounts` | Auth, RBAC, scope, ceiling rule, audit | Tenant, Workspace, User, ModulePermission, ManagerScope, AuditLog | STAGE-001 | FEAT-001 |
-| `integrations` | CRM/telephony sync, webhooks | IntegrationConfig, SyncJob | STAGE-002 | FEAT-002 |
+| `integrations` | CRM/telephony sync, recordings, transcription | IntegrationSource, MetricSnapshot, ConversationRecording, Transcription | STAGE-002 | FEAT-002 |
 | `analytics` | KPI aggregates, dashboard API | MetricSnapshot | STAGE-003 | FEAT-003 |
 | `reviews` | Reviews, tasks | Review, Task | STAGE-004 | FEAT-004 |
 | `ai` | RAG, agents, custom reports | KnowledgeChunk, ChatSession | STAGE-005–006 | FEAT-005–007 |
@@ -59,6 +60,7 @@ Planned apps (by roadmap): `integrations`, `analytics`, `reviews`, `ai`.
 | `/api/v1/scope/*` | accounts | JWT | API-SCOPE-* |
 | `/api/v1/permissions/*` | accounts | JWT + settings | API-PERM-* |
 | `/api/v1/audit/permissions/` | accounts | JWT + settings | API-AUDIT-001 |
+| `/api/v1/integrations/*` | integrations | JWT + dashboard | API-INT-* |
 | `/api/v1/health/` | core | public | API-HEALTH-001 |
 | `/api/v1/manager/*` | analytics, reviews, … | JWT + manager role | TBD per stage |
 | `/api/v1/employee/*` | analytics, reviews, … | JWT + employee role | TBD per stage |
@@ -79,8 +81,8 @@ OpenAPI: `/api/schema/` (drf-spectacular).
 
 | Task | Trigger | Stage |
 |---|---|---|
-| `sync_crm_source` | schedule / manual | STAGE-002 |
-| `transcribe_recording` | upload webhook | STAGE-002 |
+| `sync_integration_source` | manual / seed | STAGE-002 |
+| `transcribe_recording` | upload / telephony ingest | STAGE-002 |
 | `embed_knowledge_chunk` | KB update | STAGE-006 |
 
 ## Local Development

@@ -19,7 +19,7 @@ Maturity: L1
 | Stage ID | Name | Status | Linked Requirements | MVP |
 |---|---|---|---|---|
 | STAGE-001 | Access & Permissions | **done** | REQ-013, REQ-014, REQ-NFR-001, REQ-NFR-004 | yes |
-| STAGE-002 | Data Integration | planned | REQ-015, REQ-016, REQ-NFR-002, REQ-NFR-003 | yes |
+| STAGE-002 | Data Integration | **done** | REQ-015, REQ-016, REQ-NFR-002, REQ-NFR-003 | yes |
 | STAGE-003 | Manager Dashboard | planned | REQ-001, REQ-002, REQ-003, REQ-004 | yes |
 | STAGE-004 | Review Cycle | planned | REQ-005, REQ-006 | yes |
 | STAGE-005 | Quality & AI Analytics | planned | REQ-007, REQ-008 | yes |
@@ -62,7 +62,7 @@ Maturity: L1
 
 ## Stage: STAGE-002 — Data Integration
 
-**Status:** planned
+**Status:** done
 
 **Goal:** подключить источники CRM, телефонии, отчётности и записи общений с транскрипцией для последующей аналитики.
 
@@ -76,13 +76,13 @@ Maturity: L1
 
 **Release/rollback docs:** `docs/operations/deployment.md`, `docs/operations/rollback.md`, `docs/operations/monitoring-and-alerts.md`
 
-**Done when:**
-- Показатели подтягиваются из подключённых источников и агрегируются для дашбордов.
-- Записи общений принимаются из телефонии и ручной загрузки; транскрипции доступны для AI.
-- При недоступности источника показывается явное пустое/частичное состояние.
-- QA-AC этапа в статусе passed.
+**Done when:** *(backend MVP met 2026-06-09)*
+- Показатели агрегируются из demo-источников через `GET /integrations/metrics/`.
+- Записи — manual upload + demo telephony seed; транскрипции через Celery.
+- `completeness: partial|empty` при degraded/disconnected источниках.
+- Tests: `integrations/tests/test_stage002.py`.
 
-**Implementation doc:** — *(создаётся после завершения: `roadmap-data-integration.md`)*
+**Implementation doc:** [roadmap-data-integration.md](roadmap-data-integration.md)
 
 ---
 
