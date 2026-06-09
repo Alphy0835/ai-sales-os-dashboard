@@ -10,7 +10,7 @@ Maturity: L2
 
 # Data Model
 
-> STAGE-001 auth entities + STAGE-002 integration entities. Reviews, knowledge — later stages.
+> STAGE-001–007 entities implemented (auth, integrations, reviews, AI analytics, knowledge, agents, custom reports).
 
 ## Entity Index
 
@@ -21,13 +21,21 @@ Maturity: L2
 | User | Login identity + role | PostgreSQL | FEAT-001 | personal |
 | ModulePermission | Granular module access | PostgreSQL | FEAT-001 | internal |
 | ManagerScope | Manager workspace scope | PostgreSQL | FEAT-001 | internal |
-| AuditLog | Permission and scope-denied events | PostgreSQL | FEAT-001 | internal |
+| AuditLog | Permission changes, scope-denied, review-create events | PostgreSQL | FEAT-001, FEAT-004 | internal |
 | IntegrationSource | CRM/telephony/reporting connector | PostgreSQL | FEAT-002 | internal |
 | MetricSnapshot | Daily metric values per source | PostgreSQL | FEAT-002 | internal |
 | ConversationRecording | Call/meeting metadata (no audio file) | PostgreSQL | FEAT-002 | confidential |
 | Transcription | Speech-to-text for AI analytics | PostgreSQL | FEAT-002 | confidential |
-| KnowledgeArticleGrant | Per-user KB article access override | PostgreSQL | FEAT-010 | internal |
 | ClientToReview | Clients flagged for manager review | PostgreSQL | FEAT-003 | internal |
+| Review | Manager review session with employee | PostgreSQL | FEAT-004 | internal |
+| ReviewTask | Task assigned during a review | PostgreSQL | FEAT-004 | internal |
+| QualityCriterion | Tenant rule for AI quality scoring | PostgreSQL | FEAT-005 | internal |
+| AnalyticsReport | Stored AI analytics canvas | PostgreSQL | FEAT-005, FEAT-007 | confidential |
+| CustomReport | Saved natural-language report definition | PostgreSQL | FEAT-007 | internal |
+| KnowledgeArticle | RAG material for AI agents | PostgreSQL | FEAT-006 | confidential |
+| KnowledgeArticleGrant | Per-user KB article access override | PostgreSQL | FEAT-001, FEAT-006 | internal |
+| AgentChatSession | AI agent dialog session | PostgreSQL | FEAT-006 | confidential |
+| AgentChatMessage | Messages in agent session | PostgreSQL | FEAT-006 | confidential |
 
 ## Entity: Tenant
 
@@ -135,7 +143,7 @@ Links a manager to workspaces they can access (hierarchy scope). Sub-manager sco
 
 ### Purpose
 
-Audit trail for permission changes and scope-denied access attempts (REQ-NFR-001).
+Audit trail for permission changes, scope-denied access attempts, and review creation (REQ-NFR-001).
 
 ### Fields
 
@@ -145,7 +153,7 @@ Audit trail for permission changes and scope-denied access attempts (REQ-NFR-001
 | tenant_id | UUID FK | yes | Tenant |
 | actor_id | UUID FK | yes | User who performed action |
 | target_user_id | UUID FK | no | Affected user |
-| action | enum | yes | `permission_change` \| `scope_denied` |
+| action | enum | yes | `permission_change` \| `scope_denied` \| `review_create` |
 | module | string | no | Module key (permission changes) |
 | old_level | string | no | Previous level |
 | new_level | string | no | New level |
@@ -324,7 +332,9 @@ Agent dialog state (REQ-011, REQ-012). Messages include `sources` JSON on assist
 
 Every query on tenant-scoped tables MUST filter by authenticated user's `tenant_id`.
 
-**Enforcement:** explicit filters in **views and service querysets** (e.g. `recordings_queryset`, `reports_queryset`) — not Django custom managers. `TenantMiddleware` (`apps/api/core/middleware.py`) attaches `request.tenant` from the user for convenience; views rely on `user.tenant_id` directly.
+**Enforcement (C2):** tenant and workspace isolation is applied in **views and service querysets** (e.g. `recordings_queryset`, `reports_queryset`, `custom_reports_queryset`) — **not** via Django custom managers on models. There is no `TenantManager` or automatic queryset scoping at the ORM layer.
+
+`TenantMiddleware` (`apps/api/core/middleware.py`) attaches `request.tenant` from the authenticated user for convenience only; it does not filter queries. Views and services rely on explicit `user.tenant_id` (and workspace scope helpers) in each endpoint.
 
 Cross-tenant access is prevented by code review + API tests (including `ai/tests/test_security_scope.py`).
 

@@ -1,5 +1,5 @@
 Doc ID: FEAT-007
-Status: active
+Status: done
 Related requirements: REQ-009
 Related user flows: FLOW-004, FLOW-003
 Related API: `docs/architecture/api-contracts.md` — API-CR-001
@@ -21,7 +21,7 @@ Review required: product, AI
 - Описание желаемого отчёта на PAGE-006 (REQ-009).
 - Система структурирует описание в AI-запрос.
 - Сохранение и повторный запуск из PAGE-005 (AI-аналитика).
-- Post-MVP; не блокирует первый релиз User Level.
+- STAGE-007 complete (2026-06-09).
 
 ## User Flow
 
@@ -34,7 +34,8 @@ Review required: product, AI
 
 ## Implementation Links
 
-- Roadmap: STAGE-007
+- Roadmap: STAGE-007 (done) — [roadmap-custom-ai-reports.md](../../project/roadmap-custom-ai-reports.md)
+- Code: `apps/api/ai/services/custom_reports.py`, `apps/web/src/app/manager/settings/` (`CustomReportsSettings.tsx`), `AiAnalytics.tsx`
 
 ## Security Impact
 

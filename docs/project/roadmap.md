@@ -24,7 +24,7 @@ Maturity: L1
 | STAGE-004 | Review Cycle | **done** | REQ-005, REQ-006 | yes |
 | STAGE-005 | Quality & AI Analytics | **done** | REQ-007, REQ-008 | yes |
 | STAGE-006 | Knowledge Base & AI Agents | **done** | REQ-010, REQ-011, REQ-012 | yes |
-| STAGE-007 | Custom AI Reports | planned | REQ-009 | no |
+| STAGE-007 | Custom AI Reports | **done** | REQ-009 | yes |
 
 ---
 
@@ -219,9 +219,7 @@ Maturity: L1
 
 ## MVP Completion
 
-User Level MVP считается завершённым после **STAGE-001 … STAGE-006** при выполнении Success Criteria из `docs/project/product-requirements.md`.
-
-STAGE-007 — post-MVP улучшение, не блокирует первый релиз User Level.
+User Level MVP считается завершённым после **STAGE-001 … STAGE-007** при выполнении Success Criteria из `docs/project/product-requirements.md`.
 
 ## Related Docs
 

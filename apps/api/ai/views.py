@@ -24,6 +24,7 @@ from ai.services.permissions import (
     can_view_criteria,
     can_view_reports,
     criteria_queryset,
+    custom_reports_queryset,
     reports_queryset,
     resolve_report_scope,
 )
@@ -115,9 +116,8 @@ class AnalyticsReportRunView(APIView):
         custom_report = None
         if data.get("custom_report_id"):
             try:
-                custom_report = CustomReport.objects.get(
+                custom_report = custom_reports_queryset(request.user).get(
                     id=data["custom_report_id"],
-                    tenant_id=request.user.tenant_id,
                     is_active=True,
                 )
             except CustomReport.DoesNotExist:
@@ -240,7 +240,7 @@ class CustomReportListCreateView(APIView):
         require_manager(request.user)
         if not can_view_criteria(request.user):
             raise PermissionDenied("Settings view permission required")
-        qs = CustomReport.objects.filter(tenant_id=request.user.tenant_id).order_by("-updated_at")
+        qs = custom_reports_queryset(request.user).order_by("-updated_at")
         return Response({"count": qs.count(), "results": CustomReportSerializer(qs, many=True).data})
 
     def post(self, request):
@@ -269,7 +269,7 @@ class CustomReportDetailView(APIView):
         if not can_view_criteria(request.user):
             raise PermissionDenied("Settings view permission required")
         try:
-            return CustomReport.objects.get(id=report_id, tenant_id=request.user.tenant_id)
+            return custom_reports_queryset(request.user).get(id=report_id)
         except CustomReport.DoesNotExist:
             raise NotFound("Custom report not found")
 

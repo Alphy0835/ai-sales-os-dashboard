@@ -4,25 +4,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-type NavItem = { href: string; label: string; icon: string };
+type NavItem = { href: string; label: string; icon: string; module?: string };
 
 const managerNav: NavItem[] = [
-  { href: "/manager", label: "Дашборд", icon: "▦" },
-  { href: "/manager/clients", label: "Клиенты к разбору", icon: "◎" },
-  { href: "/manager/reviews", label: "История разборов", icon: "☰" },
-  { href: "/manager/analytics", label: "AI-аналитика", icon: "↗" },
-  { href: "/manager/agent", label: "AI-агент", icon: "✦" },
-  { href: "/manager/settings", label: "Настройки", icon: "⚙" },
+  { href: "/manager", label: "Дашборд", icon: "▦", module: "dashboard" },
+  { href: "/manager/clients", label: "Клиенты к разбору", icon: "◎", module: "clients" },
+  { href: "/manager/reviews", label: "История разборов", icon: "☰", module: "reviews" },
+  { href: "/manager/analytics", label: "AI-аналитика", icon: "↗", module: "analytics" },
+  { href: "/manager/agent", label: "AI-агент", icon: "✦", module: "agent" },
+  { href: "/manager/settings", label: "Настройки", icon: "⚙", module: "settings" },
 ];
 
 const employeeNav: NavItem[] = [
-  { href: "/employee", label: "Дашборд", icon: "▦" },
-  { href: "/employee/agent", label: "AI-агент", icon: "✦" },
+  { href: "/employee", label: "Дашборд", icon: "▦", module: "dashboard" },
+  { href: "/employee/agent", label: "AI-агент", icon: "✦", module: "agent" },
 ];
 
 type ShellProps = {
   variant: "manager" | "employee";
   workspaceName?: string | null;
+  permissions?: Record<string, string>;
   onLogout: () => void;
   children: ReactNode;
 };
@@ -32,9 +33,14 @@ function isNavActive(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
-export function AppShell({ variant, workspaceName, onLogout, children }: ShellProps) {
+function filterNavByPermissions(nav: NavItem[], permissions?: Record<string, string>) {
+  if (!permissions) return nav;
+  return nav.filter((item) => !item.module || permissions[item.module] !== "none");
+}
+
+export function AppShell({ variant, workspaceName, permissions, onLogout, children }: ShellProps) {
   const pathname = usePathname();
-  const nav = variant === "manager" ? managerNav : employeeNav;
+  const nav = filterNavByPermissions(variant === "manager" ? managerNav : employeeNav, permissions);
 
   return (
     <div className="relative z-[1] flex min-h-screen max-w-[1540px] mx-auto p-4 gap-[var(--gap-page)]">

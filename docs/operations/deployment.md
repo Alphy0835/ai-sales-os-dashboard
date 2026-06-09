@@ -260,6 +260,8 @@ Keep `NEXT_PUBLIC_API_URL` empty for same-origin cookie auth.
 
 ## Related
 
+- [auth-and-access-control.md](../security/auth-and-access-control.md) — cookie auth flow, logout blacklist
+- [frontend-docs.md](../frontend/frontend-docs.md) — BFF client (`credentials: "include"`, empty `NEXT_PUBLIC_API_URL`)
 - [environments.md](environments.md) — local vs prod overview
 - [backup-and-restore.md](backup-and-restore.md) — scheduled backups and restore drills
 - [rollback.md](rollback.md) — revert a bad release

@@ -64,7 +64,14 @@ export function ManagerDashboardView() {
     return <div className="text-secondary">Загрузка дашборда…</div>;
   }
   if (error && !data) {
-    return <div className="text-error">{error}</div>;
+    return (
+      <div className="card card-pad">
+        <p className="text-error mb-3">{error}</p>
+        <button type="button" className="btn-secondary" onClick={load} disabled={loading}>
+          {loading ? "Загрузка…" : "Повторить"}
+        </button>
+      </div>
+    );
   }
   if (!data) return null;
 
@@ -158,6 +165,9 @@ export function ManagerDashboardView() {
             <Link href="/manager/clients" className="btn-secondary inline-flex items-center">
               Клиенты к разбору →
             </Link>
+            <Link href="/manager/reviews" className="btn-secondary inline-flex items-center mt-2">
+              История разборов →
+            </Link>
           </div>
         </div>
 
@@ -212,6 +222,7 @@ export function ManagerDashboardView() {
                   <th>Качество</th>
                   <th>Звонки</th>
                   <th>Статус</th>
+                  <th>Действия</th>
                 </tr>
               </thead>
               <tbody>
@@ -221,6 +232,14 @@ export function ManagerDashboardView() {
                     <td>{emp.quality_score != null ? `${Math.round(emp.quality_score)}%` : "—"}</td>
                     <td>{emp.calls}</td>
                     <td>{statusBadge(emp.status)}</td>
+                    <td>
+                      <Link
+                        href={`/manager/reviews?employee_id=${emp.id}`}
+                        className="link-btn"
+                      >
+                        Разбор
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -21,9 +21,9 @@ Django monolith (`apps/api`) — REST API для User Level UI, фоновые �
 | Area | Included | Notes | Related Docs |
 |---|---|---|---|
 | API | yes | REST `/api/v1/*`, DRF | api-contracts.md |
-| Auth | yes | JWT + custom User model | security/auth-and-access-control.md |
+| Auth | yes | JWT via httpOnly cookies (BFF) + custom User model | security/auth-and-access-control.md |
 | Data access | yes | Django ORM, migrations | data-model.md |
-| Integrations | planned | Adapters + Celery | integrations.md |
+| Integrations | yes | Demo sources, recordings, transcription (MVP) | integrations.md |
 | Background jobs | yes | Celery + Redis | STAGE-002+ |
 | Admin actions | yes | Django Admin | Integration Level |
 
@@ -53,7 +53,7 @@ Planned apps (by roadmap): — *(ai implemented STAGE-005; knowledge/RAG STAGE-0
 | `integrations` | CRM/telephony sync, recordings, transcription | IntegrationSource, MetricSnapshot, ConversationRecording, Transcription | STAGE-002 | FEAT-002 |
 | `analytics` | KPI aggregates, dashboard API | MetricSnapshot, ClientToReview | STAGE-003 | FEAT-003 |
 | `reviews` | Reviews, tasks | Review, ReviewTask | STAGE-004 | FEAT-004 |
-| `ai` | Quality criteria, analytics reports, knowledge, agents | QualityCriterion, AnalyticsReport, KnowledgeArticle, AgentChatSession | STAGE-005–006 | FEAT-005–006 |
+| `ai` | Quality criteria, analytics, custom reports, knowledge, agents | QualityCriterion, AnalyticsReport, CustomReport, KnowledgeArticle, AgentChatSession | STAGE-005–007 | FEAT-005–007 |
 
 ## API Handlers (map)
 
@@ -71,6 +71,7 @@ Planned apps (by roadmap): — *(ai implemented STAGE-005; knowledge/RAG STAGE-0
 | `/api/v1/manager/analytics/reports/run/` | ai | JWT + manager + analytics run | API-AI-003 |
 | `/api/v1/manager/settings/quality-criteria/` | ai | JWT + manager + settings | API-AI-001 |
 | `/api/v1/manager/settings/knowledge/` | ai | JWT + manager + settings | API-KB-001 |
+| `/api/v1/manager/settings/custom-reports/` | ai | JWT + manager + settings | API-CR-001 |
 | `/api/v1/manager/agent/chat/` | ai | JWT + agent use | API-AGENT-001 |
 | `/api/v1/employee/agent/chat/` | ai | JWT + agent use | API-AGENT-001 |
 | `/api/v1/employee/dashboard/` | analytics | JWT + employee | API-EMP-001 |
@@ -86,16 +87,17 @@ OpenAPI: `/api/schema/` (drf-spectacular).
 |---|---|---|
 | Tenants, users, permissions | PostgreSQL | ORM; all queries filtered by `tenant_id` |
 | KPI, reviews | PostgreSQL | ORM + Celery aggregation |
-| Recordings | S3 + PostgreSQL metadata | Upload → task |
-| Embeddings | PostgreSQL pgvector | STAGE-006 |
+| Recordings / transcripts | PostgreSQL only (no audio files) | Upload validates size/type; demo transcript via Celery |
+| Embeddings | PostgreSQL pgvector (prod) | `ai.embed_knowledge_article` on KB create/update |
 
 ## Background Jobs (Celery)
 
 | Task | Trigger | Stage |
 |---|---|---|
-| `sync_integration_source` | manual / seed | STAGE-002 |
-| `transcribe_recording` | upload / telephony ingest | STAGE-002 |
-| `embed_knowledge_chunk` | KB update | STAGE-006 |
+| `integrations.sync_integration_source` | manual / seed | STAGE-002 |
+| `integrations.transcribe_recording` | upload / telephony ingest | STAGE-002 |
+| `integrations.purge_expired_transcripts` | Celery Beat daily (03:00 UTC) | STAGE-002 |
+| `ai.embed_knowledge_article` | KB create/update | STAGE-006 |
 
 ## Local Development
 

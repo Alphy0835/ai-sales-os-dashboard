@@ -23,7 +23,7 @@ Backend — только JSON via [api-contracts.md](../architecture/api-contrac
 | Pages / routes | yes | Match pages-map routes | pages-map.md |
 | Components | yes | Shell, Card, forms, tables | ui-kit.md, components-guidelines.md |
 | State management | yes | React state + API client; auth in memory/cookie | — |
-| API usage | yes | fetch to `NEXT_PUBLIC_API_URL` | api-contracts.md |
+| API usage | yes | same-origin `/api/v1/*` via BFF rewrites (`credentials: "include"`) | api-contracts.md |
 | Auth states | yes | guest, authenticated, forbidden, session expired | STAGE-001 |
 | Design tokens | yes | CSS variables / Tailwind theme from preview-base.css | colors.md |
 
@@ -38,7 +38,7 @@ Source of truth for Page ID: [pages-map.md](../project/design-guide/pages-map.md
 | PAGE-003 | `/manager/clients` | `app/manager/clients/page.tsx` | SHELL-MANAGER | Manager | **implemented** |
 | PAGE-004 | `/manager/reviews` | `app/manager/reviews/page.tsx` | SHELL-MANAGER | Manager | **implemented** |
 | PAGE-005 | `/manager/analytics` | `app/manager/analytics/page.tsx` | SHELL-MANAGER | Manager | **implemented** |
-| PAGE-006 | `/manager/settings` | `app/manager/settings/page.tsx` | SHELL-MANAGER | Manager | **implemented** (criteria + knowledge) |
+| PAGE-006 | `/manager/settings` | `app/manager/settings/page.tsx` | SHELL-MANAGER | Manager | **implemented** (criteria, knowledge, access, custom reports) |
 | PAGE-007 | `/manager/agent` | `app/manager/agent/page.tsx` | SHELL-MANAGER | Manager | **implemented** |
 | PAGE-008 | `/employee` | `app/employee/page.tsx` | SHELL-EMPLOYEE | Employee | **implemented** (metrics + tasks) |
 | PAGE-009 | `/employee/agent` | `app/employee/agent/page.tsx` | SHELL-EMPLOYEE | Employee | **implemented** |
@@ -62,25 +62,29 @@ Assets: `/bacground.png` copied from design-system-preview.
 
 | State area | Source | Persistence |
 |---|---|---|
-| Auth tokens | login API response | `localStorage` (MVP) |
+| Auth tokens | login/refresh API | httpOnly cookies (`access_token`, `refresh_token`) — not accessible to JS |
+| User profile (display) | login + `/auth/me/` | `localStorage` key `ai_sales_os_user` (non-secret cache for shell) |
 | Current user / role | `GET /api/v1/auth/me/` | memory + refetch on load |
 | Page data | REST endpoints | server state per page |
 
 ## API Usage
 
-Base URL: `process.env.NEXT_PUBLIC_API_URL` (default `http://localhost:8000`).
+Base URL: `process.env.NEXT_PUBLIC_API_URL ?? ""` — **empty in production** (same-origin BFF). Dev: empty uses Next rewrites to `API_BACKEND_URL` (default `http://localhost:8000`).
+
+All API calls use `credentials: "include"` so httpOnly auth cookies are sent (`apps/web/src/lib/api.ts`).
 
 | Action | Method | Path |
 |---|---|---|
 | Login | POST | `/api/v1/auth/login/` |
 | Refresh | POST | `/api/v1/auth/refresh/` |
+| Logout | POST | `/api/v1/auth/logout/` |
 | Current user | GET | `/api/v1/auth/me/` |
 | Manager dashboard | GET | `/api/v1/manager/dashboard/` |
 | Clients to review | GET | `/api/v1/manager/clients/` |
 | Employee dashboard | GET | `/api/v1/employee/dashboard/` |
 | Metrics (raw) | GET | `/api/v1/integrations/metrics/` |
 
-Authorization header: `Bearer {access_token}`.
+BFF rewrites: `apps/web/next.config.ts` proxies `/api/v1/*` → Django. See [deployment.md](../operations/deployment.md).
 
 ## Auth States
 
@@ -88,7 +92,7 @@ Authorization header: `Bearer {access_token}`.
 |---|---|
 | guest | Only `/login`; redirect from protected routes |
 | authenticated | Shell by role; wrong role → forbidden page |
-| session expired | Clear tokens → `/login` |
+| session expired | Refresh fails → `clearSession()` → `/login` |
 | forbidden | Message + link back to home route |
 
 ## Repository Layout

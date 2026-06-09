@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchEmployeeDashboard, type MetricPeriod } from "@/lib/dashboard";
 import { updateEmployeeTask, type EmployeeTask } from "@/lib/reviews";
 
@@ -19,13 +19,26 @@ const TASK_STATUS: Array<{ value: EmployeeTask["status"]; label: string }> = [
 export function EmployeeDashboardView() {
   const [period, setPeriod] = useState<MetricPeriod>("today");
   const [data, setData] = useState<Awaited<ReturnType<typeof fetchEmployeeDashboard>> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
 
-  const load = () => fetchEmployeeDashboard().then(setData);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const dash = await fetchEmployeeDashboard();
+      setData(dash);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка загрузки");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const onTaskStatus = async (taskId: string, status: EmployeeTask["status"]) => {
     setUpdating(taskId);
@@ -37,7 +50,22 @@ export function EmployeeDashboardView() {
     }
   };
 
-  if (!data) return <div className="text-secondary">Загрузка…</div>;
+  if (loading && !data) {
+    return <div className="text-secondary">Загрузка…</div>;
+  }
+
+  if (error && !data) {
+    return (
+      <div className="card card-pad">
+        <p className="text-error mb-3">{error}</p>
+        <button type="button" className="btn-secondary" onClick={load} disabled={loading}>
+          {loading ? "Загрузка…" : "Повторить"}
+        </button>
+      </div>
+    );
+  }
+
+  if (!data) return null;
 
   const metrics = data.periods[period];
 

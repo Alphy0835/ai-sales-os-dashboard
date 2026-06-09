@@ -1,7 +1,7 @@
 from accounts.models import ModulePermission, User
 from accounts.services.permissions import get_user_permissions
 from accounts.services.scope import get_scoped_workspaces, user_in_scope
-from ai.models import QualityCriterion
+from ai.models import CustomReport, QualityCriterion
 
 
 def settings_permission_level(user) -> str:
@@ -46,6 +46,14 @@ def reports_queryset(actor: User):
     return AnalyticsReport.objects.filter(
         tenant_id=actor.tenant_id,
         workspace_id__in=scoped_ids,
+    )
+
+
+def custom_reports_queryset(actor: User):
+    scoped_ids = [ws.id for ws in get_scoped_workspaces(actor)]
+    return CustomReport.objects.filter(
+        tenant_id=actor.tenant_id,
+        author__workspace_id__in=scoped_ids,
     )
 
 

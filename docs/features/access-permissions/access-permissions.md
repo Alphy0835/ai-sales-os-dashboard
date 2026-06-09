@@ -2,7 +2,7 @@ Doc ID: FEAT-001
 Status: done
 Related requirements: REQ-013, REQ-014, REQ-NFR-001, REQ-NFR-004
 Related user flows: FLOW-004
-Related API: API-AUTH-001 … API-AUTH-004, API-SCOPE-001 … API-SCOPE-002, API-PERM-001 … API-PERM-003, API-AUDIT-001 — `docs/architecture/api-contracts.md`
+Related API: API-AUTH-001 … API-AUTH-004, API-SCOPE-001 … API-SCOPE-002, API-PERM-001 … API-PERM-004, API-AUDIT-001 — `docs/architecture/api-contracts.md`
 Related data model: Tenant, Workspace, User, ModulePermission, ManagerScope, AuditLog — `docs/architecture/data-model.md`
 Related security: `docs/security/auth-and-access-control.md`, `docs/security/audit-logging.md`
 Related tests: QA-AC-013, QA-AC-014, QA-AC-NFR-001, QA-AC-NFR-004
@@ -38,8 +38,8 @@ Review required: product, security
 ## Implementation Links
 
 - Roadmap: STAGE-001 (done) — [roadmap-access-permissions.md](../../project/roadmap-access-permissions.md)
-- Code: `apps/api/accounts/`, `apps/web/src/app/login/`, `apps/web/src/components/ProtectedShell.tsx`
-- Pages: PAGE-001 (implemented), PAGE-006 (права — backend ready, UI planned)
+- Code: `apps/api/accounts/` (cookie auth, blacklist logout), `apps/web/src/lib/api.ts`, `apps/web/src/app/login/`, `apps/web/src/components/ProtectedShell.tsx`
+- Pages: PAGE-001 (login), PAGE-006 Access tab (permissions, audit log, knowledge grants)
 
 ## Security Impact
 

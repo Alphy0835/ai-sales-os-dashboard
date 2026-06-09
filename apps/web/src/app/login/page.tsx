@@ -2,14 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { login, logout } from "@/lib/api";
+import { login } from "@/lib/api";
 import { homeRouteForRole, saveSession } from "@/lib/auth";
 import { AmbientBackground } from "@/components/AppShell";
 
+const showDemoHint =
+  process.env.NEXT_PUBLIC_DEMO_HINT === "true" || process.env.NODE_ENV === "development";
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("manager@demo.local");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -65,9 +68,11 @@ export default function LoginPage() {
               </button>
             </form>
           </div>
-          <p className="mt-3 text-center text-[11px] text-muted">
-            Demo: manager@demo.local / employee@demo.local — пароль demo1234
-          </p>
+          {showDemoHint && (
+            <p className="mt-3 text-center text-[11px] text-muted">
+              Demo: manager@demo.local / employee@demo.local — пароль demo1234
+            </p>
+          )}
         </div>
       </div>
     </>

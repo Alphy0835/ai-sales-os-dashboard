@@ -82,6 +82,17 @@ describe("api", () => {
     expect(fetchMock.mock.calls[1][0]).toBe("/api/v1/auth/refresh/");
   });
 
+  it("authFetch throws ApiError on 403", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "Учётная запись неактивна" }, 403));
+    const { authFetch, ApiError } = await import("../api");
+    await expect(authFetch("/api/v1/protected/")).rejects.toMatchObject({
+      message: "Учётная запись неактивна",
+      status: 403,
+      name: "ApiError",
+    });
+    expect(ApiError).toBeDefined();
+  });
+
   it("authFetch clears session when refresh fails", async () => {
     const location = { href: "" };
     vi.stubGlobal("location", location);

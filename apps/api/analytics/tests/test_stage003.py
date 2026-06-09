@@ -107,3 +107,16 @@ class Stage003TestCase(TestCase):
         self._login("emp@test.local")
         response = self.client.get("/api/v1/manager/clients/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manager_clients_with_clients_permission_only(self):
+        self._set_perms(self.manager, dashboard=ModulePermission.Level.NONE, clients=ModulePermission.Level.VIEW)
+        self._login("mgr@test.local")
+        response = self.client.get("/api/v1/manager/clients/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+
+    def test_manager_clients_denied_without_clients_or_dashboard(self):
+        self._set_perms(self.manager, dashboard=ModulePermission.Level.NONE, clients=ModulePermission.Level.NONE)
+        self._login("mgr@test.local")
+        response = self.client.get("/api/v1/manager/clients/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

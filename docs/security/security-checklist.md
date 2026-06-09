@@ -20,11 +20,12 @@ Pre-release checklist for AI Sales OS. Use before production deploys and when sh
 - [x] **Manager scope hierarchy** — `ManagerScope`, subset-of-parent rule, `scope.py`; 403 + audit on violation
 - [x] **Ceiling rule on permission grants** — grantor cannot exceed own level (`accounts/services/grant.py`, REQ-014)
 - [x] **Knowledge article per-user grants** — `KnowledgeArticleGrant` + PAGE-006 Access tab (`ai/services/knowledge_grants.py`, `permissions-api.ts`)
-- [x] **JWT refresh on 401** — `authFetch` + `refreshAccessToken()` (`apps/web/src/lib/api.ts`)
+- [x] **JWT refresh on 401** — `authFetch` + `refreshAccessToken()` with cookie refresh (`apps/web/src/lib/api.ts`)
+- [x] **httpOnly cookie auth (BFF)** — `access_token` / `refresh_token` cookies; Next rewrites; `CookieJWTAuthentication` (`accounts/cookies.py`, `next.config.ts`)
+- [x] **Refresh token blacklist / server logout** — `token_blacklist` app; `LogoutView` blacklists refresh + clears cookies; tests in `accounts/tests/test_auth_cookies.py`
+- [x] **Refresh rotation** — `ROTATE_REFRESH_TOKENS`, `BLACKLIST_AFTER_ROTATION` in `SIMPLE_JWT`
 - [x] **Login / refresh rate limiting** — `LoginRateThrottle`, default `10/min` (`THROTTLE_LOGIN`); disabled in tests
 - [x] **Agent chat rate limiting** — `AgentRateThrottle`, default `30/min` (`THROTTLE_AGENT`)
-- [ ] **httpOnly cookie auth** — MVP uses `localStorage`; see [threat-model.md](threat-model.md) T1
-- [ ] **Refresh token blacklist / server logout** — not implemented
 
 ## Multi-tenant Isolation
 
@@ -65,15 +66,18 @@ Pre-release checklist for AI Sales OS. Use before production deploys and when sh
 - [x] **Pre-deploy DB backup** — [deployment.md](../operations/deployment.md), [backup-and-restore.md](../operations/backup-and-restore.md)
 - [x] **Rollback procedure documented** — [rollback.md](../operations/rollback.md)
 - [x] **Incident runbook exists** — [incident-response.md](incident-response.md)
-- [x] **Threat model current for JWT + tenant + S1–S6** — [threat-model.md](threat-model.md)
-- [ ] **E2E Playwright smoke** — P2 §14
+- [x] **Threat model current for cookie JWT + tenant + S1–S6** — [threat-model.md](threat-model.md)
+- [x] **E2E Playwright smoke** — `apps/web/e2e/manager-critical-flow.spec.ts`; CI job `e2e`
 - [ ] **Monitoring alerts** — [monitoring-and-alerts.md](../operations/monitoring-and-alerts.md) not filled
 
 ## Quick Verification Commands
 
 ```bash
-# API tests (includes scope security)
+# API tests (52 — includes cookie auth + scope security)
 cd apps/api && python manage.py test
+
+# Web unit (12)
+cd apps/web && npm run test:unit
 
 # Retention dry-run
 python manage.py purge_transcripts --dry-run

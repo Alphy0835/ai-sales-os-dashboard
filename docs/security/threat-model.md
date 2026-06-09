@@ -25,7 +25,7 @@ Maturity: L2
 
 | Asset | Sensitivity | Location |
 |---|---|---|
-| JWT access + refresh tokens | critical | Browser `localStorage` (`apps/web/src/lib/auth.ts`) |
+| JWT access + refresh tokens | critical | httpOnly cookies (`access_token`, `refresh_token`) via BFF; profile cache only in `localStorage` (`apps/web/src/lib/auth.ts`) |
 | User credentials (password hash) | critical | PostgreSQL |
 | Conversation transcripts + metadata | confidential | PostgreSQL (90d retention) |
 | Knowledge base + embeddings | confidential | PostgreSQL (`VectorField` on PostgreSQL prod) |
@@ -37,7 +37,7 @@ Audio is **not persisted** — only derived transcript text (ASR deferred).
 ## Trust Boundaries
 
 ```
-[Browser / localStorage JWT] ──HTTPS──▶ [Next.js] ──▶ [Django API + ORM]
+[Browser / httpOnly JWT cookies] ──HTTPS──▶ [Next.js BFF rewrites] ──▶ [Django API + ORM]
                                               │
                     tenant_id + scope filters in every view/queryset
                                               │
@@ -63,28 +63,28 @@ Audio is **not persisted** — only derived transcript text (ASR deferred).
 | Spoofing | Stolen JWT, brute-force login | JWT expiry; `LoginRateThrottle` 10/min on login/refresh (`THROTTLE_LOGIN`); password hashing |
 | Tampering | Cross-tenant ID manipulation | All querysets filter `user.tenant_id`; detail views use scope helpers |
 | Repudiation | Denied permission changes | `AuditLog` for permission changes and scope-denied |
-| Information disclosure | Scope leak via AI agent/reports; XSS token theft | S1/S2 fixes; React escaping (no `dangerouslySetInnerHTML`); see JWT section |
+| Information disclosure | Scope leak via AI agent/reports; XSS session abuse | S1/S2 fixes; httpOnly cookies; React escaping (no `dangerouslySetInnerHTML`); see T1 |
 | Denial of service | Login/agent flood | Login + agent throttles; file upload size/type limits (S4) |
 | Elevation of privilege | Grant broader permissions than grantor | Ceiling rule in `grant.py`; KB per-user grants |
 
 ## Critical Scenarios
 
-### T1 — XSS → JWT theft (localStorage)
+### T1 — XSS → session abuse
 
 | | |
 |---|---|
-| **Threat** | Any XSS in the web app can read `localStorage` and exfiltrate access + refresh tokens. Attacker impersonates user until refresh token expires. |
+| **Threat** | XSS cannot read httpOnly JWT cookies, but could still drive authenticated requests from the victim browser or exfiltrate non-secret profile data in `localStorage`. |
 | **Likelihood** | Medium (depends on future UI/libs) |
-| **Impact** | High — full account access within tenant + scope |
-| **Current controls** | React default escaping; no `dangerouslySetInnerHTML`; CSP not yet enforced in repo |
-| **Accepted for MVP?** | Yes, with documented risk |
-| **Target state (P2 item 18)** | httpOnly session cookies via BFF (Next.js route handlers proxy auth) or SameSite cookie + CSRF; refresh rotation + optional blacklist |
+| **Impact** | High — actions as the victim within tenant + scope |
+| **Current controls** | httpOnly `access_token` / `refresh_token` via BFF (`accounts/cookies.py`); refresh rotation + blacklist on logout; React default escaping; no `dangerouslySetInnerHTML`; CSP not yet enforced |
+| **Accepted for MVP?** | Yes, with documented residual risk |
+| **Further hardening** | CSP headers (P5-3); optional CSRF token for cookie-auth mutations |
 
-**Compensating controls until BFF:**
+**Compensating controls:**
 
 - Short access token lifetime (SimpleJWT defaults)
 - Centralized `authFetch` with refresh on 401 (`apps/web/src/lib/api.ts`)
-- No secrets in client bundle beyond public API URL
+- Server-side refresh blacklist on logout (`LogoutView`)
 - Rate limits on auth endpoints
 - Audit suspicious permission changes
 
@@ -95,7 +95,7 @@ Audio is **not persisted** — only derived transcript text (ASR deferred).
 | **Threat** | Attacker with valid JWT for tenant A reads/writes tenant B rows. |
 | **Likelihood** | Low (code-reviewed pattern) |
 | **Impact** | Critical |
-| **Controls** | Every tenant-scoped queryset filters by authenticated `user.tenant_id` in views/services — **not** via custom managers. `TenantMiddleware` sets `request.tenant` for convenience only (see C2 in review). Regression: 45 API tests including scope security tests. |
+| **Controls** | Every tenant-scoped queryset filters by authenticated `user.tenant_id` in views/services — **not** via custom managers. `TenantMiddleware` sets `request.tenant` for convenience only (see C2 in review). Regression: 52 API tests including scope security and cookie auth tests. |
 
 ### T3 — Manager scope bypass (workspace hierarchy)
 
@@ -142,20 +142,19 @@ Audio is **not persisted** — only derived transcript text (ASR deferred).
 
 ## Auth Storage Decision
 
-| Approach | MVP (now) | Production target |
+| Approach | MVP (now) | Notes |
 |---|---|---|
-| Token storage | `localStorage` access + refresh | httpOnly Secure cookies via BFF |
-| Refresh flow | Client `refreshAccessToken()` on 401 | Server-side refresh; optional rotation |
-| Logout | Client clears storage | Server invalidates refresh (blacklist TBD) |
-| XSS impact | Tokens readable by script | Cookies not readable by JS |
-
-Document this tradeoff in release checklist until P2 item 18 is implemented.
+| Token storage | httpOnly Secure cookies via BFF | `access_token`, `refresh_token`; SameSite=Lax |
+| Refresh flow | Cookie-only refresh + rotation | `ROTATE_REFRESH_TOKENS`, `BLACKLIST_AFTER_ROTATION` |
+| Logout | Server blacklists refresh + clears cookies | `token_blacklist` app |
+| Profile cache | `localStorage` user display fields only | No JWT in JS-accessible storage |
+| XSS impact | JWT not readable by script | Residual: XSS can still invoke same-origin API as user |
 
 ## Residual Risks
 
 | Risk | Owner | Mitigation plan |
 |---|---|---|
-| JWT in localStorage | frontend | httpOnly BFF (roadmap P2 §18) |
+| XSS-driven API abuse despite httpOnly cookies | frontend | CSP (P5-3); review third-party scripts |
 | No Sentry / centralized alerting | operations | P2 §13 |
 | Agent chat / analytics indefinite retention | product | Policy in `data-retention.md` open questions |
 | SQLite dev lacks vector search | backend | Keyword fallback only; prod uses pgvector |

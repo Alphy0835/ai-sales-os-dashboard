@@ -20,9 +20,13 @@ Maturity: L2
 |---|---|
 | Protocol | JWT access + refresh (SimpleJWT) |
 | Login | `POST /api/v1/auth/login/` — email + password |
-| Session storage (client) | `localStorage` access/refresh (Next.js) |
+| Session storage (client) | **httpOnly cookies** (`access_token`, `refresh_token`) set by API; browser calls same-origin `/api/v1/*` via Next.js BFF rewrites (`next.config.ts` → `API_BACKEND_URL`) |
+| Token transport | `credentials: "include"` on all auth/API fetches; `CookieJWTAuthentication` reads access cookie; `Authorization: Bearer` fallback for tests and API clients |
+| Display cache | `localStorage` stores non-secret user profile (`ai_sales_os_user`) for fast shell render — **not** JWT tokens |
 | Token claims | `tenant_id`, `role` in JWT payload |
 | Me / context | `GET /api/v1/auth/me/` — user, workspace, module permissions, scope workspaces |
+| Refresh | `POST /api/v1/auth/refresh/` — refresh from httpOnly cookie (`CookieTokenRefreshSerializer`); rotates refresh token; `BLACKLIST_AFTER_ROTATION` |
+| Logout | `POST /api/v1/auth/logout/` — blacklists refresh token (`token_blacklist`), clears auth cookies |
 
 ## Roles (User Level)
 
@@ -80,10 +84,14 @@ Disabled when `TESTING=true`. See [security-checklist.md](security-checklist.md)
 
 Per-user KB access overrides via `KnowledgeArticleGrant`. UI: PAGE-006 Access tab (modules, audit log, knowledge grants). API: `GET/PUT /api/v1/permissions/users/{id}/knowledge/` (API-PERM-004).
 
-## Not Yet Implemented
+## Cookie Auth Flow (BFF)
 
-- Refresh token blacklist / server-side logout
-- httpOnly cookie auth (BFF) — see [threat-model.md](threat-model.md) T1
+1. Browser `POST /api/v1/auth/login/` → Next rewrites to Django → response sets httpOnly `access_token` + `refresh_token` (`accounts/cookies.py`).
+2. Subsequent API calls use `credentials: "include"`; Django authenticates via `CookieJWTAuthentication`.
+3. On `401`, client calls `POST /api/v1/auth/refresh/` with refresh cookie only (`apps/web/src/lib/api.ts`).
+4. Logout blacklists refresh and clears cookies (`accounts/views.py` `LogoutView`).
+
+Production: `NEXT_PUBLIC_API_URL` must be empty so the browser stays same-origin. See [deployment.md](../operations/deployment.md).
 
 ## Related Docs
 

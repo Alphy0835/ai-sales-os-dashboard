@@ -12,10 +12,21 @@ Maturity: L2
 
 Base path: `/api/v1/`  
 Format: JSON  
-Auth default: `Authorization: Bearer {access_token}`  
+Auth default: httpOnly `access_token` cookie (BFF same-origin); `Authorization: Bearer` supported for tests and API clients  
 OpenAPI: `/api/schema/` (drf-spectacular)
 
-> STAGE-001 auth/scope + STAGE-002 integrations. Dashboard UI endpoints — STAGE-003.
+> STAGE-001–007 implemented. Browser calls same-origin `/api/v1/*`; Next.js rewrites to Django (`API_BACKEND_URL`). Production: `NEXT_PUBLIC_API_URL=""`.
+
+## Cookie Auth (BFF)
+
+| Step | Endpoint | Cookies | Client behavior |
+|---|---|---|---|
+| Login | `POST /auth/login/` | Sets `access_token`, `refresh_token` (httpOnly, Secure in prod, SameSite=Lax) | `credentials: "include"`; optional `user` in JSON body |
+| API calls | any authenticated path | Sends `access_token` | `authFetch` with `credentials: "include"` |
+| Refresh | `POST /auth/refresh/` | Reads `refresh_token`; sets new pair | Cookie-only body optional; rotates refresh |
+| Logout | `POST /auth/logout/` | Blacklists refresh; clears both cookies | `credentials: "include"` |
+
+Implementation: `accounts/cookies.py`, `accounts/authentication.py` (`CookieJWTAuthentication`), `accounts/serializers_auth.py`, `apps/web/next.config.ts` rewrites.
 
 ## API Index
 
@@ -24,9 +35,9 @@ OpenAPI: `/api/schema/` (drf-spectacular)
 | API-HEALTH-001 | GET | `/health/` | Liveness | no | — |
 | API-HEALTH-002 | GET | `/health/ready/` | Readiness (DB, Redis, Celery) | no | — |
 | API-AUTH-001 | POST | `/auth/login/` | Login, issue JWT | no | FEAT-001 |
-| API-AUTH-002 | POST | `/auth/refresh/` | Refresh access token | refresh body | FEAT-001 |
+| API-AUTH-002 | POST | `/auth/refresh/` | Refresh access token | refresh cookie (body fallback) | FEAT-001 |
 | API-AUTH-003 | GET | `/auth/me/` | Current user + permissions + scope | yes | FEAT-001 |
-| API-AUTH-004 | POST | `/auth/logout/` | Client-side logout ack | yes | FEAT-001 |
+| API-AUTH-004 | POST | `/auth/logout/` | Blacklist refresh + clear cookies | refresh cookie (body fallback) | FEAT-001 |
 | API-SCOPE-001 | GET | `/scope/` | Workspaces and users in scope | yes | FEAT-001 |
 | API-SCOPE-002 | GET | `/scope/users/{id}/` | Check user access in scope | yes | FEAT-001 |
 | API-PERM-001 | GET | `/permissions/users/` | List users in scope + permissions | yes (settings view/edit) | FEAT-001 |
@@ -42,8 +53,16 @@ OpenAPI: `/api/schema/` (drf-spectacular)
 | API-INT-006 | GET | `/integrations/recordings/{id}/transcription/` | Transcription text | yes (dashboard view) | FEAT-002 |
 | API-INT-007 | POST | `/integrations/recordings/{id}/transcription/` | Queue (re)transcription | yes (dashboard view) | FEAT-002 |
 | API-MGR-001 | GET | `/manager/dashboard/` | Manager dashboard aggregate | yes (manager, dashboard view) | FEAT-003 |
-| API-MGR-002 | GET | `/manager/clients/` | Clients to review | yes (manager, dashboard view) | FEAT-003 |
+| API-MGR-002 | GET | `/manager/clients/` | Clients to review | yes (manager, `clients: view` OR `dashboard: view`) | FEAT-003 |
 | API-EMP-001 | GET | `/employee/dashboard/` | Employee personal metrics | yes (employee, dashboard view) | FEAT-003 |
+| API-REV-001 | GET/POST | `/manager/reviews/` | Review list + create | yes (manager, reviews) | FEAT-004 |
+| API-REV-002 | PATCH | `/employee/tasks/{id}/` | Employee task status update | yes (employee) | FEAT-004 |
+| API-AI-001 | GET/POST/PATCH/DELETE | `/manager/settings/quality-criteria/` | Quality criteria CRUD | yes (settings) | FEAT-005 |
+| API-AI-002 | GET | `/manager/analytics/reports/` | Analytics reports list | yes (analytics view/run) | FEAT-005 |
+| API-AI-003 | POST | `/manager/analytics/reports/run/` | Run analytics report | yes (analytics run) | FEAT-005 |
+| API-CR-001 | GET/POST/PATCH/DELETE | `/manager/settings/custom-reports/` | Custom AI reports CRUD | yes (settings) | FEAT-007 |
+| API-KB-001 | GET/POST/PATCH/DELETE | `/manager/settings/knowledge/` | Knowledge base CRUD | yes (settings) | FEAT-006 |
+| API-AGENT-001 | POST | `/manager/agent/chat/`, `/employee/agent/chat/` | AI agent chat | yes (agent use) | FEAT-006 |
 
 ---
 
@@ -99,11 +118,15 @@ Failed checks include an `error` string. Production Docker healthcheck targets t
 
 ### Purpose
 
-Authenticate User Level user; return JWT pair and role for frontend routing.
+Authenticate User Level user; set httpOnly auth cookies and return user + role for frontend routing.
 
 ### Authorization
 
 Public.
+
+### Cookies set on `200`
+
+`access_token`, `refresh_token` (httpOnly, Secure in production, SameSite=Lax, path `/`).
 
 ### Request
 
@@ -134,6 +157,8 @@ Public.
 
 `role`: `manager` | `employee` — maps to SHELL-MANAGER / SHELL-EMPLOYEE routes.
 
+JSON `access` / `refresh` fields may be present for API clients; **browser clients use httpOnly cookies** and should not persist tokens in JS storage.
+
 ### Errors
 
 | Code | Meaning | Client behavior |
@@ -147,23 +172,32 @@ Public.
 
 ### Request
 
+Primary: httpOnly `refresh_token` cookie (no body required).
+
+Optional body fallback (tests, non-browser clients):
+
 ```json
 { "refresh": "<jwt_refresh>" }
 ```
 
 ### Response `200`
 
+Sets new `access_token` and `refresh_token` cookies. JSON body may include:
+
 ```json
 {
-  "access": "<new_jwt_access>"
+  "access": "<new_jwt_access>",
+  "refresh": "<new_jwt_refresh>"
 }
 ```
+
+Refresh rotation enabled (`ROTATE_REFRESH_TOKENS`, `BLACKLIST_AFTER_ROTATION`).
 
 ### Errors
 
 | Code | Meaning |
 |---|---|
-| 401 | Invalid/expired refresh |
+| 401 | Invalid/expired/blacklisted refresh |
 
 ---
 
@@ -215,11 +249,20 @@ Module keys match [user-roles.md](../project/user-roles.md). Values: `none` | `v
 
 ### Purpose
 
-Acknowledge logout (MVP: stateless JWT; client clears tokens).
+Invalidate refresh token server-side and clear auth cookies.
+
+### Authorization
+
+Public (uses refresh cookie or optional body `refresh`).
+
+### Behavior
+
+1. Blacklist refresh token via `rest_framework_simplejwt.token_blacklist`.
+2. Clear `access_token` and `refresh_token` cookies.
 
 ### Response `204`
 
-No body.
+No body. Subsequent refresh with the same token → `401`.
 
 ---
 
@@ -359,6 +402,7 @@ Requires `settings: view` (GET) or `settings: edit` (PUT). Target user must be i
 | Param | Description |
 |---|---|
 | `user_id` | Filter by target user (optional) |
+| `action` | Filter by audit action (optional). Comma-separated values: `permission_change`, `review_create`, `scope_denied`. Default when omitted: `permission_change` only |
 | `limit` | Max rows, default 50, max 200 |
 
 ### Response `200`
@@ -527,7 +571,7 @@ Returns canvas with stage scores, criteria breakdown, recommendations. Fails wit
 
 ### `GET/POST /api/v1/manager/settings/custom-reports/`
 
-Requires `settings: view` (GET) or `settings: edit` (POST). POST body: `title`, `description`. Server structures `structured_query` (MVP: rule-based stage keywords).
+Requires `settings: view` (GET) or `settings: edit` (POST). POST body: `title`, `description`. Server structures `structured_query` (MVP: rule-based stage keywords). List/detail scoped to custom reports whose author belongs to a workspace in the actor's manager scope (same pattern as `reports_queryset`).
 
 ### `GET/PATCH/DELETE .../custom-reports/{id}/`
 

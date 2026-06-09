@@ -173,3 +173,23 @@ class Stage001TestCase(TestCase):
         response = self.client.get("/api/v1/audit/permissions/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data["results"]), 1)
+        self.assertTrue(all(row["action"] == "permission_change" for row in response.data["results"]))
+
+    def test_audit_endpoint_filter_review_create(self):
+        from accounts.services.audit import log_review_create
+
+        log_review_create(
+            actor=self.regional,
+            target_user=self.employee,
+            review_id="00000000-0000-0000-0000-000000000001",
+        )
+        self._login("regional@test.local")
+        response = self.client.get("/api/v1/audit/permissions/?action=review_create")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data["results"]), 1)
+        self.assertTrue(all(row["action"] == "review_create" for row in response.data["results"]))
+
+    def test_audit_endpoint_invalid_action(self):
+        self._login("regional@test.local")
+        response = self.client.get("/api/v1/audit/permissions/?action=unknown")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

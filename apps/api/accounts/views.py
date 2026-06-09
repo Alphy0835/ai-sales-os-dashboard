@@ -211,10 +211,20 @@ class PermissionAuditView(APIView):
         if not can_view_audit(request.user):
             raise PermissionDenied("Settings view or edit permission required")
 
-        qs = AuditLog.objects.filter(
-            tenant_id=request.user.tenant_id,
-            action=AuditLog.Action.PERMISSION_CHANGE,
-        ).select_related("actor", "target_user", "actor__tenant", "actor__workspace", "target_user__workspace")
+        qs = AuditLog.objects.filter(tenant_id=request.user.tenant_id).select_related(
+            "actor", "target_user", "actor__tenant", "actor__workspace", "target_user__workspace"
+        )
+
+        action_param = request.query_params.get("action")
+        if action_param:
+            valid = {choice[0] for choice in AuditLog.Action.choices}
+            actions = [part.strip() for part in action_param.split(",") if part.strip()]
+            invalid = [action for action in actions if action not in valid]
+            if invalid:
+                raise ValidationError({"action": f"Unknown action(s): {', '.join(invalid)}"})
+            qs = qs.filter(action__in=actions)
+        else:
+            qs = qs.filter(action=AuditLog.Action.PERMISSION_CHANGE)
 
         target_user_id = request.query_params.get("user_id")
         if target_user_id:

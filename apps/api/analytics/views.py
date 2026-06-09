@@ -14,6 +14,16 @@ def require_dashboard_view(user):
         raise PermissionDenied("Dashboard view permission required")
 
 
+def require_clients_or_dashboard_view(user):
+    perms = get_user_permissions(user)
+    if (
+        perms.get(ModulePermission.Module.CLIENTS) != ModulePermission.Level.NONE
+        or perms.get(ModulePermission.Module.DASHBOARD) != ModulePermission.Level.NONE
+    ):
+        return
+    raise PermissionDenied("Clients or dashboard view permission required")
+
+
 def require_manager(user):
     if user.role != User.Role.MANAGER:
         raise PermissionDenied("Manager role required")
@@ -35,7 +45,7 @@ class ManagerDashboardView(APIView):
 
 class ManagerClientsView(APIView):
     def get(self, request):
-        require_dashboard_view(request.user)
+        require_clients_or_dashboard_view(request.user)
         require_manager(request.user)
         qs = clients_queryset(
             request.user,

@@ -2,6 +2,20 @@ import { clearSession } from "./auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+export function isApiError(err: unknown): err is ApiError {
+  return err instanceof ApiError;
+}
+
 let refreshInFlight: Promise<void> | null = null;
 
 function redirectToLogin() {
@@ -53,7 +67,9 @@ export async function authFetch<T>(path: string, init?: RequestInit): Promise<T>
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error_message ?? body.detail ?? body.message ?? `HTTP ${res.status}`);
+    const raw = body.error_message ?? body.detail ?? body.message ?? `HTTP ${res.status}`;
+    const message = typeof raw === "string" ? raw : JSON.stringify(raw);
+    throw new ApiError(message, res.status);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;

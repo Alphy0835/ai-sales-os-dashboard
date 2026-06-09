@@ -5,12 +5,14 @@ import { sendAgentMessage, type AgentMessage, type AgentSession } from "@/lib/ag
 
 type Props = {
   variant: "manager" | "employee";
+  initialClientName?: string;
+  initialClientNote?: string;
 };
 
-export function AgentChatView({ variant }: Props) {
+export function AgentChatView({ variant, initialClientName = "", initialClientNote = "" }: Props) {
   const [session, setSession] = useState<AgentSession | null>(null);
-  const [clientName, setClientName] = useState("");
-  const [clientNote, setClientNote] = useState("");
+  const [clientName, setClientName] = useState(initialClientName);
+  const [clientNote, setClientNote] = useState(initialClientNote);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

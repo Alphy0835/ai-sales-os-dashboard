@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from accounts.models import ManagerScope, ModulePermission, Tenant, User, Workspace
-from ai.models import AnalyticsReport
+from ai.models import AnalyticsReport, CustomReport
 from ai.services.agent import _recording_context
 from integrations.models import ConversationRecording, IntegrationSource, Transcription
 
@@ -80,6 +80,37 @@ class ScopeIsolationTestCase(TestCase):
             summary_text="SPB report",
         )
 
+        self.spb_manager = User.objects.create_user(
+            email="spb-mgr@test.local",
+            password="pass1234",
+            tenant=self.tenant,
+            workspace=self.spb,
+            full_name="SPB Manager",
+            role=User.Role.MANAGER,
+            manager=self.top_manager,
+        )
+        ManagerScope.objects.create(user=self.spb_manager, workspace=self.spb)
+        self._set_perms(
+            self.spb_manager,
+            analytics=ModulePermission.Level.VIEW,
+            settings=ModulePermission.Level.EDIT,
+        )
+
+        CustomReport.objects.create(
+            tenant=self.tenant,
+            author=self.top_manager,
+            title="Moscow custom report",
+            description="Focus on greeting",
+            structured_query={"focus_stages": ["greeting"]},
+        )
+        CustomReport.objects.create(
+            tenant=self.tenant,
+            author=self.spb_manager,
+            title="SPB custom report",
+            description="Focus on closing",
+            structured_query={"focus_stages": ["closing"]},
+        )
+
         self.client = APIClient()
 
     def _set_perms(self, user, **modules):
@@ -109,6 +140,21 @@ class ScopeIsolationTestCase(TestCase):
         response = self.client.get("/api/v1/manager/analytics/reports/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
+
+    def test_custom_reports_list_excludes_out_of_scope_author_workspace(self):
+        self._set_perms(self.regional, settings=ModulePermission.Level.VIEW)
+        self._login("regional@test.local")
+        response = self.client.get("/api/v1/manager/settings/custom-reports/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["title"], "Moscow custom report")
+
+    def test_custom_reports_list_includes_all_for_top_manager(self):
+        self._set_perms(self.top_manager, settings=ModulePermission.Level.VIEW)
+        self._login("top@test.local")
+        response = self.client.get("/api/v1/manager/settings/custom-reports/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 2)
 
     def test_agent_recording_context_respects_manager_scope(self):
         context_out_of_scope = _recording_context(self.regional, "SecretClient")

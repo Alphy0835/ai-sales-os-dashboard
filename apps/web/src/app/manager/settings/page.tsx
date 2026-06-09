@@ -1,15 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AccessSettingsView } from "@/components/AccessSettings";
 import { QualityCriteriaSettingsView } from "@/components/QualityCriteriaSettings";
 import { KnowledgeBaseSettingsView } from "@/components/KnowledgeBaseSettings";
 import { CustomReportsSettingsView } from "@/components/CustomReportsSettings";
+import { getStoredPermissions } from "@/lib/auth";
 
 type SettingsTab = "criteria" | "knowledge" | "custom-reports" | "access";
 
 export default function ManagerSettingsPage() {
   const [tab, setTab] = useState<SettingsTab>("criteria");
+  const [showAccessTab, setShowAccessTab] = useState(true);
+
+  useEffect(() => {
+    const permissions = getStoredPermissions();
+    if (permissions && permissions.settings === "none") {
+      setShowAccessTab(false);
+      setTab((current) => (current === "access" ? "criteria" : current));
+    }
+  }, []);
 
   return (
     <div className="manager-main">
@@ -29,9 +39,11 @@ export default function ManagerSettingsPage() {
           >
             Кастомные отчёты
           </button>
-          <button type="button" className={`chip${tab === "access" ? " on" : ""}`} onClick={() => setTab("access")}>
-            Права доступа
-          </button>
+          {showAccessTab && (
+            <button type="button" className={`chip${tab === "access" ? " on" : ""}`} onClick={() => setTab("access")}>
+              Права доступа
+            </button>
+          )}
         </div>
       </header>
 
@@ -39,7 +51,7 @@ export default function ManagerSettingsPage() {
         {tab === "criteria" && <QualityCriteriaSettingsView />}
         {tab === "knowledge" && <KnowledgeBaseSettingsView />}
         {tab === "custom-reports" && <CustomReportsSettingsView />}
-        {tab === "access" && <AccessSettingsView />}
+        {tab === "access" && showAccessTab && <AccessSettingsView />}
       </div>
     </div>
   );

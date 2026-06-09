@@ -1,12 +1,12 @@
 # Code Review — AI Sales OS
 
-Дата: 2026-06-10 (полный аудит) · Предыдущий: 2026-06-09  
+Дата: 2026-06-10 · **P3 закрыт**  
 Объём: backend (Django 5 + DRF), frontend (Next.js 15), docs, инфраструктура  
-Состояние: STAGE-001…007 + **P0/P1/P2 закрыты**; CI зелёный на `master` (`06297b4`).
+Состояние: STAGE-001…007 + **P0/P1/P2/P3 закрыты**; CI на `master`.
 
-**Тесты:** 51 API · 12 Vitest · 1 Playwright E2E (CI) · `test.bat` гоняет 46 (без `core.tests`).
+**Тесты:** **67** API · **21** Vitest · **2** Playwright E2E · lint в CI.
 
-**План закрытия дыр:** локальный `plan_0.md` (не в git).
+**План:** `plan_0.md` (локально) — P3 ✅; далее P4/P5.
 
 ---
 
@@ -15,204 +15,123 @@
 ### Что хорошо
 
 - Монорепо консистентно: `apps/api` (6 Django-приложений), `apps/web`, `docs/`, лаунчеры.
-- **51** API-тест + **12** Vitest + E2E в CI — регрессия по STAGE-001…007.
-- Multi-tenant (`tenant_id`) + manager scope + ceiling rule последовательны.
-- httpOnly JWT через Next.js BFF + `CookieJWTAuthentication` + refresh blacklist на logout.
-- Сквозные сценарии: клиенты → разбор → задачи → AI-аналитика → кастомные отчёты → Access UI.
+- **67** API + **21** Vitest + **2** E2E + lint в CI.
+- Multi-tenant + manager scope + ceiling rule; `clients: view` OR `dashboard: view` на `/manager/clients/`.
+- httpOnly JWT через BFF + refresh blacklist; permission-aware nav + forbidden UX.
+- Custom reports scoped по workspace автора; audit API с фильтром `action`.
 
-### Проблемы целостности (открытые)
-
-| # | Проблема | Где | Серьёзность |
-|---|---|---|---|
-| C2 | `TenantMiddleware` декоративный — изоляция на уровне views/services, не middleware/managers | `core/middleware.py`, `data-model.md` | Средняя |
-| C6 | Модуль **`clients`** grantable, но API/UI проверяют только `dashboard: view` | `analytics/views.py`, `AppShell.tsx` | Средняя |
-| C7 | Nav не скрывает модули с `permissions: none` — 403 вместо forbidden UX | `AppShell.tsx` | Средняя |
-| C8 | `fetchMe()` failure → logout вместо forbidden для inactive/403 | `ProtectedShell.tsx` | Средняя |
-
-### Закрытые (C1, C3–C5)
+### Закрытые проблемы (P3)
 
 | # | Было | Статус |
 |---|---|---|
-| C1 | Refresh flow | ✅ cookies + `authFetch` refresh on 401 |
-| C3 | JWT localStorage | ✅ httpOnly BFF cookies |
-| C4 | No throttling | ✅ login 10/min, agent 30/min |
-| C5 | Settings redesign uncommitted | ✅ в git |
+| C2 | Custom managers claim | ✅ data-model: view-level isolation |
+| C6 | `clients` permission unused | ✅ enforced в analytics/views |
+| C7 | Nav без permission filter | ✅ AppShell скрывает `none` |
+| C8 | 403 → logout | ✅ forbidden UI в ProtectedShell |
+| R1–R5 | Test gaps | ✅ IDOR, cookies, throttle, LLM fallback, upload |
 
-### 1.1. Security-аудит (2026-06-09) — исправлено
+### Остаётся (продукт / P4+)
 
-| # | Уязвимость | Исправление |
+| # | Риск | Статус |
 |---|---|---|
-| S1 | Scope leak в AI-агенте | `recordings_queryset(actor)` |
-| S2 | Tenant-wide AI-отчёты | `reports_queryset(actor)` |
-| S3 | Brute force login | `LoginRateThrottle`, `AgentRateThrottle` |
-| S4 | Upload без валидации | 100 MB + whitelist расширений |
-| S5 | 500 на bad session_id | 404 |
-| S6 | 500 на `?limit=abc` | Safe parse |
+| R6 | Demo transcripts/metrics в prod | Осознан defer → P4 ASR |
+| — | Z-FILTERS, Z-TREND UI zones | Низкий приоритет |
 
-Тесты: `ai/tests/test_security_scope.py` (4).
+### Security-аудит (2026-06-09) — исправлено
 
-### 1.2. Полный аудит (2026-06-10) — остаточные риски
-
-| # | Риск | Severity | Статус |
-|---|---|---|---|
-| R1 | Cross-tenant IDOR — код фильтрует, **нет regression-теста** | Medium | Открыт |
-| R2 | Cookie refresh/logout — **1 API-тест**, нет refresh-via-cookie/blacklist suite | Medium | Открыт |
-| R3 | LLM fallback не assert'ится при `LlmAdapterError` | Low | Открыт |
-| R4 | Throttling не тестируется (отключён в TESTING) | Low | Открыт |
-| R5 | Upload validation — код есть, **тестов нет** | Low | Открыт |
-| R6 | Demo transcripts/metrics в prod — продуктовый риск | High (product) | Осознан defer |
-
-### Проверено — CVE-класс не найден
-
-- Межтенантная изоляция в queryset'ах · IDOR на detail-views · ORM-only · XSS (нет `dangerouslySetInnerHTML`) · ceiling + audit.
+S1–S6 закрыты; регрессия в `ai/tests/test_security_scope.py` + cross-tenant IDOR suite.
 
 ---
 
 ## 2. Backend vs документация
 
-**Совпадает:** все STAGE endpoints, scope, permissions, KB grants (API-PERM-004), health/ready, retention, pgvector (PostgreSQL).
-
-**Критичные расхождения docs ↔ code:**
-
-| ID | Проблема | Файлы |
-|---|---|---|
-| B-H1 | Auth docs описывают Bearer/localStorage; код — **cookies primary** | `auth-and-access-control.md`, `api-contracts.md`, `frontend-docs.md` |
-| B-H2 | `threat-model.md` L28 всё ещё «JWT в localStorage» | `docs/security/threat-model.md` |
-| B-H3 | `api-contracts.md` index неполный (нет REV/AI/KB/AGENT/PERM-004) | `api-contracts.md` |
-| B-M1 | `data-model.md` index устарел (нет Review, AI entities) | `data-model.md` |
-| B-M2 | `backend-docs.md`: integrations planned, S3, wrong Celery task name | `backend-docs.md` |
-| B-M3 | `roadmap.md` index: STAGE-007 «planned» vs body «done» | `roadmap.md` |
-| B-M4 | Audit API только `permission_change`; в коде есть `review_create` | `accounts/views.py` |
+**Синхронизировано (P3-D1/D2):** auth cookies, api-contracts index, data-model entities, backend-docs Celery tasks, roadmap STAGE-007 done, audit `action` filter, clients permission.
 
 ---
 
 ## 3. Frontend vs документация
 
-**Совпадает:** PAGE-001…009, BFF cookies, PAGE-006 (4 вкладки), основные flows.
+**Синхронизировано (P3-D3):** permission nav, forbidden UX, cross-links (dashboard→reviews, clients→agent), error+retry, Access tab gating, `middleware.ts`, demo login env-gated.
 
-**Критичные gaps:**
-
-| ID | Проблема | Файлы |
-|---|---|---|
-| F-H1 | Permission-based nav отсутствует | `AppShell.tsx` |
-| F-H2 | Forbidden/inactive → logout | `ProtectedShell.tsx`, `api.ts` |
-| F-H3 | `deployment.md` советует cross-origin API URL — **ломает BFF cookies** | `deployment.md` vs `.env.example` |
-| F-H4 | Cross-page links из `pages-map.md` не реализованы | `ClientsToReview`, `ManagerDashboard`, `AiAnalytics` |
-
-**Средние:** нет Z-FILTERS (clients), Z-TREND (employee), слабые error/retry states, нет `middleware.ts`.
+**Средние defer:** Z-FILTERS (clients), Z-TREND (employee).
 
 ---
 
 ## 4. Тестирование
 
-| Слой | Count | CI | Gaps |
+| Слой | Count | CI | Статус |
 |---|---|---|---|
-| API | 51 | ✅ | cookie lifecycle, cross-tenant, throttle, upload validation |
-| Vitest | 12 | ✅ | только `auth.ts`/`api.ts`, моки |
-| Playwright | 1 | ✅ | employee flow, logout, permission denied |
-| Lint | — | ❌ не в CI | `npm run lint` |
+| API | 67 | ✅ | cookies, IDOR, throttle, upload, LLM fallback |
+| Vitest | 21 | ✅ | auth, api, dashboard, reviews |
+| Playwright | 2 | ✅ | manager critical + employee flow/logout |
+| Lint | — | ✅ | `.eslintrc.json` + CI web job |
 
-**Локально:** `test.bat` / `start-dev.ps1 -RunTests` → **46** тестов (пропускает `core.tests`).
-
-**Docs:** `testing-strategy.md` ✅ · `test-matrix.md` пуст · `release-checklist.md` skeleton · `security-checklist.md` частично устарел vs код.
+**Docs:** `test-matrix.md` ✅ · `release-checklist.md` ✅ · `security-checklist.md` synced.
 
 ---
 
 ## 5. Документация — статус
 
-### Заполнено (P0–P2)
+### Заполнено (P0–P3)
 
-`deployment.md`, `rollback.md`, `backup-and-restore.md`, `data-retention.md`, `privacy-policy-notes.md`, `data-processing-agreement.md`, `threat-model.md`, `security-checklist.md`, `incident-response.md`, `monitoring-and-alerts.md`, `testing-strategy.md`, sync `stack.md` / `data-model.md`.
+Ops, security, legal, auth, api-contracts, data-model, test-matrix, release-checklist, deployment (BFF), feature docs Access/custom reports.
 
-### Ещё пустые / skeleton (~50 файлов)
+### Skeleton (~45 файлов)
 
-`test-matrix.md`, `release-checklist.md`, `definition-of-done.md`, marketing/*, support/*, `environments.md` (staging TBD).
-
-### Прочие несоответствия
-
-- Auth/security docs отстают от httpOnly cookies (см. B-H1, B-H2).
-- `data-model.md`: custom managers (C2).
-- QA-AC-013/014 — **passed**.
+marketing/*, support/*, `environments.md`, `definition-of-done.md` — P5.
 
 ---
 
-## 6. Roadmap P0–P2 — статус реализации
+## 6. Roadmap — статус
 
-### P0 ✅ закрыт (2026-06-09)
+### P0–P2 ✅ (2026-06-09)
 
-Token refresh → cookies · prod Django · throttling · CI · lock file · prod compose · backups.
+Deploy hardening · LLM/pgvector/Access · JSON logs · E2E · security docs · BFF cookies.
 
-### P1 ✅ частично (2026-06-09)
+### P3 ✅ (2026-06-10)
 
-| # | Статус |
+| Фаза | Содержание |
 |---|---|
-| 8 ASR | ⏸ отложено (demo `content_json`) |
-| 9 LLM | ✅ OpenRouter adapter + fallback |
-| 10 pgvector | ✅ embeddings + vector search |
-| 11 Integrations | ⏸ demo sync |
-| 12 Access UI | ✅ PAGE-006 + API-PERM-004 |
+| D0 | Prod compose, Beat, baked Next, TLS proxy, ops docs |
+| D1 | Doc sync (auth, threat-model, api-contracts, test-matrix, release-checklist) |
+| D2 | clients permission, audit filter, custom reports scope, data-model C2 |
+| D3 | Permission nav, forbidden UX, cross-links, error/retry, middleware, login hygiene |
+| D4 | +16 tests, lint CI, core.tests в local runner |
 
-### P2 ✅ закрыт (2026-06-09, без Sentry)
+### P4 — следующий этап
 
-JSON logs · `/health/ready/` · E2E + Vitest · security/legal docs · stack sync · httpOnly BFF.
-
-### P3 — deploy + prod gaps (новый, см. `plan_0.md`)
-
-Deploy blockers, doc sync, frontend UX, test gaps, ASR/integrations product work.
+ASR · real integrations · agent retention · PostgreSQL CI matrix.
 
 ---
 
 ## 7. Готовность к продакшену
 
-**Вердикт:** pilot/staging с ручным ops — **после smoke на staging HTTPS**. Unattended B2B SaaS — **рано**.
+**Вердикт:** **pilot/staging готов** после smoke на HTTPS (ручной). Unattended B2B SaaS — после P4.
 
 ### Готово
 
-Prod compose · prod settings · backups scripts · health/ready · rate limits · httpOnly JWT · CI · JSON logs.
+Prod compose · Beat retention · BFF cookies · permission UX · 67 API tests · reverse proxy docs · backups.
 
-### Deploy blockers (P3-D0) ✅ закрыт (2026-06-10)
+### Перед pilot (ручное)
 
-| # | Было | Статус |
-|---|---|---|
-| D1 | BFF env в prod compose | ✅ `API_BACKEND_URL`, пустой `NEXT_PUBLIC_API_URL` |
-| D2 | Redirect loop за proxy | ✅ `SECURE_PROXY_SSL_HEADER` + nginx/Caddy в deployment.md |
-| D3 | Healthcheck 301 | ✅ `SecureProxySecurityMiddleware` exempt health paths |
-| D4 | Retention purge schedule | ✅ Celery Beat 03:00 UTC |
-| D5 | Backup cron/off-host | ✅ restore drill + rsync в backup-and-restore.md |
-| D6 | Public exposure | ✅ api internal, web `127.0.0.1`, firewall docs |
-| D7 | Build on every start | ✅ multi-stage Dockerfile, `node server.js` |
+Smoke: login → dashboard → analytics на staging URL с TLS.
 
-**Остаётся перед pilot:** smoke на staging HTTPS (login → dashboard → analytics).
+### Продуктовые defer
 
-### Продуктовые defer (осознанно)
-
-Demo ASR · demo integrations · agent chat retention indefinite · Sentry optional.
-
-### VPS sizing (single-node Docker)
-
-| Профиль | vCPU | RAM | Disk |
-|---|---|---|---|
-| Pilot min | 2 | 4 GB | 40 GB SSD |
-| Recommended | 4 | 8 GB | 80 GB SSD |
-| Growth 50+ | 4–8 | 16 GB | 160 GB+ |
-
-LLM/STT — внешние (OpenRouter). Нагрузка: Postgres embeddings, Gunicorn, Celery, Next.
+Demo ASR · demo integrations · Sentry (P5).
 
 ---
 
-## 8. Рекомендуемый порядок (обновлён)
+## 8. Рекомендуемый порядок
 
 ```
-✅ P0–P2 roadmap: закрыт (кроме ASR, integrations, Sentry)
-✅ P3-D0: deploy blockers — закрыт (2026-06-10)
-→ P3-D1: doc sync + P3-D4 tests
-→ P3-D2/D3: backend + frontend UX
+✅ P0–P3: закрыт
 → P4: ASR + real integrations
-→ P5: Sentry, staging env, CSP, agent retention policy
+→ P5: Sentry, staging env, CSP, marketing docs
 ```
 
 ---
 
 ## Резюме
 
-User Level MVP + P0/P1/P2 + **P3-D0 deploy** реализованы. Остаётся: **staging smoke**, **doc drift (auth)**, **frontend permission UX**, **test gaps**, **ASR/integrations**. Детальный план — `plan_0.md` (локально).
+User Level MVP + **P0–P3 полностью закрыты**. Код, docs и тесты синхронизированы. Следующий фокус — **P4** (реальный ASR и интеграции).

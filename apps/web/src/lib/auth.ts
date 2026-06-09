@@ -1,6 +1,7 @@
 import type { AuthUser, MeResponse } from "./api";
 
 const USER_KEY = "ai_sales_os_user";
+const PERMISSIONS_KEY = "ai_sales_os_permissions";
 
 export function saveSession(user: AuthUser) {
   if (typeof window === "undefined") return;
@@ -10,6 +11,18 @@ export function saveSession(user: AuthUser) {
 export function clearSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(PERMISSIONS_KEY);
+}
+
+export function getStoredPermissions(): Record<string, string> | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(PERMISSIONS_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as Record<string, string>;
+  } catch {
+    return null;
+  }
 }
 
 export function getStoredUser(): AuthUser | null {
@@ -37,4 +50,7 @@ export function saveMeUser(me: MeResponse) {
     workspace_id: me.workspace?.id ?? null,
     workspace_name: me.workspace?.name ?? null,
   });
+  if (typeof window !== "undefined") {
+    localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(me.permissions));
+  }
 }
