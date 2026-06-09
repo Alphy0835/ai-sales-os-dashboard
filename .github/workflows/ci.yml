@@ -94,7 +94,7 @@ jobs:
         run: |
           python manage.py runserver 0.0.0.0:8000 &
           for i in $(seq 1 30); do
-            curl -sf http://127.0.0.1:8000/health/ && break
+            curl -sf http://127.0.0.1:8000/api/v1/health/ && break
             sleep 2
           done
 
@@ -122,7 +122,7 @@ jobs:
         env:
           API_BACKEND_URL: http://127.0.0.1:8000
         run: |
-          npm run start &
+          npm run dev &
           for i in $(seq 1 30); do
             curl -sf http://127.0.0.1:3000/login && break
             sleep 2

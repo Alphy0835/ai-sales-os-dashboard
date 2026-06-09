@@ -89,5 +89,7 @@ class Command(BaseCommand):
                     defaults={"status": Transcription.Status.PENDING},
                 )
                 transcribe_recording_task.delay(str(recording.id))
+            elif hasattr(recording, "transcription") and recording.transcription.status != Transcription.Status.COMPLETED:
+                transcribe_recording_task.delay(str(recording.id))
 
         self.stdout.write(self.style.SUCCESS("Integration demo data ready"))
