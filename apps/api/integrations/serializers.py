@@ -32,7 +32,7 @@ class MetricSummarySerializer(serializers.Serializer):
 class TranscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transcription
-        fields = ("id", "text", "status", "error_message", "completed_at", "created_at")
+        fields = ("id", "text", "content_json", "status", "error_message", "completed_at", "created_at")
 
 
 class ConversationRecordingSerializer(serializers.ModelSerializer):

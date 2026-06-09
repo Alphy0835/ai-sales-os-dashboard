@@ -1,8 +1,13 @@
 from collections import defaultdict
+import logging
 
 from accounts.models import User
 from ai.models import AnalyticsReport, CustomReport, QualityCriterion
+from ai.services.credentials import llm_available, resolve_ai_config
+from ai.services.llm_adapter import LlmAdapterError, chat_completion
 from integrations.models import Transcription
+
+logger = logging.getLogger(__name__)
 
 
 STAGE_LABELS = {
@@ -147,6 +152,32 @@ def generate_analytics_report(
         summary += "Рекомендуется провести разбор по слабым этапам воронки."
     else:
         summary += "Критичных просадок по критериям не выявлено."
+
+    config = resolve_ai_config(actor)
+    if llm_available(config):
+        try:
+            llm_summary = chat_completion(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Ты аналитик отдела продаж. Напиши краткую сводку на русском (2-4 предложения).",
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Объект: {target_name}. Записей: {len(transcripts)}. "
+                            f"Общая оценка: {overall}%. Слабые критерии: "
+                            f"{[r['text'] for r in recommendations]}. "
+                            f"Этапы: {stages}"
+                        ),
+                    },
+                ],
+                config=config,
+            )
+            if llm_summary:
+                summary = llm_summary
+        except LlmAdapterError as exc:
+            logger.warning("LLM analytics summary fallback: %s", exc)
 
     canvas = {
         "template": template,

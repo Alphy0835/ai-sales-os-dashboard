@@ -5,6 +5,7 @@ from accounts.views import (
     LogoutView,
     MeView,
     PermissionAuditView,
+    PermissionKnowledgeView,
     PermissionUserDetailView,
     PermissionUserListView,
     RefreshView,
@@ -26,4 +27,9 @@ urlpatterns = [
         name="permission-user-detail",
     ),
     path("audit/permissions/", PermissionAuditView.as_view(), name="permission-audit"),
+    path(
+        "permissions/users/<uuid:user_id>/knowledge/",
+        PermissionKnowledgeView.as_view(),
+        name="permission-knowledge",
+    ),
 ]

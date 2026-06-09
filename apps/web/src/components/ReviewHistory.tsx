@@ -56,7 +56,7 @@ export function ReviewHistoryView() {
           workspace_id: workspaceId || undefined,
           employee_id: employeeId || undefined,
         }),
-        token ? fetchMe(token) : Promise.resolve(null),
+        token ? fetchMe() : Promise.resolve(null),
       ]);
       setWorkspaces(dash.filters.workspaces);
       setEmployees(dash.filters.employees);

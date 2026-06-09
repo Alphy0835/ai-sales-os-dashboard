@@ -43,6 +43,9 @@ desktop.ini
 *.log
 npm-debug.log*
 
+# Backups
+backups/
+
 # Temp
 tmp/
 temp/

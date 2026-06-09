@@ -4,13 +4,41 @@ from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 TESTING = "test" in sys.argv
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-insecure-change-me")
-DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
+
+def _env_bool(name: str, default: bool | None = None) -> bool | None:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.lower() in ("true", "1", "yes")
+
+
+_django_env = os.environ.get("DJANGO_ENV", "").strip().lower()
+_debug_env = os.environ.get("DJANGO_DEBUG")
+IS_PRODUCTION = _django_env == "production" or (
+    _debug_env is not None and _debug_env.lower() == "false"
+)
+USE_HTTPS_SETTINGS = IS_PRODUCTION or bool(_env_bool("DJANGO_SECURE", False))
+
+if IS_PRODUCTION and not TESTING:
+    SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
+    if len(SECRET_KEY) < 32:
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY environment variable is required in production "
+            "and must be at least 32 characters."
+        )
+else:
+    SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-insecure-change-me")
+
+if IS_PRODUCTION:
+    DEBUG = bool(_env_bool("DJANGO_DEBUG", False))
+else:
+    DEBUG = bool(_env_bool("DJANGO_DEBUG", True))
 ALLOWED_HOSTS = [
     h.strip()
     for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
@@ -38,6 +66,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -89,8 +118,24 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+if IS_PRODUCTION:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        },
+    }
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+if USE_HTTPS_SETTINGS:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -134,5 +179,22 @@ CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
-CELERY_TASK_ALWAYS_EAGER = os.environ.get("CELERY_TASK_ALWAYS_EAGER", "false").lower() == "true"
+CELERY_TASK_ALWAYS_EAGER = (
+    TESTING or os.environ.get("CELERY_TASK_ALWAYS_EAGER", "false").lower() == "true"
+)
 CELERY_TASK_EAGER_PROPAGATES = True
+
+# AI / LLM (OpenRouter-compatible by default)
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+LLM_CHAT_MODEL = os.environ.get("LLM_CHAT_MODEL", "openai/gpt-4o-mini")
+LLM_EMBEDDING_MODEL = os.environ.get("LLM_EMBEDDING_MODEL", "openai/text-embedding-3-small")
+LLM_EMBEDDING_DIMENSIONS = int(os.environ.get("LLM_EMBEDDING_DIMENSIONS", "1536"))
+AI_CREDENTIALS_KEY = os.environ.get("AI_CREDENTIALS_KEY", SECRET_KEY[:32] if not IS_PRODUCTION else "")
+
+if IS_PRODUCTION and not TESTING and not AI_CREDENTIALS_KEY:
+    raise ImproperlyConfigured(
+        "AI_CREDENTIALS_KEY environment variable is required in production for encrypted API keys."
+    )
+
+TRANSCRIPT_RETENTION_DAYS = int(os.environ.get("TRANSCRIPT_RETENTION_DAYS", "90"))

@@ -1,5 +1,4 @@
-import { API_URL } from "./api";
-import { getAccessToken } from "./auth";
+import { authFetch } from "./api";
 
 export type MetricPeriod = "today" | "week" | "month";
 
@@ -70,19 +69,6 @@ export type ClientToReview = {
   workspace_id: string;
   workspace_name: string;
 };
-
-async function authFetch<T>(path: string): Promise<T> {
-  const token = getAccessToken();
-  if (!token) throw new Error("Not authenticated");
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? `HTTP ${res.status}`);
-  }
-  return res.json() as Promise<T>;
-}
 
 export function fetchManagerDashboard(params?: {
   workspace_id?: string;

@@ -73,6 +73,9 @@ class RecordingListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
 
         employee = User.objects.get(id=serializer.validated_data["employee_id"])
+        audio_file = serializer.validated_data.get("audio_file")
+        if audio_file is not None:
+            audio_file.seek(0)
         recording = ConversationRecording.objects.create(
             tenant_id=request.user.tenant_id,
             workspace_id=employee.workspace_id,
@@ -81,7 +84,6 @@ class RecordingListCreateView(APIView):
             client_name=serializer.validated_data["client_name"],
             client_external_id=serializer.validated_data.get("client_external_id", ""),
             duration_seconds=serializer.validated_data.get("duration_seconds") or 0,
-            audio_file=serializer.validated_data.get("audio_file"),
             status=ConversationRecording.Status.UPLOADED,
         )
         Transcription.objects.create(

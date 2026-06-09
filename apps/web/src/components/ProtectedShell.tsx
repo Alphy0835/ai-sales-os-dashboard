@@ -34,7 +34,7 @@ export function ProtectedShell({ allowedRole, children }: Props) {
       router.replace(homeRouteForRole(stored.role));
       return;
     }
-    fetchMe(token)
+    fetchMe()
       .then((me) => {
         if (me.role !== allowedRole) {
           router.replace(homeRouteForRole(me.role));

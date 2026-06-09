@@ -1,7 +1,7 @@
 # Code Review — AI Sales OS
 
 Дата: 2026-06-09 · Объём: backend (Django 5 + DRF), frontend (Next.js 15), docs, инфраструктура
-Состояние: STAGE-001…007 реализованы, 41 API-тест проходит, `npm run build` зелёный.
+Состояние: STAGE-001…007 реализованы, **P0 + P1 (частично) закрыты** (2026-06-09), **45** API-тестов, CI, `npm run build`.
 
 ---
 
@@ -10,7 +10,7 @@
 ### Что хорошо
 
 - Монорепо консистентно: `apps/api` (6 Django-приложений), `apps/web`, `docs/`, лаунчеры.
-- Все 37 API-тестов проходят, покрыты все стейджи (auth, integrations, dashboard, reviews, ai 005/006/007).
+- Все **45** API-тестов проходят (включая knowledge grants, security scope).
 - Multi-tenant фильтрация (`tenant_id`) применяется во всех queryset'ах последовательно.
 - Права (`ModulePermission`) проверяются в каждой view; есть scope-иерархия руководителей и аудит-лог.
 - Сквозные сценарии работают: очередь клиентов → разбор → задачи сотрудника → AI-аналитика → кастомные отчёты.
@@ -19,11 +19,11 @@
 
 | # | Проблема | Где | Серьёзность |
 |---|---|---|---|
-| C1 | Refresh-токен сохраняется в localStorage, но **flow обновления не реализован** — через 60 минут сессия молча умирает, все запросы падают | `apps/web/src/lib/auth.ts`, `api.ts` | Высокая |
+| C1 | ~~Refresh-токен без flow обновления~~ — **исправлено**: центральный `authFetch` с refresh на 401 | `apps/web/src/lib/api.ts` | — |
 | C2 | `TenantMiddleware` ставит `request.tenant`, но views используют `user.tenant_id` напрямую — middleware фактически декоративный. `data-model.md` утверждает «enforced via middleware + custom managers», что не соответствует коду | `apps/api/core/middleware.py` | Средняя |
-| C3 | JWT в localStorage — уязвимо к XSS. Для MVP приемлемо, для прода нужен httpOnly cookie или хотя бы осознанное решение в threat-model | `apps/web/src/lib/auth.ts` | Средняя |
+| C3 | JWT в localStorage — уязвимо к XSS. Для MVP приемлемо, для прода нужен httpOnly cookie или хотя бы осознанное решение в threat-model (→ P2 п.18) | `apps/web/src/lib/auth.ts` | Средняя |
 | C4 | ~~Нет rate limiting / throttling на `/auth/login/`~~ — **исправлено** (см. §1.1) | DRF settings | — |
-| C5 | Незакоммичены изменения редизайна настроек (5 файлов + `SettingsPanelShell.tsx`) | git status | Низкая |
+| C5 | ~~Незакоммичены изменения редизайна настроек~~ — **исправлено** | — | — |
 
 ### 1.1. Security-аудит кода (2026-06-09) — найдено и исправлено
 
@@ -56,21 +56,19 @@
 
 | Заявлено | Фактически | Риск |
 |---|---|---|
-| PostgreSQL 16 + **pgvector** | pgvector-образ в compose есть, но embeddings нигде не используются; RAG — keyword-поиск по `tags`/`content` | Несоответствие доков; для прод-RAG нужны embeddings |
-| AI Adapter → **OpenAI** | Нет ни одного вызова LLM: транскрипция — demo-заглушка (`tasks.py`), агент и отчёты — rule-based | Ядро продукта (REQ-007…012) работает на симуляции |
-| **S3-compatible storage** | Не подключено; `ConversationRecording` не хранит реальные файлы | Записи разговоров негде хранить |
-| Транскрипция | `transcribe_recording_task` генерирует фиктивный текст | Без реального ASR прод невозможен |
+| PostgreSQL 16 + **pgvector** | **Реализовано** (PostgreSQL): `VectorField` на `KnowledgeArticle`, Celery embed, vector search с keyword fallback | SQLite dev — keyword only |
+| AI Adapter → **OpenRouter** | **Реализовано**: `llm_adapter.py` + tenant/workspace keys (Django Admin, Fernet); fallback rule-based | Без ключа — rule-based |
+| **S3-compatible storage** | **Не используется по решению**: аудио не хранится; только транскрипты 90 дней | Осознанный отказ от S3 |
+| Транскрипция | Demo-текст в `content_json`; **ASR отложен** — pluggable STT, transient audio | Следующий спринт |
 
 Это осознанные MVP-срезы (помечены в roadmap-доках как «Not in this slice»), но в `stack.md` стоит явно пометить статус «planned», иначе документация вводит в заблуждение.
 
 ### Инфраструктурные несоответствия
 
-- `docker-compose.yml`: API запускается с `gunicorn --reload` и `seed_demo` **при каждом старте** — это dev-конфигурация. Прод-компоуза нет.
-- `requirements.txt` — только диапазоны версий, нет lock-файла (pip-tools / uv) → невоспроизводимые сборки.
-- **CI отсутствует** (нет `.github/workflows`) — тесты и сборка не гоняются автоматически.
-- `SECRET_KEY` имеет insecure-дефолт, `DEBUG=true` по умолчанию; короткий ключ вызывает `InsecureKeyLengthWarning` в JWT (HMAC < 32 байт).
-- Нет prod-настроек безопасности: `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`.
-- Статика: `STATIC_ROOT` есть, но whitenoise/CDN не настроены.
+- ~~Прод-компоуза нет~~ — **исправлено**: `docker-compose.prod.yml` (gunicorn без reload, без seed, migrate + collectstatic).
+- ~~Lock-файл и CI~~ — **исправлено**: `requirements.lock.txt`, `.github/workflows/ci.yml`, Dependabot.
+- ~~Prod Django settings~~ — **исправлено**: fail-fast SECRET_KEY ≥32, DEBUG=false, HSTS/secure-cookies, WhiteNoise.
+- Dev `docker-compose.yml` по-прежнему с `--reload` и `seed_demo` — нормально для локальной разработки.
 
 ---
 
@@ -78,51 +76,54 @@
 
 ### Хорошо синхронизировано (source of truth актуален)
 
-`roadmap.md` + 7 implementation-доков, `product-requirements.md`, `api-contracts.md` (включая STAGE-007), `data-model.md`, `acceptance-criteria.md` (QA-AC-001…012 passed), все 7 feature-доков, `user-flow.md`, design-guide.
+`roadmap.md` + 7 implementation-доков, `product-requirements.md`, `api-contracts.md`, `data-model.md`, `acceptance-criteria.md`, feature-docs, `user-flow.md`, design-guide, **`operations/deployment.md`**, **`operations/rollback.md`**, **`operations/backup-and-restore.md`** (заполнены в P0).
 
-### Пустые шаблоны (заголовок не заполнен) — ~60 файлов
+### Пустые шаблоны — ~57 файлов
 
-Критичные для прода:
+Критичные для прода (ещё не заполнены):
 
 | Документ | Почему критичен |
 |---|---|
-| `operations/deployment.md` | Процесс деплоя не описан вообще |
-| `operations/rollback.md` | Roadmap ссылается на него в каждом стейдже — файл пуст |
-| `operations/backup-and-restore.md` | Стратегии бэкапа Postgres нет |
+| ~~`operations/deployment.md`~~ | **заполнен** |
+| ~~`operations/rollback.md`~~ | **заполнен** |
+| ~~`operations/backup-and-restore.md`~~ | **заполнен** |
 | `operations/monitoring-and-alerts.md` | Мониторинга нет ни в коде, ни в доке |
 | `security/security-checklist.md` | Roadmap ссылается на «Auth / Access» секцию — файл пуст |
 | `security/threat-model.md`, `incident-response.md` | Для SaaS с записями разговоров — обязательны |
 | `quality/testing-strategy.md`, `release-checklist.md` | Definition of Done ссылается в никуда |
-| `legal/privacy-policy-notes.md`, `data-processing-agreement.md` | Записи разговоров = персональные данные, нужна проработка до прода |
+| ~~`legal/privacy-policy-notes.md`~~ | **заполнен** (MVP) |
+| ~~`security/data-retention.md`~~ | **заполнен** (90d transcripts) |
 
 Менее срочные: marketing/*, support/*, product/* — можно заполнять по мере выхода на рынок.
 
 ### Прочие несоответствия
 
 - `data-model.md`: заявляет custom managers для tenant-фильтрации (см. C2).
-- QA-AC-013/014 (управление правами через UI) — `draft`, функциональность не реализована (REQ-013/014).
+- ~~QA-AC-013/014~~ — **passed**: вкладка Access в PAGE-006, API-PERM-004 knowledge grants.
 
 ---
 
 ## 4. План докрутки до прод-реализации
 
-### P0 — блокеры прода (безопасность и живучесть)
+### P0 — блокеры прода ✅ **закрыт** (2026-06-09)
 
-1. **Token refresh flow** на фронте: interceptor на 401 → `/auth/refresh/` → повтор запроса; logout при невалидном refresh.
-2. **Прод-конфиг Django**: `SECRET_KEY` обязателен (fail-fast без дефолта), `DEBUG=false` по умолчанию, HSTS/secure-cookies/SSL-redirect под флагом окружения, длинный ключ ≥ 32 байт.
-3. ~~**Throttling**~~ — **сделано** (S3 в §1.1): login 10/min, агент 30/min, конфиг через env.
-4. **CI (GitHub Actions)**: тесты API + `npm run build` + lint на каждый PR/push; проверка непримененных миграций.
-5. **Lock-файл зависимостей** (pip-tools или uv) + Dependabot/Renovate.
-6. **Прод-compose / деплой-конфиг**: gunicorn без `--reload`, без авто-seed, whitenoise для статики, отдельный `docker-compose.prod.yml`; заполнить `deployment.md` и `rollback.md`.
-7. **Бэкапы Postgres** (pg_dump расписание или managed DB) + заполнить `backup-and-restore.md`.
+1. ~~**Token refresh flow**~~ — `authFetch()` + `refreshAccessToken()` в `apps/web/src/lib/api.ts`.
+2. ~~**Прод-конфиг Django**~~ — `IS_PRODUCTION`, fail-fast SECRET_KEY, HSTS/secure-cookies, WhiteNoise.
+3. ~~**Throttling**~~ — login 10/min, agent 30/min.
+4. ~~**CI**~~ — `.github/workflows/ci.yml` (41 tests + migration check + web build).
+5. ~~**Lock-файл + Dependabot**~~ — `requirements.lock.txt`, `.github/dependabot.yml`.
+6. ~~**Прод-compose + deploy docs**~~ — `docker-compose.prod.yml`, `deployment.md`, `rollback.md`.
+7. ~~**Бэкапы Postgres**~~ — `scripts/backup-postgres.sh/.ps1`, `backup-and-restore.md`.
 
-### P1 — реальная функциональность вместо заглушек
+### P1 — реальная функциональность ✅ **частично закрыт** (2026-06-09)
 
-8. **ASR-транскрипция**: адаптер (Whisper API / Deepgram / GigaAM) вместо demo-текста в `transcribe_recording_task`; S3-хранилище для аудио.
-9. **LLM-адаптер**: единый сервис (OpenAI-совместимый, vendor-pluggable как в stack.md) для: агент-чата, структурирования кастомных отчётов, саммари аналитики. Rule-based оставить как fallback.
-10. **Embeddings + pgvector** для RAG базы знаний (сейчас keyword-поиск): миграция на `VectorField`, индексация статей при сохранении.
-11. **Реальные коннекторы интеграций** (CRM/телефония) или хотя бы API импорта записей/метрик — сейчас только `run_source_sync` с генерацией демо-метрик.
-12. **REQ-013/014**: UI управления правами сотрудников с проверкой «потолка» руководителя (бэкенд-валидация уже частично есть в scope-сервисах).
+8. **ASR-транскрипция** — **отложено**; demo + `content_json`, аудио не персистится; STT adapter — следующий этап.
+9. ~~**LLM-адаптер**~~ — OpenRouter-compatible, tenant→workspace keys, agent/custom reports/analytics summary + fallback.
+10. ~~**Embeddings + pgvector**~~ — `VectorField`, Celery embed, vector search + keyword fallback.
+11. **Интеграции** — **пропущено** по решению (demo sync остаётся).
+12. ~~**REQ-013/014 UI**~~ — PAGE-006 Access: модули + audit + KB grants (API-PERM-004).
+
+**Дополнительно:** retention 90d (`purge_expired_transcripts`), legal/data-retention docs.
 
 ### P2 — наблюдаемость, качество, документация
 
@@ -136,14 +137,13 @@
 ### Рекомендуемый порядок
 
 ```
-Спринт 1 (P0): пп. 1–5            → безопасный деплой возможен
-Спринт 2 (P0/P1): пп. 6–9         → прод-инфра + реальный AI-контур
-Спринт 3 (P1): пп. 10–12          → RAG, интеграции, права
-Спринт 4 (P2): пп. 13–18          → наблюдаемость, E2E, доки, legal
+✅ Спринт 1 (P0): закрыт
+✅ Спринт 2–3 (P1): LLM + pgvector + Access UI — закрыт; ASR + интеграции — отложены
+Спринт 4 (P2): пп. 13–18       → наблюдаемость, E2E, docs, legal
 ```
 
 ---
 
 ## Резюме
 
-Кодовая база целостная и дисциплинированная: тесты зелёные, tenant-изоляция и права применяются последовательно, документация по фичам синхронизирована — для MVP-стадии состояние хорошее. Главные разрывы до прода: (1) AI-контур работает на заглушках при том, что это ядро ценности продукта; (2) отсутствуют CI, прод-конфигурация и операционные доки (deploy/rollback/backup пустые); (3) дыры безопасности — нет refresh flow, throttling и прод-настроек Django. P0-список закрывается за один короткий спринт и не требует архитектурных изменений.
+User Level MVP + **P1 (LLM, pgvector RAG, Access UI, retention)** реализованы. **ASR** и **реальные интеграции** — следующий этап. P2: Sentry, E2E, threat-model, DPA, stack.md sync.

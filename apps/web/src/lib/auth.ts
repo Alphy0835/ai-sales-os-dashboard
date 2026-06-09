@@ -23,6 +23,16 @@ export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_KEY);
 }
 
+export function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(REFRESH_KEY);
+}
+
+export function setAccessToken(access: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(ACCESS_KEY, access);
+}
+
 export function getStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem(USER_KEY);
@@ -39,7 +49,7 @@ export function homeRouteForRole(role: AuthUser["role"]): string {
 }
 
 export function saveMeUser(me: MeResponse) {
-  saveSession(getAccessToken() ?? "", localStorage.getItem(REFRESH_KEY) ?? "", {
+  saveSession(getAccessToken() ?? "", getRefreshToken() ?? "", {
     id: me.id,
     email: me.email,
     full_name: me.full_name,

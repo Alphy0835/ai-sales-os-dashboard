@@ -42,7 +42,7 @@ export function KnowledgeBaseSettingsView() {
     const token = getAccessToken();
     const [list, me] = await Promise.all([
       fetchKnowledgeArticles(),
-      token ? fetchMe(token) : Promise.resolve(null),
+      token ? fetchMe() : Promise.resolve(null),
     ]);
     setArticles(list.results);
     setCanEdit(me?.permissions.settings === "edit");

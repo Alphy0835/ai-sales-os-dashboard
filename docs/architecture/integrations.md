@@ -35,14 +35,16 @@ Schedule: manual / seed for MVP; periodic Celery beat — post-MVP.
 | Telephony ingest | `telephony` | Integration Level webhook (planned) |
 | Manual upload | `manual` | `POST /integrations/recordings/` |
 
-Celery task `integrations.transcribe_recording` — MVP demo text; replace with STT provider adapter later.
+Celery task `integrations.transcribe_recording` — MVP demo text in `Transcription.content_json`; **production STT deferred** (pluggable adapter, transient audio only).
+
+Scheduled purge: `integrations.purge_expired_transcripts` — deletes recordings/transcripts older than `TRANSCRIPT_RETENTION_DAYS` (default 90).
 
 ## Storage
 
 | Asset | Location |
 |---|---|
-| Audio files | `MEDIA_ROOT/recordings/` (local dev); S3 post-MVP |
-| Transcripts | PostgreSQL `Transcription.text` |
+| Audio files | **Not persisted** — validated on upload, discarded after processing |
+| Transcripts | PostgreSQL `Transcription.text` + `content_json` (90-day retention) |
 
 ## Related Docs
 

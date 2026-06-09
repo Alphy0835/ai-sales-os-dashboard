@@ -1,5 +1,4 @@
-import { API_URL } from "./api";
-import { getAccessToken } from "./auth";
+import { authFetch } from "./api";
 
 export type QualityCriterion = {
   id: string;
@@ -40,25 +39,6 @@ export type AnalyticsReport = {
   recordings_analyzed: number;
   created_at: string;
 };
-
-async function authFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getAccessToken();
-  if (!token) throw new Error("Not authenticated");
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error_message ?? body.detail ?? `HTTP ${res.status}`);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
-}
 
 export function fetchQualityCriteria(): Promise<{ count: number; results: QualityCriterion[] }> {
   return authFetch("/api/v1/manager/settings/quality-criteria/");

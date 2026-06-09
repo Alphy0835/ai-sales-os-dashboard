@@ -36,7 +36,7 @@ export function AiAnalyticsView() {
         fetchManagerDashboard({ workspace_id: workspaceId || undefined }),
         fetchAnalyticsReports(),
         fetchCustomReports().catch(() => ({ count: 0, results: [] as CustomReport[] })),
-        token ? fetchMe(token) : Promise.resolve(null),
+        token ? fetchMe() : Promise.resolve(null),
       ]);
       setWorkspaces(dash.filters.workspaces);
       setEmployees(dash.filters.employees);

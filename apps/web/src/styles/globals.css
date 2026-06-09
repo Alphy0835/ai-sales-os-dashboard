@@ -575,3 +575,62 @@ select.input option,
   justify-content: flex-end;
   margin-top: 12px;
 }
+
+.access-toolbar {
+  margin-bottom: 16px;
+}
+
+.settings-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 20px 0 10px;
+}
+
+.access-matrix-wrap {
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.access-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.access-matrix th,
+.access-matrix td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+.access-matrix td:first-child,
+.access-matrix th:first-child {
+  text-align: left;
+}
+
+.access-matrix-kb td:first-child {
+  min-width: 160px;
+}
+
+.access-audit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+}
+
+.access-audit-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.access-audit-date {
+  color: var(--text-muted, #8b949e);
+}
+
+.success-text {
+  color: #7ee787;
+  font-size: 13px;
+  margin-bottom: 8px;
+}

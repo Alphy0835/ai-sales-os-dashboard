@@ -22,7 +22,7 @@ export function CustomReportsSettingsView() {
     const token = getAccessToken();
     const [list, me] = await Promise.all([
       fetchCustomReports(),
-      token ? fetchMe(token) : Promise.resolve(null),
+      token ? fetchMe() : Promise.resolve(null),
     ]);
     setReports(list.results);
     setCanEdit(me?.permissions.settings === "edit");

@@ -103,3 +103,12 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "target_user",
             "created_at",
         )
+
+
+class KnowledgeGrantItemSerializer(serializers.Serializer):
+    article_id = serializers.UUIDField()
+    is_allowed = serializers.BooleanField(allow_null=True, required=False)
+
+
+class KnowledgeGrantUpdateSerializer(serializers.Serializer):
+    grants = KnowledgeGrantItemSerializer(many=True)

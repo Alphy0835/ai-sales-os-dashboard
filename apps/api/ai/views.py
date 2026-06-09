@@ -17,6 +17,7 @@ from ai.serializers import (
 from ai.services.custom_reports import structure_custom_report
 from ai.services.agent import chat_with_agent
 from ai.services.knowledge import articles_editable_queryset, can_use_agent
+from ai.tasks import embed_knowledge_article
 from ai.services.permissions import (
     can_edit_criteria,
     can_run_reports,
@@ -154,6 +155,7 @@ class KnowledgeArticleListCreateView(APIView):
         serializer = KnowledgeArticleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         article = serializer.save(tenant=request.user.tenant)
+        embed_knowledge_article.delay(str(article.id))
         return Response(KnowledgeArticleSerializer(article).data, status=201)
 
 
@@ -172,6 +174,7 @@ class KnowledgeArticleDetailView(APIView):
         serializer = KnowledgeArticleSerializer(article, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        embed_knowledge_article.delay(str(article.id))
         return Response(serializer.data)
 
     def delete(self, request, article_id):
@@ -247,7 +250,9 @@ class CustomReportListCreateView(APIView):
         serializer = CustomReportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        structured = structure_custom_report(title=data["title"], description=data["description"])
+        structured = structure_custom_report(
+            title=data["title"], description=data["description"], actor=request.user
+        )
         report = CustomReport.objects.create(
             tenant_id=request.user.tenant_id,
             author=request.user,
@@ -283,6 +288,7 @@ class CustomReportDetailView(APIView):
             report.structured_query = structure_custom_report(
                 title=data.get("title", report.title),
                 description=data.get("description", report.description),
+                actor=request.user,
             )
         for field in ("title", "description", "is_active"):
             if field in data:

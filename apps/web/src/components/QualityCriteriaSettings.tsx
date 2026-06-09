@@ -33,7 +33,7 @@ export function QualityCriteriaSettingsView() {
       const token = getAccessToken();
       const [list, me] = await Promise.all([
         fetchQualityCriteria(),
-        token ? fetchMe(token) : Promise.resolve(null),
+        token ? fetchMe() : Promise.resolve(null),
       ]);
       setCriteria(list.results);
       setCanEdit(me?.permissions.settings === "edit");

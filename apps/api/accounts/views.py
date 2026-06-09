@@ -10,6 +10,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from accounts.models import AuditLog, User
 from accounts.serializers import (
     AuditLogSerializer,
+    KnowledgeGrantUpdateSerializer,
     MeSerializer,
     PermissionUpdateSerializer,
     ScopeUserSerializer,
@@ -21,6 +22,7 @@ from accounts.services.audit import log_scope_denied
 from accounts.services.grant import PermissionGrantError, grant_permissions
 from accounts.services.permissions import can_grant_permissions, can_view_audit, get_user_permissions
 from accounts.services.scope import get_accessible_users, get_scoped_workspaces, user_in_scope
+from ai.services.knowledge_grants import KnowledgeGrantError, list_knowledge_grants, update_knowledge_grants
 
 
 def client_ip(request):
@@ -191,3 +193,50 @@ class PermissionAuditView(APIView):
             limit = 50
         logs = qs[:limit]
         return Response({"results": AuditLogSerializer(logs, many=True).data})
+
+
+class PermissionKnowledgeView(APIView):
+    def _get_target(self, request, user_id):
+        try:
+            target = User.objects.select_related("workspace").get(
+                id=user_id,
+                tenant_id=request.user.tenant_id,
+                is_active=True,
+            )
+        except User.DoesNotExist:
+            raise NotFound("User not found")
+
+        if not user_in_scope(request.user, target):
+            log_scope_denied(actor=request.user, target_user=target, ip_address=client_ip(request))
+            raise PermissionDenied("User is outside your scope")
+        return target
+
+    def get(self, request, user_id):
+        if not can_grant_permissions(request.user) and not can_view_audit(request.user):
+            raise PermissionDenied("Settings view or edit permission required")
+        target = self._get_target(request, user_id)
+        return Response({"grants": list_knowledge_grants(grantor=request.user, target=target)})
+
+    def put(self, request, user_id):
+        if not can_grant_permissions(request.user):
+            raise PermissionDenied("Settings edit permission required")
+
+        target = self._get_target(request, user_id)
+        serializer = KnowledgeGrantUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            grants = update_knowledge_grants(
+                grantor=request.user,
+                target=target,
+                grants=serializer.validated_data["grants"],
+                ip_address=client_ip(request),
+            )
+        except KnowledgeGrantError as exc:
+            if exc.code == "scope_denied":
+                raise PermissionDenied(str(exc))
+            if exc.code == "ceiling_violation":
+                raise ValidationError({"grants": str(exc)})
+            raise ValidationError(str(exc))
+
+        return Response({"grants": grants})

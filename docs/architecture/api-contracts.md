@@ -31,6 +31,7 @@ OpenAPI: `/api/schema/` (drf-spectacular)
 | API-PERM-001 | GET | `/permissions/users/` | List users in scope + permissions | yes (settings view/edit) | FEAT-001 |
 | API-PERM-002 | GET | `/permissions/users/{id}/` | User permissions detail | yes (settings view/edit) | FEAT-001 |
 | API-PERM-003 | PUT | `/permissions/users/{id}/` | Grant permissions (ceiling rule) | yes (settings edit) | FEAT-001 |
+| API-PERM-004 | GET/PUT | `/permissions/users/{id}/knowledge/` | Per-user KB article grants | yes (settings view/edit) | FEAT-001 |
 | API-AUDIT-001 | GET | `/audit/permissions/` | Permission change audit log | yes (settings view/edit) | FEAT-001 |
 | API-INT-001 | GET | `/integrations/sources/` | Integration sources + health | yes (dashboard view) | FEAT-002 |
 | API-INT-002 | GET | `/integrations/metrics/` | Aggregated metrics + completeness | yes (dashboard view) | FEAT-002 |
@@ -268,6 +269,46 @@ User object with updated `permissions`.
 | Code | Meaning |
 |---|---|
 | 400 | Invalid module/level or ceiling violation |
+| 403 | Target outside scope or missing settings edit |
+
+---
+
+## API-PERM-004 — Knowledge article grants
+
+Requires `settings: view` (GET) or `settings: edit` (PUT). Target user must be in grantor scope.
+
+### GET `/permissions/users/{id}/knowledge/` — Response `200`
+
+```json
+{
+  "grants": [
+    {
+      "article_id": "uuid",
+      "title": "Playbook",
+      "access_level": "manager",
+      "base_accessible": false,
+      "is_allowed": true,
+      "grantor_can_assign": true
+    }
+  ]
+}
+```
+
+### PUT `/permissions/users/{id}/knowledge/` — Body
+
+```json
+{
+  "grants": [
+    { "article_id": "uuid", "is_allowed": true }
+  ]
+}
+```
+
+**Ceiling:** grantor cannot assign access to articles they cannot access themselves.
+
+| Code | Meaning |
+|---|---|
+| 400 | Ceiling violation or invalid article |
 | 403 | Target outside scope or missing settings edit |
 
 ---

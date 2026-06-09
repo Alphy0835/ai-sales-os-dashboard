@@ -1,4 +1,5 @@
 from celery import shared_task
+from django.conf import settings
 from django.utils import timezone
 
 from integrations.models import ConversationRecording, IntegrationSource, MetricSnapshot, Transcription
@@ -16,6 +17,20 @@ def sync_integration_source(source_id: str):
     return {"source_id": source_id, "synced": True}
 
 
+def _demo_transcript(recording: ConversationRecording) -> tuple[str, dict]:
+    text = (
+        f"[demo transcript] Разговор с {recording.client_name}. "
+        f"Сотрудник {recording.employee.full_name} представился, уточнил потребность клиента "
+        f"и договорился о следующем шаге."
+    )
+    content_json = {
+        "engine": "demo_v1",
+        "language": "ru",
+        "segments": [{"speaker": "mixed", "text": text}],
+    }
+    return text, content_json
+
+
 @shared_task(name="integrations.transcribe_recording")
 def transcribe_recording_task(recording_id: str):
     recording = ConversationRecording.objects.select_related("employee", "transcription").get(id=recording_id)
@@ -27,15 +42,16 @@ def transcribe_recording_task(recording_id: str):
     recording.save(update_fields=["status"])
 
     try:
-        transcription.text = (
-            f"[demo transcript] Разговор с {recording.client_name}. "
-            f"Сотрудник {recording.employee.full_name} представился, уточнил потребность клиента "
-            f"и договорился о следующем шаге."
-        )
+        text, content_json = _demo_transcript(recording)
+        transcription.text = text
+        transcription.content_json = content_json
         transcription.status = Transcription.Status.COMPLETED
         transcription.completed_at = timezone.now()
         transcription.error_message = ""
         transcription.save()
+
+        if recording.audio_file:
+            recording.audio_file.delete(save=False)
 
         recording.status = ConversationRecording.Status.READY
         recording.save(update_fields=["status"])
@@ -48,3 +64,13 @@ def transcribe_recording_task(recording_id: str):
         raise
 
     return {"recording_id": recording_id, "status": transcription.status}
+
+
+@shared_task(name="integrations.purge_expired_transcripts")
+def purge_expired_transcripts() -> dict:
+    retention_days = getattr(settings, "TRANSCRIPT_RETENTION_DAYS", 90)
+    cutoff = timezone.now() - timezone.timedelta(days=retention_days)
+    qs = ConversationRecording.objects.filter(created_at__lt=cutoff)
+    count = qs.count()
+    qs.delete()
+    return {"deleted": count, "retention_days": retention_days}

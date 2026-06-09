@@ -1,0 +1,90 @@
+# Production stack — use: docker compose -f docker-compose.prod.yml up -d --build
+# Requires a production .env (see docs/operations/deployment.md).
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_sales_os}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_sales_os}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_sales_os}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    command: >-
+      sh -c "python manage.py migrate &&
+      python manage.py collectstatic --noinput &&
+      gunicorn config.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers ${GUNICORN_WORKERS:-3}
+      --timeout 120"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-ai_sales_os}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_sales_os}
+      REDIS_URL: redis://redis:6379/0
+      DJANGO_DEBUG: "false"
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    command: celery -A config worker -l info
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-ai_sales_os}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_sales_os}
+      REDIS_URL: redis://redis:6379/0
+      DJANGO_DEBUG: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    command: sh -c "npm run build && npm run start -- -H 0.0.0.0 -p 3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

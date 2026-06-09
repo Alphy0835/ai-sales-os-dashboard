@@ -1,5 +1,4 @@
-import { API_URL } from "./api";
-import { getAccessToken } from "./auth";
+import { authFetch } from "./api";
 
 export type ReviewTask = {
   id: string;
@@ -36,24 +35,6 @@ export type EmployeeTask = {
   workspace_name: string;
   updated_at: string;
 };
-
-async function authFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getAccessToken();
-  if (!token) throw new Error("Not authenticated");
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? `HTTP ${res.status}`);
-  }
-  return res.json() as Promise<T>;
-}
 
 export function fetchManagerReviews(params?: {
   workspace_id?: string;

@@ -1,6 +1,8 @@
+import hashlib
 import uuid
 
 from django.db import models
+from pgvector.django import VectorField
 
 
 class QualityCriterion(models.Model):
@@ -102,6 +104,8 @@ class KnowledgeArticle(models.Model):
     tags = models.CharField(max_length=500, blank=True, default="")
     access_level = models.CharField(max_length=16, choices=AccessLevel.choices, default=AccessLevel.ALL)
     is_active = models.BooleanField(default=True)
+    content_hash = models.CharField(max_length=64, blank=True, default="")
+    embedding = VectorField(dimensions=1536, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -113,6 +117,30 @@ class KnowledgeArticle(models.Model):
 
     def tag_list(self) -> list[str]:
         return [t.strip().lower() for t in self.tags.split(",") if t.strip()]
+
+    def compute_content_hash(self) -> str:
+        payload = f"{self.title}\n{self.content}\n{self.tags}\n{self.category}"
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def embed_text(self) -> str:
+        return f"{self.title}\n{self.content}"
+
+
+class KnowledgeArticleGrant(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("accounts.Tenant", on_delete=models.CASCADE, related_name="knowledge_grants")
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="knowledge_grants")
+    article = models.ForeignKey(KnowledgeArticle, on_delete=models.CASCADE, related_name="user_grants")
+    is_allowed = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [["user", "article"]]
+        ordering = ["article__title"]
+
+    def __str__(self):
+        return f"{self.user.email} → {self.article.title}: {self.is_allowed}"
 
 
 class AgentChatSession(models.Model):
@@ -147,6 +175,40 @@ class AgentChatMessage(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+
+
+class TenantAiConfig(models.Model):
+    tenant = models.OneToOneField(
+        "accounts.Tenant",
+        on_delete=models.CASCADE,
+        related_name="ai_config",
+    )
+    api_key_encrypted = models.TextField(blank=True, default="")
+    base_url = models.URLField(blank=True, default="")
+    chat_model = models.CharField(max_length=128, blank=True, default="")
+    embedding_model = models.CharField(max_length=128, blank=True, default="")
+    is_enabled = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"AI config: {self.tenant.name}"
+
+
+class WorkspaceAiConfig(models.Model):
+    workspace = models.OneToOneField(
+        "accounts.Workspace",
+        on_delete=models.CASCADE,
+        related_name="ai_config",
+    )
+    api_key_encrypted = models.TextField(blank=True, default="")
+    base_url = models.URLField(blank=True, default="")
+    chat_model = models.CharField(max_length=128, blank=True, default="")
+    embedding_model = models.CharField(max_length=128, blank=True, default="")
+    is_enabled = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"AI config: {self.workspace.name}"
 
 
 class CustomReport(models.Model):

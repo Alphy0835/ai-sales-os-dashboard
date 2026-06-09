@@ -152,6 +152,7 @@ class Transcription(models.Model):
         related_name="transcription",
     )
     text = models.TextField(blank=True, default="")
+    content_json = models.JSONField(default=dict, blank=True)
     status = models.CharField(
         max_length=16,
         choices=Status.choices,
