@@ -82,6 +82,12 @@ class User(AbstractUser):
         blank=True,
         related_name="direct_reports",
     )
+    external_id = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="External system user id (e.g. amoCRM responsible_user_id)",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS: list[str] = []

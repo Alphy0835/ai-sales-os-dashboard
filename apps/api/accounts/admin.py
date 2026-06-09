@@ -33,7 +33,7 @@ class UserAdmin(admin.ModelAdmin):
     inlines = [ModulePermissionInline, ManagerScopeInline]
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Profile", {"fields": ("full_name", "role", "tenant", "workspace", "manager")}),
+        ("Profile", {"fields": ("full_name", "role", "tenant", "workspace", "manager", "external_id")}),
         ("Status", {"fields": ("is_active", "is_staff", "is_superuser")}),
     )
 

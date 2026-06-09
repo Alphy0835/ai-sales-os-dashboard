@@ -36,7 +36,7 @@ DPA нужен, когда **клиент (Controller)** поручает **AI S
 | Conversation metadata | client name, employee, duration, funnel stage | confidential | [data-classification.md](../security/data-classification.md) |
 | Transcripts | text, `content_json` segments | confidential | [data-retention.md](../security/data-retention.md) — **90 days** |
 | Knowledge base | articles, embeddings, per-user grants | confidential | FEAT-010 / `KnowledgeArticleGrant` |
-| AI chat | agent messages, client context, sources JSON | confidential | Indefinite (MVP — open policy) |
+| AI chat | agent messages, client context, sources JSON | confidential | **90 days** (`AGENT_CHAT_RETENTION_DAYS`) |
 | Audit log | permission changes, scope denied, IP | internal | 1 year planned archival |
 | Audio recordings | — | N/A | **Not stored** — transient processing only when ASR ships |
 

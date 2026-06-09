@@ -18,7 +18,7 @@ Maps features and critical flows to automated tests, environments, and release g
 
 | Suite | Tool | Location | Count | CI job |
 |---|---|---|---|---|
-| API integration | Django `TestCase` | `apps/api/**/tests/` | **52** | `api` |
+| API integration | Django `TestCase` | `apps/api/**/tests/` | **78** (3 skipped on SQLite) | `api`, `api-postgres` |
 | Web unit | Vitest | `apps/web/src/lib/__tests__/` | **12** | `web` (`npm run test:unit`) |
 | E2E | Playwright | `apps/web/e2e/manager-critical-flow.spec.ts` | **1** spec | `e2e` |
 | Migrations check | `makemigrations --check` | `apps/api` | — | `api` |
@@ -39,6 +39,11 @@ Maps features and critical flows to automated tests, environments, and release g
 | STAGE-007 custom reports | `ai/tests/test_stage007.py` | 4 | custom report CRUD + run |
 | KB grants | `ai/tests/test_knowledge_grants.py` | 4 | per-user grants, ceiling |
 | AI scope security | `ai/tests/test_security_scope.py` | 4 | cross-workspace isolation |
+| Agent retention | `ai/tests/test_agent_retention.py` | 1 | 90d purge |
+| pgvector (PostgreSQL only) | `ai/tests/test_pgvector.py` | 3 | embed + vector search |
+| STT transcription | `integrations/tests/test_stt_transcription.py` | 3 | OpenRouter STT + fallback |
+| amoCRM sync | `integrations/tests/test_amocrm_sync.py` | 3 | CRM metrics + errors |
+| Source sync API | `integrations/tests/test_source_sync_api.py` | 1 | manual sync trigger |
 
 ### Web unit tests
 

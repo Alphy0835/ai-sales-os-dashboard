@@ -20,7 +20,7 @@ Maturity: L2
 | Multi-tenant | `tenant_id` column on rows | Active — filtered in **views/services**, not custom ORM managers |
 | Object storage | ~~S3-compatible~~ | **Not used by design** — audio not persisted; transcripts in PostgreSQL only |
 | AI / LLM | Adapter → **OpenRouter** (vendor-pluggable) | **Active** — `llm_adapter.py`; tenant/workspace keys in Admin; rule-based fallback without key |
-| Speech-to-text (ASR) | Pluggable STT adapter | **Deferred** — MVP demo text in `content_json`; transient audio on upload, not stored |
+| Speech-to-text (ASR) | OpenRouter STT (`stt_adapter`) | **Implemented** — transient audio on upload; demo fallback without API key |
 | **Not in MVP start** | FastAPI | Revisit STAGE-006+ if needed |
 
 ## Implementation notes

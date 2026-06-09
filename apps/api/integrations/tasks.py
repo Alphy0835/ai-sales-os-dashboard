@@ -2,7 +2,7 @@ from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
 
-from integrations.models import ConversationRecording, IntegrationSource, MetricSnapshot, Transcription
+from integrations.models import ConversationRecording, IntegrationSource, Transcription
 
 
 @shared_task(name="integrations.sync_source")
@@ -15,6 +15,16 @@ def sync_integration_source(source_id: str):
 
     run_source_sync(source)
     return {"source_id": source_id, "synced": True}
+
+
+@shared_task(name="integrations.sync_all_sources")
+def sync_all_sources() -> dict:
+    source_ids = list(
+        IntegrationSource.objects.filter(is_enabled=True).values_list("id", flat=True)
+    )
+    for source_id in source_ids:
+        sync_integration_source.delay(str(source_id))
+    return {"queued": len(source_ids)}
 
 
 def _demo_transcript(recording: ConversationRecording) -> tuple[str, dict]:
@@ -31,6 +41,25 @@ def _demo_transcript(recording: ConversationRecording) -> tuple[str, dict]:
     return text, content_json
 
 
+def _transcribe_recording(recording: ConversationRecording) -> tuple[str, dict]:
+    from ai.services.credentials import llm_available, resolve_ai_config
+    from integrations.services.stt_adapter import SttAdapterError, transcribe_audio
+
+    if recording.audio_file:
+        config = resolve_ai_config(recording.employee)
+        if llm_available(config):
+            try:
+                return transcribe_audio(
+                    file_path=recording.audio_file.path,
+                    config=config,
+                    language="ru",
+                )
+            except SttAdapterError:
+                pass
+
+    return _demo_transcript(recording)
+
+
 @shared_task(name="integrations.transcribe_recording")
 def transcribe_recording_task(recording_id: str):
     recording = ConversationRecording.objects.select_related("employee", "transcription").get(id=recording_id)
@@ -42,7 +71,7 @@ def transcribe_recording_task(recording_id: str):
     recording.save(update_fields=["status"])
 
     try:
-        text, content_json = _demo_transcript(recording)
+        text, content_json = _transcribe_recording(recording)
         transcription.text = text
         transcription.content_json = content_json
         transcription.status = Transcription.Status.COMPLETED
@@ -51,7 +80,7 @@ def transcribe_recording_task(recording_id: str):
         transcription.save()
 
         if recording.audio_file:
-            recording.audio_file.delete(save=False)
+            recording.audio_file.delete(save=True)
 
         recording.status = ConversationRecording.Status.READY
         recording.save(update_fields=["status"])

@@ -13,7 +13,7 @@ DEMO_METRICS = {
 }
 
 
-def run_source_sync(source: IntegrationSource):
+def _run_demo_sync(source: IntegrationSource):
     today = timezone.localdate()
     employees = User.objects.filter(
         tenant_id=source.tenant_id,
@@ -47,3 +47,16 @@ def run_source_sync(source: IntegrationSource):
     source.last_sync_at = timezone.now()
     source.last_error = ""
     source.save(update_fields=["last_sync_at", "last_error"])
+
+
+def run_source_sync(source: IntegrationSource):
+    if (
+        source.source_type == IntegrationSource.SourceType.CRM
+        and source.credentials_encrypted
+    ):
+        from integrations.services.crm_adapter import run_crm_sync
+
+        run_crm_sync(source)
+        return
+
+    _run_demo_sync(source)

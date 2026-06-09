@@ -38,6 +38,14 @@ class IntegrationSource(models.Model):
     is_enabled = models.BooleanField(default=True)
     last_sync_at = models.DateTimeField(null=True, blank=True)
     last_error = models.TextField(blank=True, default="")
+    external_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="External account id (e.g. amoCRM subdomain)",
+    )
+    credentials_encrypted = models.TextField(blank=True, default="")
+    config_json = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

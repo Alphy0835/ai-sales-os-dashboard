@@ -52,6 +52,7 @@ Implementation: `accounts/cookies.py`, `accounts/authentication.py` (`CookieJWTA
 | API-INT-005 | GET | `/integrations/recordings/{id}/` | Recording detail | yes (dashboard view) | FEAT-002 |
 | API-INT-006 | GET | `/integrations/recordings/{id}/transcription/` | Transcription text | yes (dashboard view) | FEAT-002 |
 | API-INT-007 | POST | `/integrations/recordings/{id}/transcription/` | Queue (re)transcription | yes (dashboard view) | FEAT-002 |
+| API-INT-008 | POST | `/integrations/sources/{id}/sync/` | Queue manual CRM/sync | yes (settings edit) | FEAT-002 |
 | API-MGR-001 | GET | `/manager/dashboard/` | Manager dashboard aggregate | yes (manager, dashboard view) | FEAT-003 |
 | API-MGR-002 | GET | `/manager/clients/` | Clients to review | yes (manager, `clients: view` OR `dashboard: view`) | FEAT-003 |
 | API-EMP-001 | GET | `/employee/dashboard/` | Employee personal metrics | yes (employee, dashboard view) | FEAT-003 |

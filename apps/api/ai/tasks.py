@@ -1,6 +1,7 @@
 import logging
 
 from celery import shared_task
+from django.conf import settings
 from django.db import connection
 
 from ai.models import KnowledgeArticle
@@ -46,3 +47,17 @@ def embed_knowledge_article(article_id: str) -> None:
     article.embedding = vectors[0]
     article.content_hash = content_hash
     article.save(update_fields=["embedding", "content_hash", "updated_at"])
+
+
+@shared_task(name="ai.purge_expired_agent_chats")
+def purge_expired_agent_chats() -> dict:
+    from django.utils import timezone
+
+    from ai.models import AgentChatSession
+
+    retention_days = getattr(settings, "AGENT_CHAT_RETENTION_DAYS", 90)
+    cutoff = timezone.now() - timezone.timedelta(days=retention_days)
+    qs = AgentChatSession.objects.filter(updated_at__lt=cutoff)
+    count = qs.count()
+    qs.delete()
+    return {"deleted": count, "retention_days": retention_days}

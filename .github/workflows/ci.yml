@@ -35,6 +35,49 @@ jobs:
       - name: Run tests
         run: python manage.py test
 
+  api-postgres:
+    name: API tests (PostgreSQL)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: ai_sales_os_test
+          POSTGRES_USER: ai_sales_os
+          POSTGRES_PASSWORD: ai_sales_os_local
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ai_sales_os -d ai_sales_os_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      CELERY_TASK_ALWAYS_EAGER: "true"
+      DJANGO_SECRET_KEY: "ci-test-django-secret-key-32chars-minimum"
+      DATABASE_URL: postgres://ai_sales_os:ai_sales_os_local@localhost:5432/ai_sales_os_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.lock.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.lock.txt
+
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Run tests
+        run: python manage.py test
+
   web:
     name: Web build
     runs-on: ubuntu-latest

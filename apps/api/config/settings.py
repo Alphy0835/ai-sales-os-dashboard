@@ -205,6 +205,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "integrations.purge_expired_transcripts",
         "schedule": crontab(hour=3, minute=0),
     },
+    "purge-expired-agent-chats": {
+        "task": "ai.purge_expired_agent_chats",
+        "schedule": crontab(hour=4, minute=0),
+    },
+    "sync-all-integration-sources": {
+        "task": "integrations.sync_all_sources",
+        "schedule": crontab(hour=1, minute=0),
+    },
 }
 
 # AI / LLM (OpenRouter-compatible by default)
@@ -221,6 +229,10 @@ if IS_PRODUCTION and not TESTING and not AI_CREDENTIALS_KEY:
     )
 
 TRANSCRIPT_RETENTION_DAYS = int(os.environ.get("TRANSCRIPT_RETENTION_DAYS", "90"))
+AGENT_CHAT_RETENTION_DAYS = int(os.environ.get("AGENT_CHAT_RETENTION_DAYS", "90"))
+
+# Speech-to-text (OpenRouter-compatible)
+STT_MODEL = os.environ.get("STT_MODEL", "openai/whisper-1")
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 DJANGO_LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "INFO")

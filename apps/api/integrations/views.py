@@ -17,13 +17,19 @@ from integrations.serializers import (
 )
 from integrations.services.aggregation import build_metrics_summary
 from integrations.services.scope import can_access_recording, recordings_queryset
-from integrations.tasks import transcribe_recording_task
+from integrations.tasks import sync_integration_source, transcribe_recording_task
 
 
 def require_dashboard_view(user):
     perms = get_user_permissions(user)
     if perms.get(ModulePermission.Module.DASHBOARD) == ModulePermission.Level.NONE:
         raise PermissionDenied("Dashboard view permission required")
+
+
+def require_settings_edit(user):
+    perms = get_user_permissions(user)
+    if perms.get(ModulePermission.Module.SETTINGS) != ModulePermission.Level.EDIT:
+        raise PermissionDenied("Settings edit permission required")
 
 
 class IntegrationSourceListView(APIView):
@@ -39,6 +45,27 @@ class IntegrationSourceListView(APIView):
 
             qs = qs.filter(Q(workspace_id__in=workspace_ids) | Q(workspace__isnull=True))
         return Response(IntegrationSourceSerializer(qs, many=True).data)
+
+
+class IntegrationSourceSyncView(APIView):
+    def post(self, request, source_id):
+        require_settings_edit(request.user)
+        from django.db.models import Q
+
+        workspace_ids = get_scoped_workspace_ids(request.user)
+        qs = IntegrationSource.objects.filter(
+            tenant_id=request.user.tenant_id,
+            is_enabled=True,
+        )
+        if request.user.role == User.Role.MANAGER and workspace_ids:
+            qs = qs.filter(Q(workspace_id__in=workspace_ids) | Q(workspace__isnull=True))
+        try:
+            source = qs.get(id=source_id)
+        except IntegrationSource.DoesNotExist:
+            raise NotFound("Integration source not found")
+
+        sync_integration_source.delay(str(source.id))
+        return Response({"status": "queued", "source_id": str(source.id)})
 
 
 class MetricsSummaryView(APIView):
@@ -86,6 +113,8 @@ class RecordingListCreateView(APIView):
             duration_seconds=serializer.validated_data.get("duration_seconds") or 0,
             status=ConversationRecording.Status.UPLOADED,
         )
+        if audio_file is not None:
+            recording.audio_file.save(audio_file.name, audio_file, save=True)
         Transcription.objects.create(
             recording=recording,
             status=Transcription.Status.PENDING,

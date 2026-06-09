@@ -49,7 +49,7 @@ Pre-release checklist for AI Sales OS. Use before production deploys and when sh
 - [x] **Safe query param parsing** — audit `limit` fallback 50 (S6)
 - [x] **Agent invalid session → 404** — not 500 (S5)
 - [x] **OpenRouter keys documented** — [integrations.md](../architecture/integrations.md), Admin-only
-- [ ] **Production STT provider** — ASR deferred; demo transcript in `content_json`
+- [x] **Production STT provider** — OpenRouter via `stt_adapter`; demo fallback without key
 
 ## Production Config
 
