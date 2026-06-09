@@ -34,6 +34,15 @@ Services defined in [`docker-compose.yml`](../../docker-compose.yml):
 
 ### Quick start
 
+**Launchers** (OS detection + optional Docker install assist):
+
+| OS | Entry point |
+|---|---|
+| Windows | `start-dev.bat` or `.\start-dev.ps1` |
+| macOS / Linux | `./start-dev.sh` |
+
+Without Docker, launchers fall back to **LOCAL mode** (SQLite, eager Celery). With Docker: `postgres` + `redis` containers only; API/web run on the host.
+
 ```bash
 cp .env.example .env
 docker compose up --build

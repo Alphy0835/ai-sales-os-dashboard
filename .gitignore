@@ -46,4 +46,5 @@ npm-debug.log*
 # Temp
 tmp/
 temp/
+.dev-logs/
 *.zip

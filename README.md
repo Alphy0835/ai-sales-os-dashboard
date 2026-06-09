@@ -11,6 +11,49 @@ Product docs: [`docs/`](docs/) · Stack: [`docs/architecture/stack.md`](docs/arc
 
 ## Quick start (local)
 
+**One command:**
+
+| OS | Command |
+|---|---|
+| Windows | Double-click **`start-dev.bat`** or `.\start-dev.ps1` |
+| macOS / Linux | `./start-dev.sh` (chmod +x once) |
+
+If Docker is not installed, the launcher detects your OS and offers:
+
+- **[I]** auto-install (Windows: `winget`, macOS: `brew`)
+- **[D]** open download page
+- **[R]** retry after starting Docker Desktop
+- **[L]** continue in **LOCAL mode** (SQLite, no Postgres/Redis)
+
+```powershell
+# Windows options
+.\start-dev.ps1 -InstallDocker     # try winget install without menu
+.\start-dev.ps1 -NonInteractive    # skip menu, LOCAL if no Docker
+.\start-dev.ps1 -RequireDocker     # fail unless Docker is ready
+.\start-dev.ps1 -RunTests          # same as test.bat
+.\start-dev.ps1 -DockerAll         # full stack in Docker (no local Python/Node)
+```
+
+```bash
+# macOS / Linux options
+./start-dev.sh --install-docker
+./start-dev.sh --non-interactive
+./start-dev.sh --run-tests
+./start-dev.sh --docker-all
+```
+
+Starts Postgres + Redis when Docker is available; otherwise SQLite. Migrates, seeds demo data, opens API + Celery + Next.js.
+
+| File | Action |
+|---|---|
+| `start-dev.bat` / `start-dev.ps1` | Windows full local stack |
+| `start-dev.sh` | macOS / Linux full local stack |
+| `test.bat` | API tests only (`-RunTests`, works without Docker) |
+| `scripts/docker-setup.ps1` | Docker detect + install assist (Windows) |
+| `scripts/docker-setup.sh` | Docker detect + install assist (Unix) |
+
+Manual steps (if needed):
+
 ```bash
 cp .env.example .env
 
