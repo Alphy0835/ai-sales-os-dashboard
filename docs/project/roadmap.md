@@ -18,7 +18,7 @@ Maturity: L1
 
 | Stage ID | Name | Status | Linked Requirements | MVP |
 |---|---|---|---|---|
-| STAGE-001 | Access & Permissions | planned | REQ-013, REQ-014, REQ-NFR-001, REQ-NFR-004 | yes |
+| STAGE-001 | Access & Permissions | **in progress** | REQ-013, REQ-014, REQ-NFR-001, REQ-NFR-004 | yes |
 | STAGE-002 | Data Integration | planned | REQ-015, REQ-016, REQ-NFR-002, REQ-NFR-003 | yes |
 | STAGE-003 | Manager Dashboard | planned | REQ-001, REQ-002, REQ-003, REQ-004 | yes |
 | STAGE-004 | Review Cycle | planned | REQ-005, REQ-006 | yes |
@@ -30,7 +30,7 @@ Maturity: L1
 
 ## Stage: STAGE-001 — Access & Permissions
 
-**Status:** planned
+**Status:** in progress
 
 **Goal:** обеспечить авторизацию User Level, иерархию руководителей, делегирование прав и изоляцию данных по scope.
 
@@ -38,11 +38,16 @@ Maturity: L1
 
 **Linked features:** FEAT-001
 
-**Linked security checks:** `docs/security/security-checklist.md` — Auth / Access; `docs/security/auth-and-access-control.md`; `docs/security/audit-logging.md`
+**Linked docs:** `docs/architecture/api-contracts.md` (API-AUTH-*), `docs/architecture/data-model.md`, `docs/security/auth-and-access-control.md`
+
+**Linked security checks:** `docs/security/security-checklist.md` — Auth / Access; `docs/security/audit-logging.md`
 
 **Linked QA:** QA-AC-013, QA-AC-014, QA-AC-NFR-001, QA-AC-NFR-004
 
-**Release/rollback docs:** `docs/operations/deployment.md`, `docs/operations/rollback.md`
+**Implementation (code):**
+- `apps/api/accounts/` — Tenant, User, ModulePermission, JWT
+- `apps/web/src/app/login/` — PAGE-001
+- `apps/web/src/components/ProtectedShell.tsx` — manager/employee shells (stub pages)
 
 **Done when:**
 - Руководитель и сотрудник входят в User Level с разными наборами модулей.
@@ -50,7 +55,9 @@ Maturity: L1
 - Данные изолированы по scope; попытка доступа вне scope отклоняется.
 - QA-AC этапа в статусе passed.
 
-**Implementation doc:** — *(создаётся после завершения: `roadmap-access-permissions.md`)*
+**Remaining for STAGE-001:** hierarchy scope, permission grant API, ceiling rule enforcement, audit, QA sign-off.
+
+**Implementation doc:** — *(после done: `roadmap-access-permissions.md`)*
 
 ---
 

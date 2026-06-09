@@ -1,36 +1,58 @@
-Doc ID:
-Status: draft / active / deprecated
-Source of truth: yes / no
-Owner:
-Related docs:
-Update together with:
-Update trigger:
-Review required:
-Maturity:
-## Docs
-Папка docs содержит в себе полный пакет документации и инструкций по реализации проекта.
-Структура папки:
-— backend — документация по backend-структуре проекта: модули, сервисы, API handlers, data access, интеграции, фоновые задачи, ошибки и observability
-— frontend — документация по frontend-структуре проекта: страницы, routes, компоненты, state management, API usage, формы, auth states, loading/empty/error states и accessibility
-— features — документация по структуре и реализации фичей проекта
-— marketing — документация по рынку и продвижению: ICP, боли, value proposition, позиционирование, конкуренты и каналы привлечения
-— project — документация по структурной части проекта, содержит в себе полное описание визуальной части проекта (папка design-guide), требования к реализации системы (product-requirements.md), роадмап (roadmap.md), терминологию (terminology.md), принцип использования (user-flow.md), пользователи и их роли(user-roles.md) 
-— architecture — документация по структуре и реализации архитектурных решений, описывает принципы и правила работы всех взаимодействий и внутренних систем
-— operations — документация по процессу разработки: принципы бекапов, мониторингу ошибок, проверки систем, откатов и т.д.
-— quality — документация по принципу атотестинга и реакции на баги
-— security — документация по структуре и реализации системы безопасности проекта, хранение данных, потенциальные угроз и утечки, правила работы с ними и общая концепция безопасности
-— product — продуктовая документация: гипотезы, валидация, метрики, аналитика, pricing, launch readiness и обратная связь пользователей
-— support — документация поддержки пользователей: runbook, типовые проблемы, правила escalation и передача сложных обращений в product/engineering/security/operations
-— legal — юридическая готовность продукта: terms, privacy, cookies, refund policy, DPA, правила удаления данных и требования для публичного/B2B-запуска
+Doc ID: DOCS-INDEX-001
+Status: active
+Source of truth: yes
+Owner: product
+Related docs: docs/sync-checklist.md, docs/maturity-levels.md, docs/work-rules-docs.md
+Update together with: sync-checklist.md, work-rules-docs.md
+Update trigger: новый раздел docs, monorepo layout или architecture baseline
+Review required: product
+Maturity: L2
 
+# Docs — Index
 
-В каждой папке структуры есть свой work-rules-*.md файл — правила структуры, наполнения, принцип работы с ней. Это README файлы с которых стоит начинать изучение конкретной структуры. 
-Правила работы с файлами:
-— Doc ID должен быть стабильным и не меняться без причины.
-— Related docs содержит документы, которые связаны по смыслу.
-— Update together with содержит документы, которые нужно проверять при изменении текущего файла.
-— Update trigger описывает события, при которых документ нужно обновить.
-— Review required указывает зоны, которые должны проверить изменение: product, backend, frontend, security, QA, operations, design.
-— История изменений не ведется вручную в паспорте, для этого используется git.
-— Перед завершением редактирования документа нужно свериться с docs/sync-checklist.md.
-<!-- Папка может содержать в себе не все элементы описанные сейчас, а так же может иметь и дополнения и расширения в зафисимости от специфики проекта -->
+Пакет документации AI Sales OS. Код: monorepo в корне репозитория (`apps/api`, `apps/web`).
+
+## Quick Links
+
+| Задача | Документ |
+|---|---|
+| Идея продукта | [project-idea.md](../project-idea.md) |
+| Требования | [product-requirements.md](project/product-requirements.md) |
+| Roadmap | [project/roadmap.md](project/roadmap.md) |
+| **Стек и архитектура** | [architecture/stack.md](architecture/stack.md) → [system-overview.md](architecture/system-overview.md) |
+| API контракты | [architecture/api-contracts.md](architecture/api-contracts.md) |
+| Модель данных | [architecture/data-model.md](architecture/data-model.md) |
+| Backend | [backend/backend-docs.md](backend/backend-docs.md) |
+| Frontend / routes | [frontend/frontend-docs.md](frontend/frontend-docs.md) |
+| Design / preview | [project/design-guide/pages-map.md](project/design-guide/pages-map.md) |
+| Локальный запуск | [operations/environments.md](operations/environments.md) |
+| Синхронизация docs | [sync-checklist.md](sync-checklist.md) |
+
+## Структура папки
+
+| Папка | Назначение |
+|---|---|
+| `architecture/` | stack, system-overview, ADR, api-contracts, data-model, integrations |
+| `backend/` | Django apps, handlers, Celery |
+| `frontend/` | Next.js routes, components, API usage |
+| `features/` | FEAT-001 … FEAT-007 по roadmap |
+| `project/` | PRD, roadmap, user-flow, roles, design-guide |
+| `security/` | auth, data classification, audit |
+| `operations/` | environments, deployment, monitoring |
+| `quality/` | acceptance criteria, DoD, release |
+| `marketing/`, `product/`, `legal/`, `support/` | go-to-market и compliance (шаблоны) |
+
+## Monorepo (код)
+
+| Path | Stack |
+|---|---|
+| `apps/api/` | Django 5 + DRF + Celery |
+| `apps/web/` | Next.js 15 + Tailwind |
+
+См. [README.md](../README.md) в корне репозитория.
+
+## Правила работы с файлами
+
+- Doc ID стабилен; история — в git.
+- Source of truth для API — `api-contracts.md`; для данных — `data-model.md`.
+- Перед завершением правок — [sync-checklist.md](sync-checklist.md).

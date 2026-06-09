@@ -1,102 +1,99 @@
-Doc ID:
-Status: draft / active / deprecated
-Source of truth: yes / no
-Owner:
-Related docs:
-Update together with:
-Update trigger:
-Review required:
-Maturity:
-
-<!-- backend-docs.md — общий индекс backend-структуры проекта. Файл описывает модули, сервисы, API handlers, работу с данными, интеграции, фоновые задачи, ошибки, логи и связи с architecture/security/operations. Не дублируем детальные API и data model, а ссылаемся на api-contracts.md и data-model.md. -->
+Doc ID: BACKEND-DOCS-001
+Status: active
+Source of truth: yes
+Owner: backend
+Related docs: docs/architecture/system-overview.md, docs/architecture/api-contracts.md, docs/architecture/data-model.md, docs/project/roadmap.md, docs/features/*
+Update together with: api-contracts.md, data-model.md, system-overview.md
+Update trigger: новый Django app, модуль, handler или изменение границ backend
+Review required: backend, security
+Maturity: L2
 
 # Backend Docs
 
 ## Purpose
 
-<!-- Кратко: за что отвечает backend в продукте, какие бизнес-процессы обслуживает, какие границы ответственности имеет. -->
+Django monolith (`apps/api`) — REST API для User Level UI, фоновые задачи (Celery), Django Admin для Integration Level. Не отдаёт HTML для пользовательских экранов.
+
+> Stack: [system-overview.md](../architecture/system-overview.md) · Контракты: [api-contracts.md](../architecture/api-contracts.md)
 
 ## Backend Scope
 
 | Area | Included | Notes | Related Docs |
 |---|---|---|---|
-| API | yes / no | REST / GraphQL / RPC / webhooks | docs/architecture/api-contracts.md |
-| Auth | yes / no | login, sessions, roles, permissions | docs/security/auth-and-access-control.md |
-| Data access | yes / no | database, repositories, ORM | docs/architecture/data-model.md |
-| Integrations | yes / no | payments, email, AI API, CRM, storage | docs/architecture/integrations.md |
-| Background jobs | yes / no | queues, cron, async workers |  |
-| Admin actions | yes / no | internal tools, moderation, support actions | docs/security/audit-logging.md |
+| API | yes | REST `/api/v1/*`, DRF | api-contracts.md |
+| Auth | yes | JWT + custom User model | security/auth-and-access-control.md |
+| Data access | yes | Django ORM, migrations | data-model.md |
+| Integrations | planned | Adapters + Celery | integrations.md |
+| Background jobs | yes | Celery + Redis | STAGE-002+ |
+| Admin actions | yes | Django Admin | Integration Level |
+
+## Repository Layout
+
+```
+apps/api/
+├── config/           # settings, urls, celery, wsgi
+├── core/             # health, middleware, base models
+├── accounts/         # STAGE-001: tenant, user, permissions
+├── manage.py
+└── requirements.txt
+```
+
+Planned apps (by roadmap): `integrations`, `analytics`, `reviews`, `ai`.
 
 ## Modules / Services
 
-| Module / Service | Responsibility | Main Data | Related API | Related Features |
+| Django app | Responsibility | Main entities | Roadmap | Feature |
 |---|---|---|---|---|
-|  |  |  | API-... | FEAT-... |
+| `core` | Tenant middleware, health, timestamps | — | STAGE-001 | — |
+| `accounts` | Auth, RBAC, scope, ceiling rule | Tenant, Workspace, User, ModulePermission | STAGE-001 | FEAT-001 |
+| `integrations` | CRM/telephony sync, webhooks | IntegrationConfig, SyncJob | STAGE-002 | FEAT-002 |
+| `analytics` | KPI aggregates, dashboard API | MetricSnapshot | STAGE-003 | FEAT-003 |
+| `reviews` | Reviews, tasks | Review, Task | STAGE-004 | FEAT-004 |
+| `ai` | RAG, agents, custom reports | KnowledgeChunk, ChatSession | STAGE-005–006 | FEAT-005–007 |
 
-## API Handlers
+## API Handlers (map)
 
-<!-- Не описывать все контракты заново. Здесь только карта backend handlers и ссылки на api-contracts.md. -->
-
-| Handler / Route Group | Purpose | Auth Required | Related API Contract |
+| Route group | App | Auth | Contract doc |
 |---|---|---|---|
-|  |  | yes / no | API-... |
+| `/api/v1/auth/*` | accounts | public / JWT | API-AUTH-* |
+| `/api/v1/health/` | core | public | API-HEALTH-001 |
+| `/api/v1/manager/*` | analytics, reviews, … | JWT + manager role | TBD per stage |
+| `/api/v1/employee/*` | analytics, reviews, … | JWT + employee role | TBD per stage |
+| `/admin/` | Django Admin | session | Integration Level |
+
+OpenAPI: `/api/schema/` (drf-spectacular).
 
 ## Data Access
 
-<!-- Как backend работает с данными: repositories, ORM, migrations, transactions, validation. Детали сущностей в data-model.md. -->
+| Data area | Storage | Pattern |
+|---|---|---|
+| Tenants, users, permissions | PostgreSQL | ORM; all queries filtered by `tenant_id` |
+| KPI, reviews | PostgreSQL | ORM + Celery aggregation |
+| Recordings | S3 + PostgreSQL metadata | Upload → task |
+| Embeddings | PostgreSQL pgvector | STAGE-006 |
 
-| Data Area | Storage | Access Pattern | Related Data Model |
-|---|---|---|---|
-|  |  |  |  |
+## Background Jobs (Celery)
 
-## Validation Rules
+| Task | Trigger | Stage |
+|---|---|---|
+| `sync_crm_source` | schedule / manual | STAGE-002 |
+| `transcribe_recording` | upload webhook | STAGE-002 |
+| `embed_knowledge_chunk` | KB update | STAGE-006 |
 
-<!-- Где валидируются входные данные, какие ошибки возвращаются, что проверяется на backend независимо от frontend. -->
+## Local Development
 
-## Auth / Permissions
+```bash
+docker compose up -d postgres redis
+cd apps/api && pip install -r requirements.txt
+python manage.py migrate
+python manage.py seed_demo
+python manage.py runserver 0.0.0.0:8000
+celery -A config worker -l info
+```
 
-<!-- Кратко: какие backend-зоны требуют авторизации, где проверяются роли/permissions. Детали в auth-and-access-control.md. -->
-
-## Background Jobs
-
-| Job | Trigger | Purpose | Failure Handling | Related Docs |
-|---|---|---|---|---|
-|  | cron / event / manual |  | retry / alert / dead-letter |  |
-
-## Integrations
-
-<!-- Краткая карта интеграций backend. Детали ключей, лимитов и webhooks — в integrations.md и secrets-management.md. -->
-
-| Integration | Used For | Failure Behavior | Related Docs |
-|---|---|---|---|
-|  |  |  | docs/architecture/integrations.md |
-
-## Error Handling
-
-<!-- Общие правила ошибок: какие ошибки показываем клиенту, какие логируем, какие превращаются в alerts. -->
-
-## Logging / Observability
-
-<!-- Какие события логируются, какие метрики важны, что нельзя логировать. -->
-
-## Migrations
-
-<!-- Как создаются, запускаются и откатываются миграции. Ссылки на deployment.md и rollback.md. -->
-
-## Security Notes
-
-<!-- Backend-specific security: input validation, auth checks, rate limits, secrets, audit events. -->
+See [environments.md](../operations/environments.md).
 
 ## Related Docs
 
-- docs/architecture/system-overview.md
-- docs/architecture/api-contracts.md
-- docs/architecture/data-model.md
-- docs/architecture/integrations.md
-- docs/security/auth-and-access-control.md
-- docs/security/secrets-management.md
-- docs/security/audit-logging.md
-- docs/operations/deployment.md
-- docs/operations/rollback.md
-
-<!-- Файл может содержать в себе не все элементы описанные сейчас, а так же может иметь и дополнения и расширения в зафисимости от специфики проекта -->
+- [frontend-docs.md](../frontend/frontend-docs.md) — API consumer
+- [pages-map.md](../project/design-guide/pages-map.md) — screens driving endpoints

@@ -71,7 +71,7 @@ flowchart TB
 | PAGE-008 | Employee Dashboard | `/employee` | SHELL-EMPLOYEE | Сотрудник | dashboard: view | FLOW-006 | FEAT-004 | `PAGE-008-employee-dashboard.md` | `PAGE-008-employee-dashboard.html` |
 | PAGE-009 | AI Agent (Employee) | `/employee/agent` | SHELL-EMPLOYEE | Сотрудник | agent: use | FLOW-007 | FEAT-006 | `PAGE-009-ai-agent-employee.md` | `PAGE-009-ai-agent-employee.html` |
 
-Preview-файлы — в `design-system-preview/`. Routes черновые до `docs/frontend/frontend-docs.md`.
+Preview-файлы — в `design-system-preview/`. Routes: [frontend-docs.md](../../frontend/frontend-docs.md).
 
 ## Layout Shells
 

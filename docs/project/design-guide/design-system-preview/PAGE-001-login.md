@@ -1,12 +1,14 @@
 Doc ID: DESIGN-PREVIEW-PAGE-001
 Page ID: PAGE-001
 Shell: SHELL-AUTH
-Status: draft preview
-Related docs: ../pages-map.md, PAGE-001-login.html
+Status: implemented (apps/web)
+Related docs: ../pages-map.md, PAGE-001-login.html, ../../frontend/frontend-docs.md, ../../architecture/api-contracts.md
 
 # Login — PAGE-001
 
 Центрированная форма входа. Shell без sidebar.
+
+> Реализация: `apps/web/src/app/login/page.tsx` · API: `POST /api/v1/auth/login/`
 
 ## Zones
 

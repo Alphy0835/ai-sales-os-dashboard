@@ -280,7 +280,7 @@ Source of truth для требований User Level. Описывает, чт
 - **Integration Level:** установка системы, flow интегратора, техническая конфигурация окружений, системные логи и мониторинг стабильности.
 - Замена CRM, телефонии или систем отчётности.
 - Автоматическое назначение ролей без участия руководителя или интегратора (кроме описанного в `docs/project/user-roles.md`).
-- API-контракты и data model (следующий этап документации).
+- API-контракты STAGE-001 и data model auth — см. `docs/architecture/api-contracts.md`, `docs/architecture/data-model.md`.
 - Автоматическое проведение разборов, постановка задач и действия в CRM без участия пользователя.
 
 ## Success Criteria
@@ -303,5 +303,7 @@ User Level MVP считается достигнутым, когда:
 - `docs/project/roadmap.md` — этапы реализации (STAGE-...)
 - `docs/quality/acceptance-criteria.md` — проверяемые критерии приёмки (QA-AC-...)
 - `docs/features/*` — фичи (FEAT-001 … FEAT-007)
-- `docs/architecture/integrations.md` — внешние источники данных (TBD)
-- `docs/security/auth-and-access-control.md` — техническая реализация auth и permissions (TBD)
+- `docs/architecture/integrations.md` — внешние источники данных (STAGE-002, TBD)
+- `docs/architecture/api-contracts.md` — REST API (STAGE-001 auth active)
+- `docs/architecture/data-model.md` — сущности данных (STAGE-001 auth active)
+- `docs/security/auth-and-access-control.md` — JWT, tenant, module permissions (STAGE-001, in progress)
