@@ -43,8 +43,6 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-ai_sales_os}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_sales_os}
       REDIS_URL: redis://redis:6379/0
       DJANGO_DEBUG: "false"
-    ports:
-      - "${API_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,17 +78,39 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  beat:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    command: celery -A config beat -l info
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-ai_sales_os}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_sales_os}
+      REDIS_URL: redis://redis:6379/0
+      DJANGO_DEBUG: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   web:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
-    command: sh -c "npm run build && npm run start -- -H 0.0.0.0 -p 3000"
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+        API_BACKEND_URL: ${API_BACKEND_URL:-http://api:8000}
     env_file:
       - .env
     environment:
       NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ""
+      API_BACKEND_URL: http://api:8000
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
     depends_on:
       api:
         condition: service_started

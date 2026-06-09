@@ -164,23 +164,25 @@ Deploy blockers, doc sync, frontend UX, test gaps, ASR/integrations product work
 
 ## 7. Готовность к продакшену
 
-**Вердикт:** pilot/staging с ручным ops — **после P3-deploy blockers**. Unattended B2B SaaS — **рано**.
+**Вердикт:** pilot/staging с ручным ops — **после smoke на staging HTTPS**. Unattended B2B SaaS — **рано**.
 
 ### Готово
 
 Prod compose · prod settings · backups scripts · health/ready · rate limits · httpOnly JWT · CI · JSON logs.
 
-### Deploy blockers (P3-D0)
+### Deploy blockers (P3-D0) ✅ закрыт (2026-06-10)
 
-| # | Блокер |
-|---|---|
-| D1 | `docker-compose.prod.yml`: нет `API_BACKEND_URL=http://api:8000`, `NEXT_PUBLIC_API_URL=` |
-| D2 | `SECURE_SSL_REDIRECT` без `SECURE_PROXY_SSL_HEADER` → redirect loop за nginx/Caddy |
-| D3 | Docker healthcheck API может получить 301 на HTTP |
-| D4 | Celery Beat / cron для `purge_expired_transcripts` не настроен |
-| D5 | Backups — скрипты есть, cron/off-host вручную |
-| D6 | Reverse proxy + TLS + firewall (только 80/443) |
-| D7 | Web: `npm run build` на каждый start — не baked image |
+| # | Было | Статус |
+|---|---|---|
+| D1 | BFF env в prod compose | ✅ `API_BACKEND_URL`, пустой `NEXT_PUBLIC_API_URL` |
+| D2 | Redirect loop за proxy | ✅ `SECURE_PROXY_SSL_HEADER` + nginx/Caddy в deployment.md |
+| D3 | Healthcheck 301 | ✅ `SecureProxySecurityMiddleware` exempt health paths |
+| D4 | Retention purge schedule | ✅ Celery Beat 03:00 UTC |
+| D5 | Backup cron/off-host | ✅ restore drill + rsync в backup-and-restore.md |
+| D6 | Public exposure | ✅ api internal, web `127.0.0.1`, firewall docs |
+| D7 | Build on every start | ✅ multi-stage Dockerfile, `node server.js` |
+
+**Остаётся перед pilot:** smoke на staging HTTPS (login → dashboard → analytics).
 
 ### Продуктовые defer (осознанно)
 
@@ -202,8 +204,9 @@ LLM/STT — внешние (OpenRouter). Нагрузка: Postgres embeddings, 
 
 ```
 ✅ P0–P2 roadmap: закрыт (кроме ASR, integrations, Sentry)
-→ P3-D0: deploy blockers (7 пунктов) — перед VPS
-→ P3-D1: doc sync + frontend UX + tests
+✅ P3-D0: deploy blockers — закрыт (2026-06-10)
+→ P3-D1: doc sync + P3-D4 tests
+→ P3-D2/D3: backend + frontend UX
 → P4: ASR + real integrations
 → P5: Sentry, staging env, CSP, agent retention policy
 ```
@@ -212,4 +215,4 @@ LLM/STT — внешние (OpenRouter). Нагрузка: Postgres embeddings, 
 
 ## Резюме
 
-User Level MVP + P0/P1/P2 **реализованы и покрыты CI**. Остаётся: **deploy blockers на VPS**, **doc drift (auth)**, **frontend permission UX**, **test gaps (cookies, cross-tenant)**, **ASR/integrations** для реального продукта. Детальный план — `plan_0.md` (локально).
+User Level MVP + P0/P1/P2 + **P3-D0 deploy** реализованы. Остаётся: **staging smoke**, **doc drift (auth)**, **frontend permission UX**, **test gaps**, **ASR/integrations**. Детальный план — `plan_0.md` (локально).

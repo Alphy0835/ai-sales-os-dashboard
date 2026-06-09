@@ -1,3 +1,17 @@
+from django.middleware.security import SecurityMiddleware
+
+_HEALTH_PATH_PREFIXES = ("/api/v1/health",)
+
+
+class SecureProxySecurityMiddleware(SecurityMiddleware):
+    """SecurityMiddleware that skips SSL redirect for internal health probes."""
+
+    def process_request(self, request):
+        if any(request.path.startswith(prefix) for prefix in _HEALTH_PATH_PREFIXES):
+            return None
+        return super().process_request(request)
+
+
 class TenantMiddleware:
     """Attach tenant from authenticated user for downstream views."""
 

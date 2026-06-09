@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 
@@ -55,3 +55,12 @@ class HealthEndpointTests(TestCase):
         data = response.json()
         self.assertEqual(data["checks"]["celery"]["status"], "error")
         self.assertEqual(data["checks"]["celery"]["error"], "no workers responded")
+
+    @override_settings(SECURE_SSL_REDIRECT=True)
+    @patch("core.views.check_celery", return_value=(True, None))
+    @patch("core.views.check_redis", return_value=(True, None))
+    @patch("core.views.check_database", return_value=(True, None))
+    def test_readiness_returns_200_without_ssl_redirect(self, *_mocks):
+        response = self.client.get(reverse("health-ready"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ok")

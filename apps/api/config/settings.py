@@ -4,6 +4,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -66,7 +67,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "django.middleware.security.SecurityMiddleware",
+    "core.middleware.SecureProxySecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -133,6 +134,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 if USE_HTTPS_SETTINGS:
     SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SESSION_COOKIE_SECURE = True
@@ -198,6 +200,12 @@ CELERY_TASK_ALWAYS_EAGER = (
     TESTING or os.environ.get("CELERY_TASK_ALWAYS_EAGER", "false").lower() == "true"
 )
 CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_BEAT_SCHEDULE = {
+    "purge-expired-transcripts": {
+        "task": "integrations.purge_expired_transcripts",
+        "schedule": crontab(hour=3, minute=0),
+    },
+}
 
 # AI / LLM (OpenRouter-compatible by default)
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
