@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { login } from "@/lib/api";
+import { login, logout } from "@/lib/api";
 import { homeRouteForRole, saveSession } from "@/lib/auth";
 import { AmbientBackground } from "@/components/AppShell";
 
@@ -19,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await login(email, password);
-      saveSession(data.access, data.refresh, data.user);
+      saveSession(data.user);
       router.replace(homeRouteForRole(data.user.role));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка входа");

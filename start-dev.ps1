@@ -204,6 +204,7 @@ $dbLine = '$env:DATABASE_URL = ''' + (Escape-Sq $env:DATABASE_URL) + ''''
 $redisLine = '$env:REDIS_URL = ''' + (Escape-Sq $env:REDIS_URL) + ''''
 $corsLine = '$env:CORS_ALLOWED_ORIGINS = ''' + (Escape-Sq $env:CORS_ALLOWED_ORIGINS) + ''''
 $publicApiLine = '$env:NEXT_PUBLIC_API_URL = ''' + (Escape-Sq $env:NEXT_PUBLIC_API_URL) + ''''
+$backendApiLine = '$env:API_BACKEND_URL = ''' + (Escape-Sq ($(if ($env:API_BACKEND_URL) { $env:API_BACKEND_URL } else { 'http://localhost:8000' }))) + ''''
 $eagerLine = '$env:CELERY_TASK_ALWAYS_EAGER = ''true'''
 
 $apiScript = Join-Path $launcherDir "run-api.ps1"
@@ -237,6 +238,7 @@ if (-not $useLocalMode) {
 $webLines = @(
     "Set-Location '$WebDir'"
     $publicApiLine
+    $backendApiLine
     "Write-Host 'Next.js http://localhost:3000' -ForegroundColor Cyan"
     "npm run dev"
 )

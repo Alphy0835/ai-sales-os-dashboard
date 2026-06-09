@@ -1,8 +1,8 @@
-import { clearSession, getAccessToken, getRefreshToken, setAccessToken } from "./auth";
+import { clearSession } from "./auth";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-let refreshInFlight: Promise<string> | null = null;
+let refreshInFlight: Promise<void> | null = null;
 
 function redirectToLogin() {
   if (typeof window !== "undefined") {
@@ -10,24 +10,16 @@ function redirectToLogin() {
   }
 }
 
-export async function refreshAccessToken(): Promise<string> {
+export async function refreshAccessToken(): Promise<void> {
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = (async () => {
-    const refresh = getRefreshToken();
-    if (!refresh) throw new Error("No refresh token");
-
     const res = await fetch(`${API_URL}/api/v1/auth/refresh/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh }),
+      credentials: "include",
     });
 
     if (!res.ok) throw new Error("Refresh failed");
-
-    const data = (await res.json()) as { access: string };
-    setAccessToken(data.access);
-    return data.access;
   })().finally(() => {
     refreshInFlight = null;
   });
@@ -36,30 +28,27 @@ export async function refreshAccessToken(): Promise<string> {
 }
 
 export async function authFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const makeRequest = (accessToken: string) =>
+  const makeRequest = () =>
     fetch(`${API_URL}${path}`, {
+      credentials: "include",
       ...init,
       headers: {
-        Authorization: `Bearer ${accessToken}`,
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
         ...init?.headers,
       },
     });
 
-  let token = getAccessToken();
-  if (!token) throw new Error("Not authenticated");
-
-  let res = await makeRequest(token);
+  let res = await makeRequest();
 
   if (res.status === 401) {
     try {
-      token = await refreshAccessToken();
+      await refreshAccessToken();
     } catch {
       clearSession();
       redirectToLogin();
       throw new Error("Session expired");
     }
-    res = await makeRequest(token);
+    res = await makeRequest();
   }
 
   if (!res.ok) {
@@ -88,9 +77,9 @@ export type MeResponse = AuthUser & {
 };
 
 export type LoginResponse = {
-  access: string;
-  refresh: string;
   user: AuthUser;
+  access?: string;
+  refresh?: string;
 };
 
 async function parseJson<T>(res: Response): Promise<T> {
@@ -104,10 +93,18 @@ async function parseJson<T>(res: Response): Promise<T> {
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const res = await fetch(`${API_URL}/api/v1/auth/login/`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   return parseJson<LoginResponse>(res);
+}
+
+export async function logout(): Promise<void> {
+  await fetch(`${API_URL}/api/v1/auth/logout/`, {
+    method: "POST",
+    credentials: "include",
+  });
 }
 
 export async function fetchMe(): Promise<MeResponse> {

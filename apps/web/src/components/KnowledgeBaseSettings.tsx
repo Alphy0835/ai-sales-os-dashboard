@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { fetchMe } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth";
 import {
   createKnowledgeArticle,
   deleteKnowledgeArticle,
@@ -39,11 +38,7 @@ export function KnowledgeBaseSettingsView() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const token = getAccessToken();
-    const [list, me] = await Promise.all([
-      fetchKnowledgeArticles(),
-      token ? fetchMe() : Promise.resolve(null),
-    ]);
+    const [list, me] = await Promise.all([fetchKnowledgeArticles(), fetchMe()]);
     setArticles(list.results);
     setCanEdit(me?.permissions.settings === "edit");
     setLoading(false);

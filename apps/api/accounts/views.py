@@ -4,10 +4,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from accounts.cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
 from accounts.models import AuditLog, User
+from accounts.serializers_auth import CookieTokenRefreshSerializer
 from accounts.serializers import (
     AuditLogSerializer,
     KnowledgeGrantUpdateSerializer,
@@ -57,10 +61,27 @@ class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     throttle_classes = [LoginRateThrottle]
 
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        if response.status_code == 200 and isinstance(response.data, dict):
+            set_auth_cookies(response, response.data.get("access"), response.data.get("refresh"))
+        return response
+
 
 class RefreshView(TokenRefreshView):
     permission_classes = [AllowAny]
+    serializer_class = CookieTokenRefreshSerializer
     throttle_classes = [LoginRateThrottle]
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        if response.status_code == 200 and isinstance(response.data, dict):
+            set_auth_cookies(
+                response,
+                response.data.get("access"),
+                response.data.get("refresh"),
+            )
+        return response
 
 
 class MeView(APIView):
@@ -71,8 +92,20 @@ class MeView(APIView):
 
 
 class LogoutView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        refresh_token = request.COOKIES.get(REFRESH_COOKIE)
+        if not refresh_token and isinstance(request.data, dict):
+            refresh_token = request.data.get("refresh")
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except TokenError:
+                pass
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        clear_auth_cookies(response)
+        return response
 
 
 class ScopeView(APIView):

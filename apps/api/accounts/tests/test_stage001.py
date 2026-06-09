@@ -80,6 +80,23 @@ class Stage001TestCase(TestCase):
         token = response.data["access"]
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
+    def test_login_sets_cookies_and_cookie_auth(self):
+        response = self.client.post(
+            "/api/v1/auth/login/",
+            {"email": "regional@test.local", "password": "pass1234"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("access_token", response.cookies)
+        self.assertIn("refresh_token", response.cookies)
+
+        self.client.credentials()
+        self.client.cookies["access_token"] = response.cookies["access_token"].value
+        me = self.client.get("/api/v1/auth/me/")
+        self.assertEqual(me.status_code, status.HTTP_200_OK)
+        self.assertEqual(me.data["email"], "regional@test.local")
+
     def test_hierarchy_scope_isolation(self):
         regional_users = {u.email for u in get_accessible_users(self.regional)}
         self.assertIn("employee@test.local", regional_users)

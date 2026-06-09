@@ -221,6 +221,7 @@ fi
 (
   cd "$WEB_DIR"
   export NEXT_PUBLIC_API_URL
+  export API_BACKEND_URL="${API_BACKEND_URL:-http://localhost:8000}"
   nohup npm run dev >"$LOG_DIR/web.log" 2>&1 &
   echo $! >"$LOG_DIR/web.pid"
 )

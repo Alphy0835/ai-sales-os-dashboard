@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { fetchMe } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth";
 import { fetchManagerDashboard } from "@/lib/dashboard";
 import { fetchAnalyticsReports, fetchCustomReports, runAnalyticsReport, type AnalyticsReport, type CustomReport } from "@/lib/analytics-api";
 
@@ -31,12 +30,11 @@ export function AiAnalyticsView() {
     setLoading(true);
     setError(null);
     try {
-      const token = getAccessToken();
       const [dash, reports, custom, me] = await Promise.all([
         fetchManagerDashboard({ workspace_id: workspaceId || undefined }),
         fetchAnalyticsReports(),
         fetchCustomReports().catch(() => ({ count: 0, results: [] as CustomReport[] })),
-        token ? fetchMe() : Promise.resolve(null),
+        fetchMe(),
       ]);
       setWorkspaces(dash.filters.workspaces);
       setEmployees(dash.filters.employees);
@@ -159,7 +157,7 @@ export function AiAnalyticsView() {
         {error && <div className="text-error mb-3">{error}</div>}
 
         {report && report.status === "completed" && (
-          <div className="card card-pad mb-4">
+          <div className="card card-pad mb-4" data-testid="analytics-canvas">
             <div className="section-head mb-3">
               <h3>Канвас отчёта</h3>
               {report.canvas.overall_score != null && (

@@ -2,11 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { fetchMe } from "@/lib/api";
+import { fetchMe, logout as logoutApi } from "@/lib/api";
 import type { AuthUser } from "@/lib/api";
 import {
   clearSession,
-  getAccessToken,
   getStoredUser,
   homeRouteForRole,
   saveMeUser,
@@ -24,16 +23,12 @@ export function ProtectedShell({ allowedRole, children }: Props) {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    const token = getAccessToken();
     const stored = getStoredUser();
-    if (!token || !stored) {
-      router.replace("/login");
-      return;
-    }
-    if (stored.role !== allowedRole) {
+    if (stored && stored.role !== allowedRole) {
       router.replace(homeRouteForRole(stored.role));
       return;
     }
+
     fetchMe()
       .then((me) => {
         if (me.role !== allowedRole) {
@@ -58,9 +53,13 @@ export function ProtectedShell({ allowedRole, children }: Props) {
       });
   }, [allowedRole, router]);
 
-  const logout = () => {
-    clearSession();
-    router.replace("/login");
+  const logout = async () => {
+    try {
+      await logoutApi();
+    } finally {
+      clearSession();
+      router.replace("/login");
+    }
   };
 
   if (!ready || !user) {

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchMe } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth";
 import { fetchManagerDashboard } from "@/lib/dashboard";
 import { createReview, fetchManagerReviews, type ReviewRecord } from "@/lib/reviews";
 
@@ -46,7 +45,6 @@ export function ReviewHistoryView() {
     setLoading(true);
     setError(null);
     try {
-      const token = getAccessToken();
       const [dash, list, me] = await Promise.all([
         fetchManagerDashboard({
           workspace_id: workspaceId || undefined,
@@ -56,7 +54,7 @@ export function ReviewHistoryView() {
           workspace_id: workspaceId || undefined,
           employee_id: employeeId || undefined,
         }),
-        token ? fetchMe() : Promise.resolve(null),
+        fetchMe(),
       ]);
       setWorkspaces(dash.filters.workspaces);
       setEmployees(dash.filters.employees);

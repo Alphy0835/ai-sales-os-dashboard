@@ -1,7 +1,7 @@
 # Code Review — AI Sales OS
 
 Дата: 2026-06-09 · Объём: backend (Django 5 + DRF), frontend (Next.js 15), docs, инфраструктура
-Состояние: STAGE-001…007 реализованы, **P0 + P1 (частично) закрыты** (2026-06-09), **45** API-тестов, CI, `npm run build`.
+Состояние: STAGE-001…007 + **P0/P1/P2 закрыты** (2026-06-09), **51** API-тестов, **12** Vitest, Playwright E2E в CI.
 
 ---
 
@@ -21,7 +21,7 @@
 |---|---|---|---|
 | C1 | ~~Refresh-токен без flow обновления~~ — **исправлено**: центральный `authFetch` с refresh на 401 | `apps/web/src/lib/api.ts` | — |
 | C2 | `TenantMiddleware` ставит `request.tenant`, но views используют `user.tenant_id` напрямую — middleware фактически декоративный. `data-model.md` утверждает «enforced via middleware + custom managers», что не соответствует коду | `apps/api/core/middleware.py` | Средняя |
-| C3 | JWT в localStorage — уязвимо к XSS. Для MVP приемлемо, для прода нужен httpOnly cookie или хотя бы осознанное решение в threat-model (→ P2 п.18) | `apps/web/src/lib/auth.ts` | Средняя |
+| C3 | ~~JWT в localStorage~~ — **исправлено**: httpOnly cookies через Next.js BFF proxy + `CookieJWTAuthentication` | `apps/web/next.config.ts`, `accounts/cookies.py` | — |
 | C4 | ~~Нет rate limiting / throttling на `/auth/login/`~~ — **исправлено** (см. §1.1) | DRF settings | — |
 | C5 | ~~Незакоммичены изменения редизайна настроек~~ — **исправлено** | — | — |
 
@@ -125,25 +125,26 @@
 
 **Дополнительно:** retention 90d (`purge_expired_transcripts`), legal/data-retention docs.
 
-### P2 — наблюдаемость, качество, документация
+### P2 — наблюдаемость, качество, документация ✅ **закрыт** (2026-06-09)
 
-13. **Sentry** (API + web) + structured logging (JSON) + расширенный healthcheck (DB, Redis, Celery).
-14. **E2E-тесты** (Playwright): login → дашборд → разбор → AI-отчёт; unit-тесты фронта для критичных lib-модулей.
-15. **Заполнить security-доки**: threat-model (JWT в localStorage, XSS, мульти-тенант изоляция), security-checklist, incident-response.
-16. **Legal**: privacy policy / DPA — записи разговоров сотрудников и клиентов требуют правового основания обработки.
-17. **Синхронизировать stack.md и data-model.md** с фактическим состоянием (pgvector/S3/OpenAI → planned; tenant-фильтрация — на уровне views).
-18. **httpOnly cookies для JWT** (или зафиксировать решение об localStorage в threat-model с компенсирующими мерами CSP).
+13. ~~**JSON logging + healthcheck**~~ — `/health/ready/` (DB/Redis/Celery), JSON stdout logs; **Sentry пропущен** по решению.
+14. ~~**E2E + unit**~~ — Playwright `manager-critical-flow`, Vitest `auth.ts`/`api.ts`, CI job `e2e`.
+15. ~~**Security docs**~~ — `threat-model.md`, `security-checklist.md`, `incident-response.md`.
+16. ~~**Legal DPA**~~ — `data-processing-agreement.md` из privacy/retention notes.
+17. ~~**stack.md + data-model.md**~~ — синхронизированы с кодом.
+18. ~~**httpOnly JWT**~~ — BFF proxy + cookie auth + token blacklist logout.
 
 ### Рекомендуемый порядок
 
 ```
 ✅ Спринт 1 (P0): закрыт
 ✅ Спринт 2–3 (P1): LLM + pgvector + Access UI — закрыт; ASR + интеграции — отложены
-Спринт 4 (P2): пп. 13–18       → наблюдаемость, E2E, docs, legal
+✅ Спринт 4 (P2): закрыт (без Sentry)
+Следующее: ASR, реальные интеграции, Sentry (опционально)
 ```
 
 ---
 
 ## Резюме
 
-User Level MVP + **P1 (LLM, pgvector RAG, Access UI, retention)** реализованы. **ASR** и **реальные интеграции** — следующий этап. P2: Sentry, E2E, threat-model, DPA, stack.md sync.
+User Level MVP + **P0/P1/P2** реализованы. **ASR** и **реальные интеграции** — следующий этап. Опционально: Sentry, monitoring alerts automation.

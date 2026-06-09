@@ -22,6 +22,7 @@ OpenAPI: `/api/schema/` (drf-spectacular)
 | API ID | Method | Path | Purpose | Auth | Feature |
 |---|---|---|---|---|---|
 | API-HEALTH-001 | GET | `/health/` | Liveness | no | — |
+| API-HEALTH-002 | GET | `/health/ready/` | Readiness (DB, Redis, Celery) | no | — |
 | API-AUTH-001 | POST | `/auth/login/` | Login, issue JWT | no | FEAT-001 |
 | API-AUTH-002 | POST | `/auth/refresh/` | Refresh access token | refresh body | FEAT-001 |
 | API-AUTH-003 | GET | `/auth/me/` | Current user + permissions + scope | yes | FEAT-001 |
@@ -46,13 +47,51 @@ OpenAPI: `/api/schema/` (drf-spectacular)
 
 ---
 
-## API-HEALTH-001 — Health
+## API-HEALTH-001 — Liveness
+
+Public. Does not check dependencies — use for process-alive probes only.
 
 ### Response `200`
 
 ```json
 { "status": "ok", "service": "ai-sales-os-api" }
 ```
+
+---
+
+## API-HEALTH-002 — Readiness
+
+Public. Verifies database, Redis broker (`CELERY_BROKER_URL`), and Celery worker availability (`inspect().ping()`).
+
+### Response `200` — all checks pass
+
+```json
+{
+  "status": "ok",
+  "service": "ai-sales-os-api",
+  "checks": {
+    "database": { "status": "ok" },
+    "redis": { "status": "ok" },
+    "celery": { "status": "ok" }
+  }
+}
+```
+
+### Response `503` — one or more checks failed
+
+```json
+{
+  "status": "error",
+  "service": "ai-sales-os-api",
+  "checks": {
+    "database": { "status": "ok" },
+    "redis": { "status": "ok" },
+    "celery": { "status": "error", "error": "no workers responded" }
+  }
+}
+```
+
+Failed checks include an `error` string. Production Docker healthcheck targets this endpoint.
 
 ---
 

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { fetchMe } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth";
 import {
   createQualityCriterion,
   deleteQualityCriterion,
@@ -30,11 +29,7 @@ export function QualityCriteriaSettingsView() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const token = getAccessToken();
-      const [list, me] = await Promise.all([
-        fetchQualityCriteria(),
-        token ? fetchMe() : Promise.resolve(null),
-      ]);
+      const [list, me] = await Promise.all([fetchQualityCriteria(), fetchMe()]);
       setCriteria(list.results);
       setCanEdit(me?.permissions.settings === "edit");
     } catch (e) {

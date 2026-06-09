@@ -56,8 +56,8 @@ Implementation: `apps/api/accounts/services/scope.py`.
 ## Multi-tenant Isolation
 
 - Every tenant-scoped row has `tenant_id`.
-- `TenantMiddleware` attaches `request.tenant` from authenticated user.
-- Querysets MUST filter by user's tenant (see `apps/api/core`).
+- Querysets MUST filter by authenticated `user.tenant_id` in views/services — not via custom ORM managers.
+- `TenantMiddleware` attaches `request.tenant` from the user for downstream convenience; isolation is enforced in view/queryset code (see [data-model.md](../architecture/data-model.md)).
 
 ## Ceiling Rule (REQ-014)
 
@@ -67,11 +67,23 @@ Grantor cannot assign permission broader than their own per module. Enforced in 
 
 Permission changes and scope-denied attempts logged to `AuditLog`. See [audit-logging.md](audit-logging.md).
 
+## Rate Limiting
+
+| Endpoint | Throttle | Env | Implementation |
+|---|---|---|---|
+| `POST /auth/login/`, refresh | 10/min | `THROTTLE_LOGIN` | `LoginRateThrottle` in `accounts/views.py` |
+| Agent chat endpoints | 30/min | `THROTTLE_AGENT` | `AgentRateThrottle` in `ai/views.py` |
+
+Disabled when `TESTING=true`. See [security-checklist.md](security-checklist.md).
+
+## Knowledge Grants (PAGE-006)
+
+Per-user KB access overrides via `KnowledgeArticleGrant`. UI: PAGE-006 Access tab (modules, audit log, knowledge grants). API: `GET/PUT /api/v1/permissions/users/{id}/knowledge/` (API-PERM-004).
+
 ## Not Yet Implemented
 
 - Refresh token blacklist / server-side logout
-- Rate limiting on login
-- PAGE-006 settings UI (frontend)
+- httpOnly cookie auth (BFF) — see [threat-model.md](threat-model.md) T1
 
 ## Related Docs
 

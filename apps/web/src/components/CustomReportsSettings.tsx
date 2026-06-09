@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { fetchMe } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth";
 import {
   createCustomReport,
   deleteCustomReport,
@@ -19,11 +18,7 @@ export function CustomReportsSettingsView() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const token = getAccessToken();
-    const [list, me] = await Promise.all([
-      fetchCustomReports(),
-      token ? fetchMe() : Promise.resolve(null),
-    ]);
+    const [list, me] = await Promise.all([fetchCustomReports(), fetchMe()]);
     setReports(list.results);
     setCanEdit(me?.permissions.settings === "edit");
     setLoading(false);

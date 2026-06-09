@@ -56,3 +56,75 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Unit tests
+        run: npm run test:unit
+
+  e2e:
+    name: Web E2E
+    runs-on: ubuntu-latest
+    env:
+      CELERY_TASK_ALWAYS_EAGER: "true"
+      DJANGO_SECRET_KEY: "ci-test-django-secret-key-32chars-minimum"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.lock.txt
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: pip install -r requirements.lock.txt
+
+      - name: Prepare demo database
+        working-directory: apps/api
+        run: |
+          python manage.py migrate
+          python manage.py seed_demo
+          python manage.py seed_integrations
+          python manage.py seed_ai
+          python manage.py seed_dashboard
+
+      - name: Start API
+        working-directory: apps/api
+        run: |
+          python manage.py runserver 0.0.0.0:8000 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/health/ && break
+            sleep 2
+          done
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Build web
+        working-directory: apps/web
+        run: npm run build
+
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      - name: Start web and run E2E
+        working-directory: apps/web
+        env:
+          API_BACKEND_URL: http://127.0.0.1:8000
+        run: |
+          npm run start &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:3000/login && break
+            sleep 2
+          done
+          npm run test:e2e
