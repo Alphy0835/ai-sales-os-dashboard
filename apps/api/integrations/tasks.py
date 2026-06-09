@@ -27,6 +27,21 @@ def sync_all_sources() -> dict:
     return {"queued": len(source_ids)}
 
 
+@shared_task(name="integrations.trigger_tenant_crm_sync")
+def trigger_tenant_crm_sync(tenant_id: str) -> dict:
+    sources = IntegrationSource.objects.filter(
+        tenant_id=tenant_id,
+        is_enabled=True,
+        source_type=IntegrationSource.SourceType.CRM,
+        config_json__provider="google_sheets",
+    ).exclude(credentials_encrypted="")
+    queued = 0
+    for source in sources:
+        sync_integration_source.delay(str(source.id))
+        queued += 1
+    return {"tenant_id": tenant_id, "queued": queued}
+
+
 def _demo_transcript(recording: ConversationRecording) -> tuple[str, dict]:
     text = (
         f"[demo transcript] Разговор с {recording.client_name}. "

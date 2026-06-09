@@ -38,6 +38,7 @@ Implementation: `accounts/cookies.py`, `accounts/authentication.py` (`CookieJWTA
 | API-AUTH-002 | POST | `/auth/refresh/` | Refresh access token | refresh cookie (body fallback) | FEAT-001 |
 | API-AUTH-003 | GET | `/auth/me/` | Current user + permissions + scope | yes | FEAT-001 |
 | API-AUTH-004 | POST | `/auth/logout/` | Blacklist refresh + clear cookies | refresh cookie (body fallback) | FEAT-001 |
+| API-AUTH-005 | POST | `/auth/register/` | Register via invite token (P4b-GS) | no | FEAT-001 |
 | API-SCOPE-001 | GET | `/scope/` | Workspaces and users in scope | yes | FEAT-001 |
 | API-SCOPE-002 | GET | `/scope/users/{id}/` | Check user access in scope | yes | FEAT-001 |
 | API-PERM-001 | GET | `/permissions/users/` | List users in scope + permissions | yes (settings view/edit) | FEAT-001 |
@@ -160,12 +161,67 @@ Public.
 
 JSON `access` / `refresh` fields may be present for API clients; **browser clients use httpOnly cookies** and should not persist tokens in JS storage.
 
+### Behavior (P4b-GS)
+
+On `200`, queues async CRM sync for the user's tenant (Google Sheets → `CrmLead` cache). Response unchanged; sync is non-blocking.
+
 ### Errors
 
 | Code | Meaning | Client behavior |
 |---|---|---|
 | 400 | Validation error | Show field errors |
 | 401 | Invalid credentials | Show login error |
+
+---
+
+## API-AUTH-005 — Register (invite)
+
+### Purpose
+
+Create User Level account from `RegistrationInvite` (Google Sheets onboarding). Public endpoint; invite token proves eligibility.
+
+### Authorization
+
+Public. Requires valid `token` query param or body field matching unused, unexpired `RegistrationInvite`.
+
+### Request
+
+```json
+{
+  "token": "<invite_token>",
+  "password": "secure-password-min-8",
+  "full_name": "Иван Иванов"
+}
+```
+
+`email` is taken from the invite record (not client-supplied). Optional `full_name` overrides display name; default from invite metadata or email local-part.
+
+### Response `201`
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "employee@demo.local",
+    "full_name": "Иван Иванов",
+    "role": "employee",
+    "tenant_id": "uuid",
+    "workspace_id": "uuid"
+  }
+}
+```
+
+Does **not** set auth cookies — client redirects to login. After first `POST /auth/login/`, CRM sync links `CrmLead` rows by `employee_email`.
+
+### Errors
+
+| Code | Meaning | Client behavior |
+|---|---|---|
+| 400 | Weak password, validation | Show field errors |
+| 404 | Unknown token | Invalid invite link |
+| 410 | Expired or already used invite | Ask manager for new invite |
+
+Invite creation: Django Admin only (MVP). See [integrations.md](integrations.md) RegistrationInvite flow.
 
 ---
 
@@ -457,6 +513,30 @@ Requires `settings: view` (GET) or `settings: edit` (PUT). Target user must be i
 ```
 
 `completeness`: `full` | `partial` | `empty` — REQ-NFR-003.
+
+---
+
+## CrmLead fields reference (P4b-GS)
+
+Internal field names used in API responses for clients/leads sourced from Google Sheets cache. See [data-model.md](data-model.md) and [integrations.md](integrations.md) column mapping.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | UUID | CrmLead PK |
+| `client_name` | string | Client / company name |
+| `client_email` | string | Client email (optional) |
+| `phone` | string | Client phone |
+| `status` | string | Raw CRM status from sheet |
+| `deal_amount` | number | Deal value |
+| `deal_date` | date (ISO) | Deal or lead date |
+| `needs_review` | boolean | Flag for «Клиенты к разбору» |
+| `notes` | string | Free-text notes |
+| `employee_id` | UUID | Linked user (null until sync/login match) |
+| `employee_email` | string | Sheet column value |
+| `synced_at` | datetime (ISO) | Last sync timestamp |
+| `source_id` | UUID | IntegrationSource reference |
+
+Manager clients API (`GET /manager/clients/`) returns derived review candidates from `CrmLead` where `needs_review=true` or status in `status_review` config, scoped to manager hierarchy.
 
 ---
 

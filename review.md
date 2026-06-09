@@ -1,70 +1,52 @@
 # Code Review — AI Sales OS
 
-Дата: 2026-06-10 · **P4 закрыт**  
+Дата: 2026-06-10 · **P4b-GS закрыт**  
 Объём: backend (Django 5 + DRF), frontend (Next.js 15), docs, инфраструктура  
-Состояние: STAGE-001…007 + **P0–P4 закрыты**; CI на `master`.
+Состояние: STAGE-001…007 + **P0–P4 + P4b-GS**; CI на `master`.
 
-**Тесты:** **78** API (3 pgvector skipped on SQLite) · **21** Vitest · **2** Playwright E2E · lint · **api-postgres** CI job.
+**Тесты:** **87** API (3 pgvector skipped) · **23** Vitest · **2** Playwright E2E · lint · **api-postgres**.
 
-**План:** `plan_0.md` (локально) — P4 ✅; далее P5.
-
----
-
-## 1. Целостность проекта
-
-### Что хорошо
-
-- OpenRouter STT (`stt_adapter`) + transient audio; demo fallback без ключа.
-- amoCRM read-only sync → `MetricSnapshot`; demo fallback без credentials.
-- Agent chat retention 90d (`purge_expired_agent_chats` + Beat 04:00 UTC).
-- PostgreSQL/pgvector CI job + vector search tests.
-- **78** API + **21** Vitest + **2** E2E + lint в CI.
-
-### Продуктовые defer (P4b / P5)
-
-| # | Задача | Статус |
-|---|---|---|
-| — | Telephony webhook + real telephony metrics | P4b |
-| — | Reporting adapter | P4b |
-| — | Sentry, staging, CSP | P5 |
+**План:** `plan_0.md` (локально) — P4b-GS ✅; далее P4b telephony / P5.
 
 ---
 
-## 6. Roadmap — статус
+## CRM (P4b-GS)
 
-### P4 ✅ (2026-06-10)
-
-| # | Содержание |
+| Компонент | Реализация |
 |---|---|
-| P4-1 | OpenRouter STT, upload fix, transient audio |
-| P4-2 | amoCRM connector, credentials, Beat sync, manual sync API |
-| P4-3 | Agent chat 90d purge + legal docs |
-| P4-4 | api-postgres CI + pgvector tests |
+| Источник | **Google Sheets** (`provider: google_sheets` в Admin) |
+| Данные | `CrmLead` → очередь `ClientToReview` |
+| Sync | Beat 01:00 + **при login** + manual API |
+| Настройка | **Django Admin only** (без отдельного Integration UI) |
+| Регистрация | `RegistrationInvite` + `/register` + `POST /auth/register/` |
+| amoCRM | Код сохранён, **не pilot path** |
+
+### Колонки Google Sheet → Django
+
+`lead_id`, `client_name`, `phone`, `city`, `communication_comment`, `manager_email`, `supervisor_email`, `pipeline_stage`, `status_stage`, `recording_url` — шаблон в `docs/architecture/integrations.md`.
 
 ---
 
-## 7. Готовность к продакшену
+## Продуктовые defer
 
-**Вердикт:** **pilot-ready** (real CRM metrics + real STT + retention). Staging smoke — ручной шаг.
-
-### Перед pilot (ручное)
-
-- Smoke: login → dashboard → analytics на staging HTTPS
-- Настроить amoCRM token + subdomain в Django Admin
-- `OPENROUTER_API_KEY` для STT
+| # | Задача |
+|---|---|
+| P4b | Telephony webhook, reporting adapters |
+| P5 | Sentry, staging, CSP, custom Integration UI (только при масштабе) |
 
 ---
 
-## 8. Рекомендуемый порядок
+## Pilot checklist
 
-```
-✅ P0–P4: закрыт
-→ P4b: telephony webhook + reporting adapters
-→ P5: Sentry, staging env, CSP, marketing docs
-```
+1. Django Admin: Tenant, Workspace, `RegistrationInvite` (код для первого manager)
+2. `/register` — регистрация по коду
+3. Google Sheet + service account в `IntegrationSource`
+4. Share таблицы с service account email
+5. Сотрудники в системе с email = `manager_email` в таблице
+6. Login → sync → «Клиенты к разбору»
 
 ---
 
 ## Резюме
 
-User Level MVP + **P0–P4 полностью закрыты**. Продукт готов к pilot с amoCRM + OpenRouter STT. Следующий фокус — **P5** или **P4b** (telephony/reporting).
+Pilot CRM = **Google Sheets**, не amoCRM. Отдельный Admin UI **не строим** — Admin + runbook достаточно.

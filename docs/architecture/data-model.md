@@ -23,6 +23,8 @@ Maturity: L2
 | ManagerScope | Manager workspace scope | PostgreSQL | FEAT-001 | internal |
 | AuditLog | Permission changes, scope-denied, review-create events | PostgreSQL | FEAT-001, FEAT-004 | internal |
 | IntegrationSource | CRM/telephony/reporting connector | PostgreSQL | FEAT-002 | internal |
+| CrmLead | Cached CRM row from Google Sheet | PostgreSQL | FEAT-002, FEAT-003 | internal |
+| RegistrationInvite | One-time employee/manager signup token | PostgreSQL | FEAT-001 | internal |
 | MetricSnapshot | Daily metric values per source | PostgreSQL | FEAT-002 | internal |
 | ConversationRecording | Call/meeting metadata (no audio file) | PostgreSQL | FEAT-002 | confidential |
 | Transcription | Speech-to-text for AI analytics | PostgreSQL | FEAT-002 | confidential |
@@ -189,14 +191,103 @@ Default sets created on user seed / invite. Maps to API `/auth/me/` `permissions
 
 ## Entity: IntegrationSource
 
-Connector status per tenant/workspace. Configuration secrets — Integration Level (not stored in User Level API).
+Connector status per tenant/workspace. Configuration secrets — Integration Level (Django Admin only; no User Level Integration UI).
 
 | Field | Type | Description |
 |---|---|---|
 | source_type | enum | `crm` \| `telephony` \| `reporting` |
 | status | enum | `connected` \| `degraded` \| `disconnected` \| `error` |
+| external_id | string | Spreadsheet ID (Google Sheets) or external account id |
+| credentials_encrypted | text | Fernet-encrypted service account JSON (CRM) |
+| config_json | json | `provider`, `column_map`, `sheet_name`, status sets |
 | last_sync_at | datetime | Last successful/partial sync |
 | last_error | text | Last error message |
+
+---
+
+## Entity: CrmLead
+
+Cached row from Google Sheets CRM sync (P4b-GS). User Level reads leads from this table, not live Sheets API.
+
+### Purpose
+
+Store per-deal / per-client CRM data for dashboards, «Клиенты к разбору», reviews, and agent context. Synced by `integrations.sync_source` (Beat, manual, login hook).
+
+### Fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | yes | PK |
+| tenant_id | UUID FK | yes | Tenant |
+| workspace_id | UUID FK | no | Workspace (from employee or config default) |
+| source_id | UUID FK | yes | `IntegrationSource` (CRM) |
+| external_row_id | string | yes | Stable sheet row key (row number or id column) |
+| employee_id | UUID FK User | no | Linked user after email match |
+| employee_email | string | no | From sheet; used before user exists |
+| client_name | string | yes | Client / company name |
+| client_email | string | no | Client contact email |
+| phone | string | no | Client phone |
+| status | string | no | Raw status from sheet |
+| deal_amount | decimal | no | Deal value |
+| deal_date | date | no | Deal or lead date |
+| needs_review | bool | no | Drives `ClientToReview` derivation |
+| notes | text | no | Free-text from sheet |
+| raw_json | json | no | Full mapped row snapshot |
+| synced_at | datetime | yes | Last upsert from sync job |
+
+### Relations
+
+- Many CrmLead → one IntegrationSource, one Tenant.
+- Optional link to User via `employee_id` (set when email matches active user).
+
+### Validation
+
+- Unique (`tenant_id`, `source_id`, `external_row_id`).
+- `employee_email` normalized (lowercase) on save.
+
+### Deletion
+
+Hard delete on tenant purge; rows replaced on each sync (upsert), stale rows soft-deleted or marked inactive per sync policy.
+
+---
+
+## Entity: RegistrationInvite
+
+One-time signup token for employees (and optionally managers) onboarded via Google Sheet + Django Admin (P4b-GS). No self-service tenant signup in MVP.
+
+### Purpose
+
+Allow invited users to create a password and `User` row without integrator manually setting passwords. Ties registration email to sheet `employee_email` column.
+
+### Fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | UUID | yes | PK |
+| tenant_id | UUID FK | yes | Tenant |
+| workspace_id | UUID FK | no | Primary workspace for new user |
+| email | string | yes | Must match sheet `employee_email` |
+| role | enum | yes | `manager` \| `employee` |
+| manager_id | UUID FK User | no | Parent manager for employees |
+| token | string | yes | Opaque invite token (URL query) |
+| expires_at | datetime | yes | Invite expiry |
+| used_at | datetime | no | Set on successful registration |
+| created_by_id | UUID FK User | no | Admin or manager who issued invite |
+| created_at | datetime | yes | Audit |
+
+### Relations
+
+- Registration consumes invite → creates `User` + default `ModulePermission` rows.
+- Post-registration login triggers CRM sync to link `CrmLead.employee_id`.
+
+### Validation
+
+- Email unique among open invites per tenant; cannot reuse after `used_at` set.
+- `POST /auth/register/` rejects expired or used tokens.
+
+### Deletion
+
+Expired unused invites purged by periodic job (post-MVP) or manual Admin cleanup.
 
 ---
 

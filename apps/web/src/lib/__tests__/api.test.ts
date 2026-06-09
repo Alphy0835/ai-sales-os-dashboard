@@ -49,6 +49,44 @@ describe("api", () => {
     await expect(login("bad@demo.local", "wrong")).rejects.toThrow("Неверные учётные данные");
   });
 
+  it("register posts payload with cookies", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ user: sampleUser }));
+    const { register } = await import("../api");
+    const result = await register({
+      invite_code: "INVITE-123",
+      email: "new@demo.local",
+      password: "secret1234",
+      full_name: "New User",
+    });
+    expect(result.user.email).toBe("manager@demo.local");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/auth/register/",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({
+          invite_code: "INVITE-123",
+          email: "new@demo.local",
+          password: "secret1234",
+          full_name: "New User",
+        }),
+      }),
+    );
+  });
+
+  it("register throws on error response", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "Недействительный код приглашения" }, 400));
+    const { register } = await import("../api");
+    await expect(
+      register({
+        invite_code: "BAD",
+        email: "new@demo.local",
+        password: "secret1234",
+        full_name: "New User",
+      }),
+    ).rejects.toThrow("Недействительный код приглашения");
+  });
+
   it("logout calls logout endpoint", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({}));
     const { logout } = await import("../api");

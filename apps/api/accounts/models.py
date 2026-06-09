@@ -171,3 +171,45 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.action} by {self.actor.email} at {self.created_at}"
+
+
+class RegistrationInvite(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=64, unique=True, db_index=True)
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="registration_invites")
+    workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="registration_invites",
+    )
+    role = models.CharField(
+        max_length=16,
+        choices=User.Role.choices,
+        default=User.Role.MANAGER,
+    )
+    expires_at = models.DateTimeField()
+    max_uses = models.PositiveIntegerField(default=1)
+    use_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_registration_invites",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.code} ({self.tenant.slug})"
+
+    @property
+    def is_valid(self) -> bool:
+        from django.utils import timezone
+
+        return self.use_count < self.max_uses and self.expires_at > timezone.now()

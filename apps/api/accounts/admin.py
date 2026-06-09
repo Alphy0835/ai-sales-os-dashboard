@@ -1,6 +1,16 @@
+import secrets
+
 from django.contrib import admin
 
-from accounts.models import AuditLog, ManagerScope, ModulePermission, Tenant, User, Workspace
+from accounts.models import (
+    AuditLog,
+    ManagerScope,
+    ModulePermission,
+    RegistrationInvite,
+    Tenant,
+    User,
+    Workspace,
+)
 
 
 @admin.register(Tenant)
@@ -43,3 +53,29 @@ class AuditLogAdmin(admin.ModelAdmin):
     list_display = ("action", "actor", "target_user", "module", "old_level", "new_level", "created_at")
     list_filter = ("action", "tenant")
     search_fields = ("actor__email", "target_user__email")
+
+
+@admin.register(RegistrationInvite)
+class RegistrationInviteAdmin(admin.ModelAdmin):
+    list_display = (
+        "code",
+        "tenant",
+        "workspace",
+        "role",
+        "expires_at",
+        "use_count",
+        "max_uses",
+        "used_at",
+        "created_at",
+    )
+    list_filter = ("role", "tenant")
+    search_fields = ("code",)
+    readonly_fields = ("use_count", "used_at", "created_at")
+    actions = ["generate_random_codes"]
+
+    @admin.action(description="Generate random invite codes")
+    def generate_random_codes(self, request, queryset):
+        for invite in queryset:
+            invite.code = secrets.token_urlsafe(16)
+            invite.save(update_fields=["code"])
+        self.message_user(request, f"Generated codes for {queryset.count()} invite(s).")

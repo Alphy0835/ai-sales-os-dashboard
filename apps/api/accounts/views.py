@@ -1,4 +1,6 @@
-from rest_framework import status
+from django.db import transaction
+from django.utils import timezone
+from rest_framework import serializers, status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -10,7 +12,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from accounts.cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
-from accounts.models import AuditLog, User
+from accounts.models import AuditLog, RegistrationInvite, User
 from accounts.serializers_auth import CookieTokenRefreshSerializer
 from accounts.serializers import (
     AuditLogSerializer,
@@ -61,10 +63,88 @@ class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     throttle_classes = [LoginRateThrottle]
 
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            email = request.data.get("email")
+            if email:
+                user = User.objects.filter(email__iexact=email, is_active=True).first()
+                if user:
+                    from integrations.tasks import trigger_tenant_crm_sync
+
+                    trigger_tenant_crm_sync.delay(str(user.tenant_id))
+        return response
+
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
         if response.status_code == 200 and isinstance(response.data, dict):
             set_auth_cookies(response, response.data.get("access"), response.data.get("refresh"))
+        return response
+
+
+class RegisterSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(min_length=8, write_only=True)
+    full_name = serializers.CharField(max_length=255)
+    invite_code = serializers.CharField(max_length=64)
+
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            invite = RegistrationInvite.objects.select_for_update().get(code=data["invite_code"])
+        except RegistrationInvite.DoesNotExist:
+            raise ValidationError({"invite_code": "Invalid invite code"})
+
+        if invite.expires_at <= timezone.now():
+            raise ValidationError({"invite_code": "Invite has expired"})
+        if invite.use_count >= invite.max_uses:
+            raise ValidationError({"invite_code": "Invite has reached maximum uses"})
+
+        email = data["email"].lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise ValidationError({"email": "A user with this email already exists"})
+
+        user = User.objects.create_user(
+            email=email,
+            password=data["password"],
+            tenant=invite.tenant,
+            workspace=invite.workspace,
+            full_name=data["full_name"],
+            role=invite.role,
+        )
+
+        invite.use_count += 1
+        update_fields = ["use_count"]
+        if invite.used_at is None:
+            invite.used_at = timezone.now()
+            update_fields.append("used_at")
+        invite.save(update_fields=update_fields)
+
+        refresh = RefreshToken.for_user(user)
+        refresh["tenant_id"] = str(user.tenant_id)
+        refresh["role"] = user.role
+        access = refresh.access_token
+        access["tenant_id"] = str(user.tenant_id)
+        access["role"] = user.role
+
+        response = Response(
+            {
+                "refresh": str(refresh),
+                "access": str(access),
+                "user": UserBriefSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+        set_auth_cookies(response, str(access), str(refresh))
         return response
 
 

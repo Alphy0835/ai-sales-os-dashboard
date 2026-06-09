@@ -4,14 +4,23 @@ from django import forms
 from django.contrib import admin
 
 from ai.services.crypto import decrypt_secret, encrypt_secret
-from integrations.models import ConversationRecording, IntegrationSource, MetricSnapshot, Transcription
+from integrations.models import (
+    ConversationRecording,
+    CrmLead,
+    IntegrationSource,
+    MetricSnapshot,
+    Transcription,
+)
 
 
 class IntegrationSourceAdminForm(forms.ModelForm):
     credentials_json = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={"rows": 4}),
-        help_text='JSON: {"access_token": "...", "subdomain": "..."} (encrypted on save)',
+        help_text=(
+            'JSON credentials (encrypted on save). amoCRM: {"access_token": "...", "subdomain": "..."}. '
+            "Google Sheets: service account JSON with client_email and private_key."
+        ),
     )
 
     class Meta:
@@ -57,6 +66,15 @@ class IntegrationSourceAdmin(admin.ModelAdmin):
     list_filter = ("source_type", "status", "tenant")
     readonly_fields = ("last_sync_at", "last_error", "created_at")
 
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if "config_json" in form.base_fields:
+            form.base_fields["config_json"].help_text = (
+                'JSON config. Set "provider": "google_sheets" | "amocrm" | "demo". '
+                "Google Sheets: spreadsheet_id, sheet_name (default Leads), header_map, skip_status_stages."
+            )
+        return form
+
 
 @admin.register(MetricSnapshot)
 class MetricSnapshotAdmin(admin.ModelAdmin):
@@ -74,3 +92,18 @@ class ConversationRecordingAdmin(admin.ModelAdmin):
 class TranscriptionAdmin(admin.ModelAdmin):
     list_display = ("recording", "status", "completed_at")
     list_filter = ("status",)
+
+
+@admin.register(CrmLead)
+class CrmLeadAdmin(admin.ModelAdmin):
+    list_display = (
+        "client_name",
+        "external_lead_id",
+        "employee",
+        "pipeline_stage",
+        "status_stage",
+        "integration_source",
+        "synced_at",
+    )
+    list_filter = ("integration_source", "tenant")
+    search_fields = ("client_name", "external_lead_id", "manager_email")

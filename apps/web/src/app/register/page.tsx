@@ -3,17 +3,16 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { login } from "@/lib/api";
+import { register } from "@/lib/api";
 import { homeRouteForRole, saveSession } from "@/lib/auth";
 import { AmbientBackground } from "@/components/AppShell";
 
-const showDemoHint =
-  process.env.NEXT_PUBLIC_DEMO_HINT === "true" || process.env.NODE_ENV === "development";
-
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
+  const [inviteCode, setInviteCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -22,11 +21,16 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const data = await login(email, password);
+      const data = await register({
+        invite_code: inviteCode,
+        email,
+        password,
+        full_name: fullName,
+      });
       saveSession(data.user);
       router.replace(homeRouteForRole(data.user.role));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка входа");
+      setError(err instanceof Error ? err.message : "Ошибка регистрации");
     } finally {
       setLoading(false);
     }
@@ -43,6 +47,16 @@ export default function LoginPage() {
               AI Sales OS
             </div>
             <form className="flex flex-col gap-3" onSubmit={onSubmit}>
+              <label className="text-[11px] uppercase tracking-wide text-muted">
+                Код приглашения
+                <input
+                  className="input mt-1.5"
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  required
+                />
+              </label>
               <label className="text-[11px] uppercase tracking-wide text-muted">
                 Email
                 <input
@@ -63,22 +77,27 @@ export default function LoginPage() {
                   required
                 />
               </label>
+              <label className="text-[11px] uppercase tracking-wide text-muted">
+                Полное имя
+                <input
+                  className="input mt-1.5"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              </label>
               {error && <p className="text-xs text-status-error">{error}</p>}
               <button className="btn-primary mt-1 w-full" type="submit" disabled={loading}>
-                {loading ? "Вход…" : "Войти"}
+                {loading ? "Регистрация…" : "Зарегистрироваться"}
               </button>
             </form>
           </div>
           <p className="mt-3 text-center text-[11px] text-muted">
-            <Link className="text-accent-cyan hover:underline" href="/register">
-              Есть код приглашения?
+            <Link className="text-accent-cyan hover:underline" href="/login">
+              Уже есть аккаунт? Войти
             </Link>
           </p>
-          {showDemoHint && (
-            <p className="mt-2 text-center text-[11px] text-muted">
-              Demo: manager@demo.local / employee@demo.local — пароль demo1234
-            </p>
-          )}
         </div>
       </div>
     </>

@@ -48,7 +48,7 @@ class AmoCrmSyncTests(TestCase):
             status=IntegrationSource.Status.CONNECTED,
             external_id="demo",
             credentials_encrypted=creds,
-            config_json={"won_status_ids": [142]},
+            config_json={"provider": "amocrm", "won_status_ids": [142]},
         )
 
     @patch("integrations.services.crm.amocrm._request_json")

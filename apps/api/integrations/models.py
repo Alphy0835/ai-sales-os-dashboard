@@ -172,3 +172,49 @@ class Transcription(models.Model):
 
     def __str__(self):
         return f"Transcription:{self.recording_id}:{self.status}"
+
+
+class CrmLead(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey(
+        "accounts.Tenant",
+        on_delete=models.CASCADE,
+        related_name="crm_leads",
+    )
+    workspace = models.ForeignKey(
+        "accounts.Workspace",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="crm_leads",
+    )
+    employee = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="crm_leads",
+    )
+    integration_source = models.ForeignKey(
+        IntegrationSource,
+        on_delete=models.CASCADE,
+        related_name="crm_leads",
+    )
+    external_lead_id = models.CharField(max_length=128)
+    client_name = models.CharField(max_length=255)
+    phone = models.CharField(max_length=64, blank=True, default="")
+    city = models.CharField(max_length=128, blank=True, default="")
+    communication_comment = models.TextField(blank=True, default="")
+    pipeline_stage = models.CharField(max_length=128, blank=True, default="")
+    status_stage = models.CharField(max_length=128, blank=True, default="")
+    recording_url = models.URLField(blank=True, default="")
+    manager_email = models.CharField(max_length=255, blank=True, default="")
+    supervisor_email = models.CharField(max_length=255, blank=True, default="")
+    synced_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-synced_at"]
+        unique_together = [["tenant", "external_lead_id", "integration_source"]]
+
+    def __str__(self):
+        return f"{self.client_name} ({self.external_lead_id})"

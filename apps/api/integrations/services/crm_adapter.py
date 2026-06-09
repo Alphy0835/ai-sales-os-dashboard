@@ -36,6 +36,10 @@ def run_crm_sync(source: IntegrationSource) -> None:
     if not source.credentials_encrypted:
         return
 
+    provider = (source.config_json or {}).get("provider", "amocrm")
+    if provider != "amocrm":
+        return
+
     from integrations.services.crm.amocrm import sync_amocrm_metrics
 
     sync_amocrm_metrics(source)

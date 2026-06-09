@@ -106,12 +106,29 @@ async function parseJson<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export type RegisterPayload = {
+  invite_code: string;
+  email: string;
+  password: string;
+  full_name: string;
+};
+
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const res = await fetch(`${API_URL}/api/v1/auth/login/`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
+  });
+  return parseJson<LoginResponse>(res);
+}
+
+export async function register(payload: RegisterPayload): Promise<LoginResponse> {
+  const res = await fetch(`${API_URL}/api/v1/auth/register/`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
   return parseJson<LoginResponse>(res);
 }

@@ -49,14 +49,22 @@ def _run_demo_sync(source: IntegrationSource):
     source.save(update_fields=["last_sync_at", "last_error"])
 
 
-def run_source_sync(source: IntegrationSource):
-    if (
-        source.source_type == IntegrationSource.SourceType.CRM
-        and source.credentials_encrypted
-    ):
-        from integrations.services.crm_adapter import run_crm_sync
+def _crm_provider(source: IntegrationSource) -> str:
+    return (source.config_json or {}).get("provider", "")
 
-        run_crm_sync(source)
-        return
+
+def run_source_sync(source: IntegrationSource):
+    if source.source_type == IntegrationSource.SourceType.CRM and source.credentials_encrypted:
+        provider = _crm_provider(source)
+        if provider == "google_sheets":
+            from integrations.services.crm.google_sheets import sync_google_sheets
+
+            sync_google_sheets(source)
+            return
+        if provider == "amocrm":
+            from integrations.services.crm_adapter import run_crm_sync
+
+            run_crm_sync(source)
+            return
 
     _run_demo_sync(source)
