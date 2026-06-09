@@ -1,10 +1,14 @@
-from django.test import TestCase
+from unittest.mock import patch
+
+from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from accounts.models import ManagerScope, ModulePermission, Tenant, User, Workspace
 from analytics.models import ClientToReview
-from integrations.models import ConversationRecording, Transcription
+from ai.services.agent import generate_agent_reply
+from integrations.models import ConversationRecording, CrmLead, IntegrationSource, Transcription
 
 
 class CrossTenantIdorTests(TestCase):
@@ -53,6 +57,46 @@ class CrossTenantIdorTests(TestCase):
             reason="Needs review",
             priority=ClientToReview.Priority.HIGH,
             status=ClientToReview.Status.NEW,
+        )
+        self.foreign_source = IntegrationSource.objects.create(
+            tenant=self.tenant_b,
+            workspace=self.ws_b,
+            source_type=IntegrationSource.SourceType.CRM,
+            name="Foreign CRM",
+            status=IntegrationSource.Status.CONNECTED,
+            config_json={"provider": "google_sheets"},
+            last_sync_at=timezone.now(),
+        )
+        CrmLead.objects.create(
+            tenant=self.tenant_b,
+            workspace=self.ws_b,
+            integration_source=self.foreign_source,
+            external_lead_id="FB-1",
+            client_name="Foreign Secret Corp",
+            pipeline_stage="Closing",
+            status_stage="open",
+            manager_email="emp-b@test.local",
+            employee=self.employee_b,
+        )
+        self.local_source = IntegrationSource.objects.create(
+            tenant=self.tenant_a,
+            workspace=self.ws_a,
+            source_type=IntegrationSource.SourceType.CRM,
+            name="Local CRM",
+            status=IntegrationSource.Status.CONNECTED,
+            config_json={"provider": "google_sheets"},
+            last_sync_at=timezone.now(),
+        )
+        CrmLead.objects.create(
+            tenant=self.tenant_a,
+            workspace=self.ws_a,
+            integration_source=self.local_source,
+            external_lead_id="LA-1",
+            client_name="Local Client",
+            pipeline_stage="Qualification",
+            status_stage="open",
+            manager_email="emp-a@test.local",
+            employee=self.employee_a,
         )
 
         self.client = APIClient()
@@ -112,3 +156,27 @@ class CrossTenantIdorTests(TestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("client_id", response.data)
+
+    @override_settings(CRM_SYNC_INTERVAL_MINUTES=60)
+    @patch("ai.services.agent.maybe_refresh_crm")
+    def test_cross_tenant_crm_lead_not_exposed_via_agent(self, mock_refresh):
+        reply, _, _ = generate_agent_reply(
+            actor=self.manager_a,
+            message="Покажи список клиентов Foreign Secret Corp",
+        )
+        self.assertNotIn("Foreign Secret Corp", reply)
+        mock_refresh.assert_called_once()
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    @patch("integrations.views.sync_integration_source.delay")
+    def test_foreign_integration_source_sync_returns_404(self, mock_delay):
+        ModulePermission.objects.update_or_create(
+            user=self.manager_a,
+            module=ModulePermission.Module.SETTINGS,
+            defaults={"level": ModulePermission.Level.EDIT},
+        )
+        response = self.client.post(
+            f"/api/v1/integrations/sources/{self.foreign_source.id}/sync/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        mock_delay.assert_not_called()

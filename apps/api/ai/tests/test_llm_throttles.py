@@ -152,7 +152,7 @@ class CustomReportThrottleTests(TestCase):
             title="Existing",
             description="Original focus on closing",
             structured_query={"engine": "rule_based_v1"},
-            created_by=self.manager,
+            author=self.manager,
         )
         for i in range(2):
             response = self.client.patch(

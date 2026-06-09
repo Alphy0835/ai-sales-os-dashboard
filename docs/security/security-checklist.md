@@ -58,7 +58,7 @@ Pre-release checklist for AI Sales OS. Use before production deploys and when sh
 - [x] **WhiteNoise static** — prod static serving
 - [x] **CI security regression** — `.github/workflows/ci.yml` (API tests + migration check + web build)
 - [x] **Dependency lock + Dependabot** — `requirements.lock.txt`, `.github/dependabot.yml`
-- [ ] **CSP headers** — not configured in repo
+- [~] **CSP headers** — basic policy in `apps/web/next.config.ts` (`headers()`): CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`; `script-src` allows `'unsafe-inline'` (+ `'unsafe-eval'` in dev). Tighten for prod nonce/hash when third-party scripts are ruled out (P5-1)
 - [ ] **Sentry / structured JSON logging** — P2 §13
 
 ## Release
@@ -73,7 +73,7 @@ Pre-release checklist for AI Sales OS. Use before production deploys and when sh
 ## Quick Verification Commands
 
 ```bash
-# API tests (52 — includes cookie auth + scope security)
+# API tests (106 — includes cookie auth, scope security, LLM throttles)
 cd apps/api && python manage.py test
 
 # Web unit (12)

@@ -31,13 +31,15 @@ Do **not** point the browser at a separate API subdomain in production — cross
 | Service | Build context | Host exposure | Role |
 |---|---|---|---|
 | `postgres` | `pgvector/pgvector:pg16` | internal only | Primary DB |
-| `redis` | `redis:7-alpine` | internal only | Celery broker |
+| `redis` | `redis:7-alpine` | internal only | Celery broker; data persisted on `redis_data` volume |
 | `api` | `apps/api` | **no public port** | Django + Gunicorn (no `--reload`, no `seed_demo`) |
 | `worker` | `apps/api` | internal only | Celery worker |
 | `beat` | `apps/api` | internal only | Celery Beat — daily `integrations.purge_expired_transcripts` (03:00 UTC, see [`settings.py`](../../apps/api/config/settings.py)) |
 | `web` | `apps/web` (multi-stage **baked** image) | `127.0.0.1:${WEB_PORT:-3000}` | Next.js standalone (`node server.js`); build args bake BFF env at image build |
 
 Postgres, Redis, `api`, `worker`, and `beat` have **no host port mapping** — only containers on the Docker network reach them. `web` binds to **localhost only** so the reverse proxy is the sole public entry point.
+
+**Persistent volumes:** `postgres_data` (PostgreSQL) and `redis_data` (Redis AOF/RDB under `/data`) survive container recreation. Back up Postgres with the scripts in [backup-and-restore.md](backup-and-restore.md); Redis holds Celery broker state — treat volume loss as a queue reset, not data loss for the primary DB.
 
 ## Environment checklist
 
@@ -192,6 +194,8 @@ docker compose -f docker-compose.prod.yml ps beat worker
 docker compose -f docker-compose.prod.yml logs beat --tail 30
 ```
 
+Healthchecks: `worker` runs `celery -A config inspect ping` (broker + worker reachable); `beat` checks the Celery Beat process is running (`pgrep`). Unhealthy worker/beat show in `docker compose ps` — inspect logs before restarting.
+
 Manual one-off purge (ops/debug):
 
 ```bash
@@ -249,7 +253,10 @@ Keep `NEXT_PUBLIC_API_URL` empty for same-origin cookie auth.
 
 ## Health checks
 
-- Postgres / Redis: compose healthchecks; `api`, `worker`, and `beat` wait until healthy
+- Postgres / Redis: compose healthchecks (`pg_isready`, `redis-cli ping`); `api`, `worker`, and `beat` wait until Postgres and Redis are healthy
+- API: HTTP GET `/api/v1/health/ready/` inside the container (30s interval)
+- Worker: `celery -A config inspect ping -t 10` — confirms the worker responds via the broker
+- Beat: process check (`pgrep` for `celery … beat`) — Beat does not answer `inspect ping`
 - API readiness (inside container): `docker compose -f docker-compose.prod.yml exec api python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/ready/')"`
 - Public smoke (through BFF + TLS): `curl -f https://app.example.com/api/v1/health/ready/`
 - Web UI: open `https://app.example.com` and log in

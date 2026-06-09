@@ -100,7 +100,7 @@ Unit · Integration (API) · E2E · Manual smoke · Security regression · Migra
 
 | Gap ID | Area | Missing Coverage | Risk | Action | Status |
 |---|---|---|---|---|---|
-| GAP-001 | Auth | Cross-tenant IDOR (2 tenants) | high | Add dedicated test module (P3-D4 T2) | open |
+| GAP-001 | Auth | Cross-tenant IDOR (2 tenants) | high | Expand `test_tenant_idor` (agent CRM, source sync) | partial |
 | GAP-002 | Web lint | `npm run lint` not in CI | medium | Add to CI web job (P3-D4 T7) | closed |
 | GAP-003 | E2E | Employee flow + logout | low | Second Playwright spec (P3-D4 T8) | open |
 | GAP-004 | Vitest | `dashboard.ts`, `reviews.ts` query builders | low | Unit tests (P3-D4 T9) | open |

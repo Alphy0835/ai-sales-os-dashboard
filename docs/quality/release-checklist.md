@@ -61,7 +61,7 @@ _(fill per release)_
 
 - ASR / real telephony connectors deferred (demo transcript path)
 - Dashboard hero KPI empty/partial with Google Sheets-only CRM (expected — see integrator runbook)
-- CSP and Sentry not configured (P5)
+- Basic CSP headers in Next.js BFF (partial — P5-1); Sentry not configured (P5-2)
 - JWT httpOnly cookies reduce XSS token theft; XSS can still drive same-origin API calls
 
 ## Go / No-Go Decision
