@@ -296,10 +296,20 @@ if _sentry_dsn and not TESTING:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
 
+    _sentry_env = os.environ.get("SENTRY_ENVIRONMENT", "").strip()
+    if not _sentry_env:
+        _sentry_env = "production" if IS_PRODUCTION else (_django_env or "development")
+
+    _traces_raw = os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0").strip()
+    try:
+        _traces_sample_rate = float(_traces_raw) if _traces_raw else 0.0
+    except ValueError:
+        _traces_sample_rate = 0.0
+
     sentry_sdk.init(
         dsn=_sentry_dsn,
         integrations=[DjangoIntegration()],
-        environment=os.environ.get("SENTRY_ENVIRONMENT", _django_env or "development"),
+        environment=_sentry_env,
         send_default_pii=False,
-        traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0")),
+        traces_sample_rate=_traces_sample_rate,
     )
