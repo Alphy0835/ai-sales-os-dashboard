@@ -88,4 +88,4 @@ docker compose up --build
 
 ## Roadmap
 
-Implementation follows [`docs/project/roadmap.md`](docs/project/roadmap.md). **STAGE-001–003 done**. Next: **STAGE-004** Review Cycle.
+Implementation follows [`docs/project/roadmap.md`](docs/project/roadmap.md). **STAGE-001–004 done**. Next: **STAGE-005** Quality & AI Analytics.

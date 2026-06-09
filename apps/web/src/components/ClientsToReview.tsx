@@ -46,7 +46,10 @@ export function ClientsToReviewView() {
                     <td>{c.employee_name}</td>
                     <td>{c.reason}</td>
                     <td>
-                      <Link href="/manager/reviews" className="link-btn">
+                      <Link
+                        href={`/manager/reviews?employee_id=${c.employee_id}&workspace_id=${c.workspace_id}&client_id=${c.id}`}
+                        className="link-btn"
+                      >
                         Разбор
                       </Link>
                     </td>
@@ -64,7 +67,7 @@ export function ClientsToReviewView() {
           <div className="insight-item">
             <strong className="text-warning">{clients.length}</strong> клиента в очереди
           </div>
-          <div className="insight-item">Разборы — STAGE-004</div>
+          <div className="insight-item">Разборы связаны с историей (PAGE-004)</div>
         </div>
       </aside>
     </div>

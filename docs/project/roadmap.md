@@ -21,7 +21,7 @@ Maturity: L1
 | STAGE-001 | Access & Permissions | **done** | REQ-013, REQ-014, REQ-NFR-001, REQ-NFR-004 | yes |
 | STAGE-002 | Data Integration | **done** | REQ-015, REQ-016, REQ-NFR-002, REQ-NFR-003 | yes |
 | STAGE-003 | Manager Dashboard | **done** | REQ-001, REQ-002, REQ-003, REQ-004 | yes |
-| STAGE-004 | Review Cycle | planned | REQ-005, REQ-006 | yes |
+| STAGE-004 | Review Cycle | **done** | REQ-005, REQ-006 | yes |
 | STAGE-005 | Quality & AI Analytics | planned | REQ-007, REQ-008 | yes |
 | STAGE-006 | Knowledge Base & AI Agents | planned | REQ-010, REQ-011, REQ-012 | yes |
 | STAGE-007 | Custom AI Reports | planned | REQ-009 | no |
@@ -115,7 +115,7 @@ Maturity: L1
 
 ## Stage: STAGE-004 — Review Cycle
 
-**Status:** planned
+**Status:** **done**
 
 **Goal:** замкнуть цикл разбора: фиксация разборов, постановка задач, отображение задач у сотрудника.
 
@@ -136,7 +136,7 @@ Maturity: L1
 - FLOW-002 и FLOW-006 проходятся end-to-end.
 - QA-AC этапа в статусе passed.
 
-**Implementation doc:** — *(создаётся после завершения: `roadmap-review-cycle.md`)*
+**Implementation doc:** [roadmap-review-cycle.md](roadmap-review-cycle.md)
 
 ---
 

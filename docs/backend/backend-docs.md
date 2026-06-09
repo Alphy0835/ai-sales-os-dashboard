@@ -35,11 +35,13 @@ apps/api/
 ├── core/             # health, middleware, base models
 ├── accounts/         # STAGE-001: tenant, user, permissions
 ├── integrations/     # STAGE-002: sources, metrics, recordings
+├── analytics/        # STAGE-003: dashboard, clients to review
+├── reviews/          # STAGE-004: review history, tasks
 ├── manage.py
 └── requirements.txt
 ```
 
-Planned apps (by roadmap): `integrations`, `analytics`, `reviews`, `ai`.
+Planned apps (by roadmap): `ai`.
 
 ## Modules / Services
 
@@ -49,7 +51,7 @@ Planned apps (by roadmap): `integrations`, `analytics`, `reviews`, `ai`.
 | `accounts` | Auth, RBAC, scope, ceiling rule, audit | Tenant, Workspace, User, ModulePermission, ManagerScope, AuditLog | STAGE-001 | FEAT-001 |
 | `integrations` | CRM/telephony sync, recordings, transcription | IntegrationSource, MetricSnapshot, ConversationRecording, Transcription | STAGE-002 | FEAT-002 |
 | `analytics` | KPI aggregates, dashboard API | MetricSnapshot, ClientToReview | STAGE-003 | FEAT-003 |
-| `reviews` | Reviews, tasks | Review, Task | STAGE-004 | FEAT-004 |
+| `reviews` | Reviews, tasks | Review, ReviewTask | STAGE-004 | FEAT-004 |
 | `ai` | RAG, agents, custom reports | KnowledgeChunk, ChatSession | STAGE-005–006 | FEAT-005–007 |
 
 ## API Handlers (map)
@@ -61,11 +63,12 @@ Planned apps (by roadmap): `integrations`, `analytics`, `reviews`, `ai`.
 | `/api/v1/permissions/*` | accounts | JWT + settings | API-PERM-* |
 | `/api/v1/audit/permissions/` | accounts | JWT + settings | API-AUDIT-001 |
 | `/api/v1/integrations/*` | integrations | JWT + dashboard | API-INT-* |
-| `/api/v1/manager/*` | analytics | JWT + manager | API-MGR-* |
+| `/api/v1/manager/dashboard/` | analytics | JWT + manager | API-MGR-001 |
+| `/api/v1/manager/clients/` | analytics | JWT + manager | API-MGR-002 |
+| `/api/v1/manager/reviews/` | reviews | JWT + manager + reviews perm | API-REV-001 |
 | `/api/v1/employee/dashboard/` | analytics | JWT + employee | API-EMP-001 |
+| `/api/v1/employee/tasks/{id}/` | reviews | JWT + employee | API-REV-002 |
 | `/api/v1/health/` | core | public | API-HEALTH-001 |
-| `/api/v1/manager/*` | analytics, reviews, … | JWT + manager role | TBD per stage |
-| `/api/v1/employee/*` | analytics, reviews, … | JWT + employee role | TBD per stage |
 | `/admin/` | Django Admin | session | Integration Level |
 
 OpenAPI: `/api/schema/` (drf-spectacular).

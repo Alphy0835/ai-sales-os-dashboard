@@ -65,7 +65,9 @@ export type ClientToReview = {
   reason: string;
   priority: string;
   status: string;
+  employee_id: string;
   employee_name: string;
+  workspace_id: string;
   workspace_name: string;
 };
 
@@ -109,6 +111,16 @@ export function fetchManagerClients(params?: {
 export function fetchEmployeeDashboard(): Promise<{
   periods: Record<MetricPeriod, MetricsSummary>;
   hero: { full_name: string };
+  tasks: Array<{
+    id: string;
+    title: string;
+    status: "pending" | "in_progress" | "done";
+    review_id: string;
+    review_date: string;
+    author_name: string;
+    workspace_name: string;
+    updated_at: string;
+  }>;
 }> {
   return authFetch("/api/v1/employee/dashboard/");
 }

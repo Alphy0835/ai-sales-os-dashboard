@@ -36,11 +36,11 @@ Source of truth for Page ID: [pages-map.md](../project/design-guide/pages-map.md
 | PAGE-001 | `/login` | `app/login/page.tsx` | SHELL-AUTH | all | **implemented** |
 | PAGE-002 | `/manager` | `app/manager/page.tsx` | SHELL-MANAGER | Manager | **implemented** |
 | PAGE-003 | `/manager/clients` | `app/manager/clients/page.tsx` | SHELL-MANAGER | Manager | **implemented** |
-| PAGE-004 | `/manager/reviews` | `app/manager/reviews/page.tsx` | SHELL-MANAGER | Manager | planned |
+| PAGE-004 | `/manager/reviews` | `app/manager/reviews/page.tsx` | SHELL-MANAGER | Manager | **implemented** |
 | PAGE-005 | `/manager/analytics` | `app/manager/analytics/page.tsx` | SHELL-MANAGER | Manager | planned |
 | PAGE-006 | `/manager/settings` | `app/manager/settings/page.tsx` | SHELL-MANAGER | Manager | planned |
 | PAGE-007 | `/manager/agent` | `app/manager/agent/page.tsx` | SHELL-MANAGER | Manager | planned |
-| PAGE-008 | `/employee` | `app/employee/page.tsx` | SHELL-EMPLOYEE | Employee | **implemented** (metrics stub) |
+| PAGE-008 | `/employee` | `app/employee/page.tsx` | SHELL-EMPLOYEE | Employee | **implemented** (metrics + tasks) |
 | PAGE-009 | `/employee/agent` | `app/employee/agent/page.tsx` | SHELL-EMPLOYEE | Employee | planned |
 
 Post-login redirect: `manager` → `/manager`, `employee` → `/employee` (from `/api/v1/auth/me/`).

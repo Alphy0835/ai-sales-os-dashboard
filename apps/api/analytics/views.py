@@ -62,4 +62,12 @@ class EmployeeDashboardView(APIView):
             key: build_metrics_summary(actor=request.user, period=key)
             for key in ("today", "week", "month")
         }
-        return Response({"periods": periods, "hero": {"full_name": request.user.full_name}})
+        from reviews.views import employee_tasks_payload
+
+        return Response(
+            {
+                "periods": periods,
+                "hero": {"full_name": request.user.full_name},
+                "tasks": employee_tasks_payload(request.user),
+            }
+        )

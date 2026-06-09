@@ -1,9 +1,9 @@
 Doc ID: FEAT-004
-Status: draft
+Status: active
 Related requirements: REQ-005, REQ-006
 Related user flows: FLOW-002, FLOW-006
-Related API: TBD — `docs/architecture/api-contracts.md`
-Related data model: TBD — `docs/architecture/data-model.md`
+Related API: `docs/architecture/api-contracts.md` — API-REV-001, API-REV-002
+Related data model: `docs/architecture/data-model.md` — Review, ReviewTask
 Related security: FEAT-001 (scope), `docs/security/audit-logging.md`
 Related tests: QA-AC-005, QA-AC-006
 Update trigger: изменение модели разбора, задач или личного дашборда сотрудника

@@ -335,6 +335,84 @@ User object with updated `permissions`.
 
 ---
 
+## API-REV-001 — Manager reviews
+
+### Purpose
+
+List and create review records with tasks (REQ-005). Requires manager role + `reviews` module permission.
+
+### `GET /api/v1/manager/reviews/`
+
+Query params: `workspace_id`, `employee_id` (optional filters).
+
+### Response `200`
+
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id": "uuid",
+      "employee_id": "uuid",
+      "employee_name": "Demo Employee",
+      "workspace_id": "uuid",
+      "workspace_name": "ОП Москва",
+      "author_name": "Demo Manager",
+      "client_name": "ООО «Вектор»",
+      "comment": "Разбор по качеству",
+      "discussion": "Обсудили скрипт",
+      "created_at": "2026-06-09T12:00:00Z",
+      "tasks": [{ "id": "uuid", "title": "Переслушать звонки", "status": "pending" }],
+      "tasks_done": 0,
+      "tasks_total": 1
+    }
+  ]
+}
+```
+
+### `POST /api/v1/manager/reviews/`
+
+Requires `reviews: edit`. Creates audit event `review_create`.
+
+### Request
+
+```json
+{
+  "employee_id": "uuid",
+  "workspace_id": "uuid",
+  "comment": "Комментарий",
+  "discussion": "Что обсудили",
+  "client_id": "uuid",
+  "tasks": ["Задача 1", "Задача 2"]
+}
+```
+
+### Response `201`
+
+Same shape as list item.
+
+---
+
+## API-REV-002 — Employee task status
+
+### `PATCH /api/v1/employee/tasks/{task_id}/`
+
+Employee updates own task status; reflected in manager review history.
+
+### Request
+
+```json
+{ "status": "done" }
+```
+
+Values: `pending` | `in_progress` | `done`.
+
+### Response `200`
+
+Task object with `review_id`, `review_date`, `author_name`.
+
+---
+
 ## Related Docs
 
 - [data-model.md](data-model.md) — Tenant, User, integrations entities

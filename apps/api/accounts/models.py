@@ -141,6 +141,7 @@ class AuditLog(models.Model):
     class Action(models.TextChoices):
         PERMISSION_CHANGE = "permission_change", "Permission change"
         SCOPE_DENIED = "scope_denied", "Scope denied"
+        REVIEW_CREATE = "review_create", "Review create"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="audit_logs")
