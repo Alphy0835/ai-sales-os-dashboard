@@ -1,6 +1,6 @@
 # Code Review — AI Sales OS
 
-Дата: 2026-06-10 · **P4c закрыт**  
+Дата: 2026-06-10 · **P4c закрыт** (`88cdb32`)  
 Объём: backend (Django 5 + DRF), frontend (Next.js 15), docs, инфраструктура  
 Состояние: STAGE-001…007 + **P0–P4 + P4b-GS + P4c**; CI на `master`.
 
