@@ -58,6 +58,7 @@ class GoogleSheetsSyncTests(TestCase):
                 "pipeline_stage": "Qualification",
                 "status_stage": "open",
                 "recording_url": "https://example.com/rec1",
+                "needs_review": "TRUE",
             },
             {
                 "lead_id": "L-200",
@@ -70,6 +71,20 @@ class GoogleSheetsSyncTests(TestCase):
                 "pipeline_stage": "Won",
                 "status_stage": "done",
                 "recording_url": "",
+                "needs_review": "",
+            },
+            {
+                "lead_id": "L-300",
+                "client_name": "Open No Flag",
+                "phone": "",
+                "city": "",
+                "communication_comment": "Has comment",
+                "manager_email": "emp@sheet.local",
+                "supervisor_email": "",
+                "pipeline_stage": "Qualification",
+                "status_stage": "open",
+                "recording_url": "",
+                "needs_review": "",
             },
         ]
 
@@ -114,7 +129,55 @@ class GoogleSheetsSyncTests(TestCase):
 
         lead = CrmLead.objects.get(external_lead_id="L-100", integration_source=self.source)
         self.assertEqual(lead.client_name, "Acme Corp")
-        self.assertEqual(CrmLead.objects.filter(integration_source=self.source).count(), 2)
+        self.assertEqual(CrmLead.objects.filter(integration_source=self.source).count(), 3)
+        self.assertFalse(
+            ClientToReview.objects.filter(client_external_id="L-300").exists()
+        )
+
+    @patch("integrations.services.crm.google_sheets._read_sheet_rows")
+    def test_empty_comment_adds_review_when_rule_enabled(self, mock_read):
+        mock_read.return_value = [
+            {
+                "lead_id": "L-400",
+                "client_name": "Empty Comment Lead",
+                "phone": "",
+                "city": "",
+                "communication_comment": "",
+                "manager_email": "emp@sheet.local",
+                "supervisor_email": "",
+                "pipeline_stage": "Qualification",
+                "status_stage": "open",
+                "recording_url": "",
+                "needs_review": "",
+            },
+        ]
+        run_source_sync(self.source)
+        review = ClientToReview.objects.get(client_external_id="L-400")
+        self.assertEqual(review.client_name, "Empty Comment Lead")
+
+    @patch("integrations.services.crm.google_sheets._read_sheet_rows")
+    def test_empty_comment_skipped_when_rule_disabled(self, mock_read):
+        config = dict(self.source.config_json)
+        config["review_rules"] = {"empty_comment_on_active": False}
+        self.source.config_json = config
+        self.source.save(update_fields=["config_json"])
+        mock_read.return_value = [
+            {
+                "lead_id": "L-500",
+                "client_name": "No Review Lead",
+                "phone": "",
+                "city": "",
+                "communication_comment": "",
+                "manager_email": "emp@sheet.local",
+                "supervisor_email": "",
+                "pipeline_stage": "Qualification",
+                "status_stage": "open",
+                "recording_url": "",
+                "needs_review": "",
+            },
+        ]
+        run_source_sync(self.source)
+        self.assertFalse(ClientToReview.objects.filter(client_external_id="L-500").exists())
 
     def test_google_sheets_missing_spreadsheet_sets_error(self):
         self.source.config_json = {"provider": "google_sheets"}

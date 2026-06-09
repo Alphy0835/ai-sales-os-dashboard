@@ -4,6 +4,7 @@ from django import forms
 from django.contrib import admin
 
 from ai.services.crypto import decrypt_secret, encrypt_secret
+from integrations.config_templates import GOOGLE_SHEETS_CONFIG_TEMPLATE
 from integrations.models import (
     ConversationRecording,
     CrmLead,
@@ -29,6 +30,8 @@ class IntegrationSourceAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not self.instance.pk and not (self.instance.config_json or {}):
+            self.initial.setdefault("config_json", GOOGLE_SHEETS_CONFIG_TEMPLATE)
         if self.instance and self.instance.credentials_encrypted:
             decrypted = decrypt_secret(self.instance.credentials_encrypted)
             if decrypted:
@@ -70,8 +73,13 @@ class IntegrationSourceAdmin(admin.ModelAdmin):
         form = super().get_form(request, obj, **kwargs)
         if "config_json" in form.base_fields:
             form.base_fields["config_json"].help_text = (
-                'JSON config. Set "provider": "google_sheets" | "amocrm" | "demo". '
-                "Google Sheets: spreadsheet_id, sheet_name (default Leads), header_map, skip_status_stages."
+                'Full template pre-filled for new sources. Set "provider": "google_sheets" | "amocrm" | "demo". '
+                "Google Sheets: spreadsheet_id, sheet_name, header_map, skip_status_stages. "
+                'crm_vocabulary: {"stages": {"Closing": ["closing", "дожатие"]}, '
+                '"statuses": {"Assigned": ["assigned", "назначен"]}} — canonical sheet value → aliases. '
+                "review_rules: empty_comment_on_active (bool), auto_review_statuses (list). "
+                "See docs/architecture/integrations.md. "
+                "Sync: hourly Beat (CRM_SYNC_INTERVAL_MINUTES=60); login/on-demand throttled."
             )
         return form
 

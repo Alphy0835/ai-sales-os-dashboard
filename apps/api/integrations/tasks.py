@@ -5,11 +5,25 @@ from django.utils import timezone
 from integrations.models import ConversationRecording, IntegrationSource, Transcription
 
 
+def should_sync_source(source: IntegrationSource, *, force: bool = False) -> bool:
+    if force:
+        return True
+    if not source.is_enabled:
+        return False
+    interval_minutes = getattr(settings, "CRM_SYNC_INTERVAL_MINUTES", 60)
+    if source.last_sync_at is None:
+        return True
+    elapsed = timezone.now() - source.last_sync_at
+    return elapsed >= timezone.timedelta(minutes=interval_minutes)
+
+
 @shared_task(name="integrations.sync_source")
-def sync_integration_source(source_id: str):
+def sync_integration_source(source_id: str, force: bool = False):
     source = IntegrationSource.objects.get(id=source_id)
     if not source.is_enabled:
         return {"source_id": source_id, "skipped": True}
+    if not should_sync_source(source, force=force):
+        return {"source_id": source_id, "skipped": True, "reason": "throttled"}
 
     from integrations.services.sync import run_source_sync
 
@@ -22,13 +36,17 @@ def sync_all_sources() -> dict:
     source_ids = list(
         IntegrationSource.objects.filter(is_enabled=True).values_list("id", flat=True)
     )
+    queued = 0
     for source_id in source_ids:
-        sync_integration_source.delay(str(source_id))
-    return {"queued": len(source_ids)}
+        source = IntegrationSource.objects.get(id=source_id)
+        if should_sync_source(source):
+            sync_integration_source.delay(str(source_id))
+            queued += 1
+    return {"queued": queued, "total": len(source_ids)}
 
 
 @shared_task(name="integrations.trigger_tenant_crm_sync")
-def trigger_tenant_crm_sync(tenant_id: str) -> dict:
+def trigger_tenant_crm_sync(tenant_id: str, force: bool = False) -> dict:
     sources = IntegrationSource.objects.filter(
         tenant_id=tenant_id,
         is_enabled=True,
@@ -37,8 +55,9 @@ def trigger_tenant_crm_sync(tenant_id: str) -> dict:
     ).exclude(credentials_encrypted="")
     queued = 0
     for source in sources:
-        sync_integration_source.delay(str(source.id))
-        queued += 1
+        if should_sync_source(source, force=force):
+            sync_integration_source.delay(str(source.id), force=force)
+            queued += 1
     return {"tenant_id": tenant_id, "queued": queued}
 
 

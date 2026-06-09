@@ -161,9 +161,9 @@ Public.
 
 JSON `access` / `refresh` fields may be present for API clients; **browser clients use httpOnly cookies** and should not persist tokens in JS storage.
 
-### Behavior (P4b-GS)
+### Behavior (P4c)
 
-On `200`, queues async CRM sync for the user's tenant (Google Sheets → `CrmLead` cache). Response unchanged; sync is non-blocking.
+On `200`, may queue async CRM sync for the user's tenant (Google Sheets → `CrmLead` cache). **Throttled:** sync is skipped when tenant CRM `IntegrationSource.last_sync_at` is within `CRM_SYNC_INTERVAL_MINUTES` (default 60). Response unchanged; sync is non-blocking when queued.
 
 ### Errors
 
@@ -211,7 +211,7 @@ Public. Requires valid `token` query param or body field matching unused, unexpi
 }
 ```
 
-Does **not** set auth cookies — client redirects to login. After first `POST /auth/login/`, CRM sync links `CrmLead` rows by `employee_email`.
+Does **not** set auth cookies — client redirects to login. After first `POST /auth/login/`, CRM sync (if not throttled) links `CrmLead` rows by `manager_email` match to `User.email`.
 
 ### Errors
 
@@ -516,27 +516,43 @@ Requires `settings: view` (GET) or `settings: edit` (PUT). Target user must be i
 
 ---
 
-## CrmLead fields reference (P4b-GS)
+## CrmLead fields reference (P4c)
 
-Internal field names used in API responses for clients/leads sourced from Google Sheets cache. See [data-model.md](data-model.md) and [integrations.md](integrations.md) column mapping.
+DB cache fields for Google Sheets CRM. See [data-model.md](data-model.md) and [integrations.md](integrations.md) `header_map`.
 
 | Field | Type | Description |
 |---|---|---|
 | `id` | UUID | CrmLead PK |
+| `external_lead_id` | string | Stable sheet row id (`lead_id` column) |
 | `client_name` | string | Client / company name |
-| `client_email` | string | Client email (optional) |
 | `phone` | string | Client phone |
-| `status` | string | Raw CRM status from sheet |
-| `deal_amount` | number | Deal value |
-| `deal_date` | date (ISO) | Deal or lead date |
-| `needs_review` | boolean | Flag for «Клиенты к разбору» |
-| `notes` | string | Free-text notes |
-| `employee_id` | UUID | Linked user (null until sync/login match) |
-| `employee_email` | string | Sheet column value |
-| `synced_at` | datetime (ISO) | Last sync timestamp |
-| `source_id` | UUID | IntegrationSource reference |
+| `city` | string | City |
+| `communication_comment` | string | Free-text CRM comment (not batch-LLM triaged) |
+| `pipeline_stage` | string | Funnel stage from sheet |
+| `status_stage` | string | Lead status from sheet |
+| `recording_url` | string | Link to call recording (optional) |
+| `manager_email` | string | Sheet manager email → links to `User` |
+| `supervisor_email` | string | Supervisor email from sheet |
+| `employee_id` | UUID | Linked user after email match (nullable) |
+| `synced_at` | datetime (ISO) | Last row upsert from sync |
+| `integration_source_id` | UUID | IntegrationSource reference |
 
-Manager clients API (`GET /manager/clients/`) returns derived review candidates from `CrmLead` where `needs_review=true` or status in `status_review` config, scoped to manager hierarchy.
+Filterable fields for manager-agent CRM query: `pipeline_stage`, `status_stage`, `city`, `manager_email`, `employee_id`, `client_name` (icontains). Vocabulary terms resolved via `config_json.crm_vocabulary`.
+
+Manager clients API (`GET /manager/clients/`) returns `ClientToReview` rows derived on sync from **explicit `review_rules`** (e.g. `needs_review` column), scoped to manager hierarchy — not all open leads.
+
+Agent CRM answers include freshness metadata:
+
+```json
+{
+  "as_of": "2026-06-10T11:00:00Z",
+  "crm_source_id": "uuid",
+  "count": 12,
+  "sample": [ … ]
+}
+```
+
+`as_of` mirrors `IntegrationSource.last_sync_at` for the tenant CRM source.
 
 ---
 
@@ -679,6 +695,17 @@ Article fields: `title`, `category`, `content`, `tags`, `access_level` (`all` | 
 Requires `agent: use`. Body: `message`, optional `session_id`, `client_name`, `client_note`.
 
 Response: session with `messages` and `sources` on assistant replies.
+
+### Manager agent — CRM behavior (P4c)
+
+When the message is a CRM analytics question (counts, lists, funnel slices), the manager agent:
+
+1. Rule-based NL → structured `CrmLead` filters first; optional LLM for ambiguous queries (uses `crm_vocabulary` from tenant CRM `config_json`).
+2. Queries PostgreSQL cache via scoped CRM query service — **not** live Sheets, **not** LLM over all comments.
+3. Optionally calls internal `refresh_crm` (queues `integrations.sync_source`) when data may be stale.
+4. Returns natural-language answer; assistant message metadata or reply body includes `as_of` (`last_sync_at`).
+
+Employee agent: RAG + recordings only (no CRM query tool).
 
 ---
 

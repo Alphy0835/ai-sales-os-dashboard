@@ -51,4 +51,4 @@ class IntegrationSourceSyncApiTests(TestCase):
         self._login()
         response = self.client.post(f"/api/v1/integrations/sources/{self.source.id}/sync/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mock_delay.assert_called_once_with(str(self.source.id))
+        mock_delay.assert_called_once_with(str(self.source.id), force=True)

@@ -19,10 +19,23 @@ Review required: product, AI, security
 ## Description
 
 - База знаний (PAGE-006): продукты, отработки, infопovоды, кейсы (REQ-010).
-- AI-агент руководителя (PAGE-007): стратегия, скрипты, контекст клиента (REQ-011).
-- AI-агент сотрудника (PAGE-009): отработки, продукт, клиент (REQ-012).
-- RAG с учётом прав и scope; обучение на успешных/неуспешных сделках.
-- Контекст: комментарий о клиенте, аудио/видео записи.
+- AI-агент руководителя (PAGE-007): стратегия, скрипты, контекст клиента, **CRM вопросы по кэшу** (REQ-011, P4c).
+- AI-агент сотрудника (PAGE-009): отработки, продукт, клиент (REQ-012) — без CRM query tool.
+- RAG с учётом прав и scope.
+- Контекст: комментарий о клиенте, аудио/видео записи; CRM — `CrmLead` DB cache, не live Sheets.
+
+### Manager agent — CRM query tool (P4c)
+
+| Step | Behavior |
+|---|---|
+| NL input | «Сколько лидов на дожатии?», «Кто назначен в Москве?» |
+| Vocabulary | `config_json.crm_vocabulary.stages` / `.statuses` — canonical sheet value → alias list |
+| Parse | One LLM call → structured filters (`pipeline_stage`, `status_stage`, `city`, …) |
+| Query | `integrations.services.crm.query` — scoped `CrmLead` count/list in PostgreSQL |
+| Refresh | Optional `refresh_crm` queues sync when cache stale or user asks for актуальные данные |
+| Answer | Natural language + `as_of: last_sync_at` |
+
+**Not in scope:** batch LLM triage of all `communication_comment` rows; reading Google Sheets on every chat message.
 
 ## User Flow
 

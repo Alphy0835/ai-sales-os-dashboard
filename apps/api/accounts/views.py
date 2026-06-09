@@ -70,9 +70,17 @@ class LoginView(TokenObtainPairView):
             if email:
                 user = User.objects.filter(email__iexact=email, is_active=True).first()
                 if user:
-                    from integrations.tasks import trigger_tenant_crm_sync
+                    from integrations.models import IntegrationSource
+                    from integrations.tasks import should_sync_source, trigger_tenant_crm_sync
 
-                    trigger_tenant_crm_sync.delay(str(user.tenant_id))
+                    crm_sources = IntegrationSource.objects.filter(
+                        tenant_id=user.tenant_id,
+                        is_enabled=True,
+                        source_type=IntegrationSource.SourceType.CRM,
+                        config_json__provider="google_sheets",
+                    ).exclude(credentials_encrypted="")
+                    if any(should_sync_source(source) for source in crm_sources):
+                        trigger_tenant_crm_sync.delay(str(user.tenant_id))
         return response
 
     def finalize_response(self, request, response, *args, **kwargs):

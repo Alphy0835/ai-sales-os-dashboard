@@ -20,6 +20,8 @@ DEFAULT_HEADER_MAP = {
     "pipeline_stage": "pipeline_stage",
     "status_stage": "status_stage",
     "recording_url": "recording_url",
+    "needs_review": "needs_review",
+    "разбор": "needs_review",
 }
 
 DEFAULT_SKIP_STATUS_STAGES = ["done", "closed"]
@@ -35,6 +37,37 @@ def _skip_status_stages(source: IntegrationSource) -> set[str]:
     config = source.config_json or {}
     stages = config.get("skip_status_stages", DEFAULT_SKIP_STATUS_STAGES)
     return {str(s).strip().lower() for s in stages if str(s).strip()}
+
+
+def _parse_bool(value: str) -> bool:
+    return str(value).strip().lower() in ("true", "да", "1", "yes")
+
+
+def _should_add_to_review(source: IntegrationSource, row: dict[str, str]) -> tuple[bool, str]:
+    config = source.config_json or {}
+    review_rules = config.get("review_rules", {})
+
+    needs_review_val = row.get("needs_review", "").strip()
+    if needs_review_val and _parse_bool(needs_review_val):
+        reason = row.get("communication_comment") or "Flagged for review"
+        return True, reason
+
+    auto_statuses = config.get("auto_review_statuses") or review_rules.get("auto_review_statuses") or []
+    status_stage = row.get("status_stage", "").strip().lower()
+    if auto_statuses:
+        auto_set = {str(s).strip().lower() for s in auto_statuses if str(s).strip()}
+        if status_stage in auto_set:
+            return True, row.get("communication_comment") or status_stage
+
+    skip_stages = _skip_status_stages(source)
+    if status_stage in skip_stages:
+        return False, ""
+
+    empty_comment_on_active = review_rules.get("empty_comment_on_active", True)
+    if empty_comment_on_active and not row.get("communication_comment", "").strip():
+        return True, row.get("pipeline_stage") or "Empty comment"
+
+    return False, ""
 
 
 def _read_sheet_rows(source: IntegrationSource, credentials: dict) -> list[dict[str, str]]:
@@ -163,16 +196,16 @@ def sync_google_sheets(source: IntegrationSource) -> None:
                 defaults=defaults,
             )
 
-            status_stage = row.get("status_stage", "").strip().lower()
-            if employee and status_stage not in skip_stages:
-                reason = row.get("communication_comment") or row.get("pipeline_stage") or ""
-                _upsert_client_to_review(
-                    source,
-                    employee=employee,
-                    lead_id=row["lead_id"],
-                    client_name=row["client_name"],
-                    reason=reason,
-                )
+            if employee:
+                add_review, reason = _should_add_to_review(source, row)
+                if add_review:
+                    _upsert_client_to_review(
+                        source,
+                        employee=employee,
+                        lead_id=row["lead_id"],
+                        client_name=row["client_name"],
+                        reason=reason,
+                    )
 
         source.status = IntegrationSource.Status.CONNECTED
         source.last_error = ""

@@ -200,6 +200,7 @@ CELERY_TASK_ALWAYS_EAGER = (
     TESTING or os.environ.get("CELERY_TASK_ALWAYS_EAGER", "false").lower() == "true"
 )
 CELERY_TASK_EAGER_PROPAGATES = True
+CRM_SYNC_INTERVAL_MINUTES = int(os.environ.get("CRM_SYNC_INTERVAL_MINUTES", "60"))
 CELERY_BEAT_SCHEDULE = {
     "purge-expired-transcripts": {
         "task": "integrations.purge_expired_transcripts",
@@ -211,7 +212,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-all-integration-sources": {
         "task": "integrations.sync_all_sources",
-        "schedule": crontab(hour=1, minute=0),
+        "schedule": crontab(minute=0),
     },
 }
 

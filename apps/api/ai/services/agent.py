@@ -1,8 +1,16 @@
 import logging
 
+from django.utils import timezone
+
 from accounts.models import User
 from ai.models import AgentChatMessage, AgentChatSession
 from ai.services.credentials import llm_available, resolve_ai_config
+from ai.services.crm_tools import (
+    detect_crm_intent,
+    execute_crm_query,
+    format_crm_result,
+    maybe_refresh_crm,
+)
 from ai.services.knowledge import search_knowledge
 from ai.services.llm_adapter import LlmAdapterError, chat_completion
 from integrations.models import Transcription
@@ -71,6 +79,29 @@ def _rule_based_reply(
     return reply, sources, warnings
 
 
+def _format_as_of(as_of) -> str:
+    if as_of is None:
+        return ""
+    if timezone.is_naive(as_of):
+        as_of = timezone.make_aware(as_of)
+    local = timezone.localtime(as_of)
+    return f"Данные на {local.strftime('%d.%m.%Y %H:%M')}."
+
+
+def _try_crm_reply(actor: User, message: str) -> tuple[str | None, str]:
+    has_intent, filters, mode = detect_crm_intent(message, actor)
+    if not has_intent or filters is None:
+        return None, ""
+
+    maybe_refresh_crm(actor)
+    result = execute_crm_query(actor, filters, mode=mode)
+    reply = format_crm_result(result, mode)
+    as_of_note = _format_as_of(result.get("as_of"))
+    if as_of_note:
+        reply = f"{reply}\n\n{as_of_note}"
+    return reply, as_of_note
+
+
 def generate_agent_reply(
     *,
     actor: User,
@@ -78,6 +109,10 @@ def generate_agent_reply(
     client_name: str = "",
     client_note: str = "",
 ) -> tuple[str, list[dict], list[str]]:
+    crm_reply, _ = _try_crm_reply(actor, message)
+    if crm_reply is not None:
+        return crm_reply, [], []
+
     articles, restricted = search_knowledge(actor, message, include_restricted_hint=True)
     sources = [
         {

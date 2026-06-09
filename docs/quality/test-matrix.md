@@ -18,7 +18,7 @@ Maps features and critical flows to automated tests, environments, and release g
 
 | Suite | Tool | Location | Count | CI job |
 |---|---|---|---|---|
-| API integration | Django `TestCase` | `apps/api/**/tests/` | **78** (3 skipped on SQLite) | `api`, `api-postgres` |
+| API integration | Django `TestCase` | `apps/api/**/tests/` | **103** (3 skipped on SQLite) | `api`, `api-postgres` |
 | Web unit | Vitest | `apps/web/src/lib/__tests__/` | **12** | `web` (`npm run test:unit`) |
 | E2E | Playwright | `apps/web/e2e/manager-critical-flow.spec.ts` | **1** spec | `e2e` |
 | Migrations check | `makemigrations --check` | `apps/api` | — | `api` |
@@ -43,7 +43,11 @@ Maps features and critical flows to automated tests, environments, and release g
 | pgvector (PostgreSQL only) | `ai/tests/test_pgvector.py` | 3 | embed + vector search |
 | STT transcription | `integrations/tests/test_stt_transcription.py` | 3 | OpenRouter STT + fallback |
 | amoCRM sync | `integrations/tests/test_amocrm_sync.py` | 3 | CRM metrics + errors |
-| Source sync API | `integrations/tests/test_source_sync_api.py` | 1 | manual sync trigger |
+| Google Sheets CRM | `integrations/tests/test_google_sheets_sync.py` | 5 | CrmLead upsert, selective ClientToReview rules |
+| Source sync API | `integrations/tests/test_source_sync_api.py` | 1 | manual sync trigger (`force=True`) |
+| P4c CRM query | `integrations/tests/test_crm_query.py` | 6 | scoped filters, vocabulary |
+| P4c sync throttle | `integrations/tests/test_sync_throttle.py` | 5 | interval skip, force bypass |
+| P4c agent CRM | `ai/tests/test_agent_crm.py` | 3 | NL→query, `as_of` in reply |
 
 ### Web unit tests
 
@@ -99,6 +103,7 @@ Unit · Integration (API) · E2E · Manual smoke · Security regression · Migra
 | GAP-004 | Vitest | `dashboard.ts`, `reviews.ts` query builders | low | Unit tests (P3-D4 T9) | open |
 | GAP-005 | Throttle | 429 login/agent tests | medium | P3-D4 T4 | open |
 | GAP-006 | Upload | Size/extension edge cases | medium | P3-D4 T5 | open |
+| GAP-007 | P4c CRM | Query service, sync throttle, agent CRM tool | medium | P4c-8 tests | closed |
 
 ## Related Docs
 

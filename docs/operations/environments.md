@@ -85,6 +85,7 @@ Copy [`.env.example`](../../.env.example). Key groups:
 | `DJANGO_ALLOWED_HOSTS` | api | Comma-separated hosts |
 | `CORS_ALLOWED_ORIGINS` | api | e.g. `http://localhost:3000` |
 | `NEXT_PUBLIC_API_URL` | web | Browser → API base URL |
+| `CRM_SYNC_INTERVAL_MINUTES` | api, worker | CRM background sync interval + login throttle (default 60) |
 
 Production/staging: add `S3_*`, `OPENAI_API_KEY` when STAGE-002+ enabled.
 

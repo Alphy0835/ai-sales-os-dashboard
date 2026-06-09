@@ -199,19 +199,58 @@ Connector status per tenant/workspace. Configuration secrets — Integration Lev
 | status | enum | `connected` \| `degraded` \| `disconnected` \| `error` |
 | external_id | string | Spreadsheet ID (Google Sheets) or external account id |
 | credentials_encrypted | text | Fernet-encrypted service account JSON (CRM) |
-| config_json | json | `provider`, `column_map`, `sheet_name`, status sets |
-| last_sync_at | datetime | Last successful/partial sync |
+| config_json | json | See `config_json` fields below |
+| last_sync_at | datetime | Last successful/partial sync (`as_of` for agent + metrics) |
 | last_error | text | Last error message |
+
+### `config_json` fields (CRM / Google Sheets)
+
+| Key | Purpose |
+|---|---|
+| `provider` | `google_sheets` \| `amocrm` \| `demo` |
+| `spreadsheet_id` | Google Sheet id |
+| `sheet_name` | Tab name (default `Leads`) |
+| `header_map` | Sheet header → `CrmLead` field |
+| `skip_status_stages` | Closed stages excluded from `ClientToReview` (still cached) |
+| `review_rules` | Explicit rules for `ClientToReview` derivation |
+| `crm_vocabulary` | Business term → filter values for manager-agent NL parsing |
+
+Example `review_rules`:
+
+```json
+{
+  "empty_comment_on_active": true,
+  "auto_review_statuses": ["требует разбора", "needs_review"]
+}
+```
+
+Sheet column `needs_review` (`TRUE` / `да`) is always honoured when mapped in `header_map`.
+
+Example `crm_vocabulary`:
+
+```json
+{
+  "stages": {
+    "Closing": ["closing", "дожатие", "на дожатии"]
+  },
+  "statuses": {
+    "Assigned": ["assigned", "назначен"],
+    "open": ["open", "в работе"]
+  }
+}
+```
+
+Canonical keys (`Closing`, `Assigned`) must match values stored in the sheet / `CrmLead` after sync.
 
 ---
 
 ## Entity: CrmLead
 
-Cached row from Google Sheets CRM sync (P4b-GS). User Level reads leads from this table, not live Sheets API.
+Cached row from Google Sheets CRM sync (P4b-GS / P4c). **DB cache** for User Level reads and manager-agent SQL-style filters — not live Sheets API, not batch LLM over comments.
 
 ### Purpose
 
-Store per-deal / per-client CRM data for dashboards, «Клиенты к разбору», reviews, and agent context. Synced by `integrations.sync_source` (Beat, manual, login hook).
+Store per-lead CRM data for dashboards, scoped agent queries, reviews, and metrics. Synced by `integrations.sync_source` (hourly Beat, throttled login, manual, agent `refresh_crm`).
 
 ### Fields
 
@@ -219,35 +258,61 @@ Store per-deal / per-client CRM data for dashboards, «Клиенты к раз�
 |---|---|---|---|
 | id | UUID | yes | PK |
 | tenant_id | UUID FK | yes | Tenant |
-| workspace_id | UUID FK | no | Workspace (from employee or config default) |
-| source_id | UUID FK | yes | `IntegrationSource` (CRM) |
-| external_row_id | string | yes | Stable sheet row key (row number or id column) |
-| employee_id | UUID FK User | no | Linked user after email match |
-| employee_email | string | no | From sheet; used before user exists |
+| workspace_id | UUID FK | no | Workspace (from employee or source default) |
+| integration_source_id | UUID FK | yes | CRM `IntegrationSource` |
+| external_lead_id | string | yes | Stable sheet id (`lead_id` column) |
+| employee_id | UUID FK User | no | Linked user after `manager_email` match |
 | client_name | string | yes | Client / company name |
-| client_email | string | no | Client contact email |
 | phone | string | no | Client phone |
-| status | string | no | Raw status from sheet |
-| deal_amount | decimal | no | Deal value |
-| deal_date | date | no | Deal or lead date |
-| needs_review | bool | no | Drives `ClientToReview` derivation |
-| notes | text | no | Free-text from sheet |
-| raw_json | json | no | Full mapped row snapshot |
+| city | string | no | City |
+| communication_comment | text | no | CRM comment (stored; not LLM-triaged in batch) |
+| pipeline_stage | string | no | Funnel stage |
+| status_stage | string | no | Lead status |
+| recording_url | string | no | Recording URL |
+| manager_email | string | no | Sheet manager email |
+| supervisor_email | string | no | Sheet supervisor email |
 | synced_at | datetime | yes | Last upsert from sync job |
+
+### Query model (P4c)
+
+Manager-agent and internal services filter via `integrations.services.crm.query`:
+
+- Scope: `tenant_id` + manager hierarchy (`employee`, `workspace`).
+- Filters: `pipeline_stage`, `status_stage`, `city`, `manager_email`, `employee_id`, `client_name` (icontains).
+- Aggregates: `count`, limited `list` — against PostgreSQL only.
+- Freshness: answers cite `IntegrationSource.last_sync_at` as `as_of`.
 
 ### Relations
 
 - Many CrmLead → one IntegrationSource, one Tenant.
-- Optional link to User via `employee_id` (set when email matches active user).
+- Optional link to User via `employee_id` (set when `manager_email` matches active user).
 
 ### Validation
 
-- Unique (`tenant_id`, `source_id`, `external_row_id`).
-- `employee_email` normalized (lowercase) on save.
+- Unique (`tenant_id`, `integration_source_id`, `external_lead_id`).
 
 ### Deletion
 
-Hard delete on tenant purge; rows replaced on each sync (upsert), stale rows soft-deleted or marked inactive per sync policy.
+Hard delete on tenant purge; rows upserted on each sync (stale row policy per adapter).
+
+---
+
+## Entity: ClientToReview
+
+Manager dashboard queue («Клиенты к разбору»). **P4c:** derived on CRM sync only when row matches explicit `review_rules` in `IntegrationSource.config_json` (e.g. `needs_review` column = true/да) — **not** all open leads.
+
+| Field | Type | Description |
+|---|---|---|
+| tenant_id | FK | Tenant |
+| workspace_id | FK | Workspace |
+| employee_id | FK | Assigned employee |
+| client_name | string | Display name |
+| client_external_id | string | `CrmLead.external_lead_id` |
+| reason | text | From sheet comment / rule label |
+| priority | enum | `high` \| `medium` \| `low` |
+| status | enum | `new` \| `in_progress` \| `done` |
+
+Populated by sync adapter when `review_rules` match; excluded when `status_stage` in `skip_status_stages`.
 
 ---
 
@@ -278,7 +343,7 @@ Allow invited users to create a password and `User` row without integrator manua
 ### Relations
 
 - Registration consumes invite → creates `User` + default `ModulePermission` rows.
-- Post-registration login triggers CRM sync to link `CrmLead.employee_id`.
+- Post-registration login triggers CRM sync (if not throttled) to link `CrmLead.employee_id` via `manager_email`.
 
 ### Validation
 

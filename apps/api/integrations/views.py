@@ -64,7 +64,7 @@ class IntegrationSourceSyncView(APIView):
         except IntegrationSource.DoesNotExist:
             raise NotFound("Integration source not found")
 
-        sync_integration_source.delay(str(source.id))
+        sync_integration_source.delay(str(source.id), force=True)
         return Response({"status": "queued", "source_id": str(source.id)})
 
 
