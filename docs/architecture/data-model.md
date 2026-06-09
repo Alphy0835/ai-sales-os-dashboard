@@ -26,6 +26,7 @@ Maturity: L2
 | MetricSnapshot | Daily metric values per source | PostgreSQL | FEAT-002 | internal |
 | ConversationRecording | Call/meeting audio metadata | PostgreSQL + media | FEAT-002 | confidential |
 | Transcription | Speech-to-text for AI analytics | PostgreSQL | FEAT-002 | confidential |
+| ClientToReview | Clients flagged for manager review | PostgreSQL | FEAT-003 | internal |
 
 ## Entity: Tenant
 

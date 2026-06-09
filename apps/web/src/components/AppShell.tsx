@@ -27,6 +27,11 @@ type ShellProps = {
   children: ReactNode;
 };
 
+function isNavActive(pathname: string, href: string) {
+  if (href === "/manager" || href === "/employee") return pathname === href;
+  return pathname.startsWith(href);
+}
+
 export function AppShell({ variant, workspaceName, onLogout, children }: ShellProps) {
   const pathname = usePathname();
   const nav = variant === "manager" ? managerNav : employeeNav;
@@ -48,7 +53,7 @@ export function AppShell({ variant, workspaceName, onLogout, children }: ShellPr
           <Link
             key={item.href}
             href={item.href}
-            className={`nav-item${pathname === item.href ? " active" : ""}`}
+            className={`nav-item${isNavActive(pathname, item.href) ? " active" : ""}`}
           >
             <span>{item.icon}</span> {item.label}
           </Link>
@@ -63,7 +68,7 @@ export function AppShell({ variant, workspaceName, onLogout, children }: ShellPr
           </button>
         </div>
       </aside>
-      <main className="flex min-w-0 flex-1 flex-col gap-[var(--gap-page)]">{children}</main>
+      <main className="flex min-w-0 flex-1">{children}</main>
     </div>
   );
 }

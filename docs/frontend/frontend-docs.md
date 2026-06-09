@@ -34,13 +34,13 @@ Source of truth for Page ID: [pages-map.md](../project/design-guide/pages-map.md
 | Page ID | Route | Next.js path | Shell | Role | Status |
 |---|---|---|---|---|---|
 | PAGE-001 | `/login` | `app/login/page.tsx` | SHELL-AUTH | all | **implemented** |
-| PAGE-002 | `/manager` | `app/manager/page.tsx` | SHELL-MANAGER | Manager | stub (STAGE-003) |
-| PAGE-003 | `/manager/clients` | `app/manager/clients/page.tsx` | SHELL-MANAGER | Manager | planned |
+| PAGE-002 | `/manager` | `app/manager/page.tsx` | SHELL-MANAGER | Manager | **implemented** |
+| PAGE-003 | `/manager/clients` | `app/manager/clients/page.tsx` | SHELL-MANAGER | Manager | **implemented** |
 | PAGE-004 | `/manager/reviews` | `app/manager/reviews/page.tsx` | SHELL-MANAGER | Manager | planned |
 | PAGE-005 | `/manager/analytics` | `app/manager/analytics/page.tsx` | SHELL-MANAGER | Manager | planned |
 | PAGE-006 | `/manager/settings` | `app/manager/settings/page.tsx` | SHELL-MANAGER | Manager | planned |
 | PAGE-007 | `/manager/agent` | `app/manager/agent/page.tsx` | SHELL-MANAGER | Manager | planned |
-| PAGE-008 | `/employee` | `app/employee/page.tsx` | SHELL-EMPLOYEE | Employee | stub |
+| PAGE-008 | `/employee` | `app/employee/page.tsx` | SHELL-EMPLOYEE | Employee | **implemented** (metrics stub) |
 | PAGE-009 | `/employee/agent` | `app/employee/agent/page.tsx` | SHELL-EMPLOYEE | Employee | planned |
 
 Post-login redirect: `manager` → `/manager`, `employee` → `/employee` (from `/api/v1/auth/me/`).
@@ -75,6 +75,10 @@ Base URL: `process.env.NEXT_PUBLIC_API_URL` (default `http://localhost:8000`).
 | Login | POST | `/api/v1/auth/login/` |
 | Refresh | POST | `/api/v1/auth/refresh/` |
 | Current user | GET | `/api/v1/auth/me/` |
+| Manager dashboard | GET | `/api/v1/manager/dashboard/` |
+| Clients to review | GET | `/api/v1/manager/clients/` |
+| Employee dashboard | GET | `/api/v1/employee/dashboard/` |
+| Metrics (raw) | GET | `/api/v1/integrations/metrics/` |
 
 Authorization header: `Bearer {access_token}`.
 

@@ -132,6 +132,7 @@ class Command(BaseCommand):
         from django.core.management import call_command
 
         call_command("seed_integrations")
+        call_command("seed_dashboard")
 
         self.stdout.write(self.style.SUCCESS("Demo data ready:"))
         self.stdout.write("  manager@demo.local / demo1234 (top manager, both workspaces)")

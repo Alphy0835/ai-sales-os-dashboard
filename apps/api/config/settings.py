@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "core",
     "accounts",
     "integrations",
+    "analytics",
 ]
 
 MIDDLEWARE = [

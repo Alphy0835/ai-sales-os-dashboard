@@ -45,4 +45,4 @@ docker compose up --build
 
 ## Roadmap
 
-Implementation follows [`docs/project/roadmap.md`](docs/project/roadmap.md). **STAGE-001–002 done**. Next: **STAGE-003** Manager Dashboard.
+Implementation follows [`docs/project/roadmap.md`](docs/project/roadmap.md). **STAGE-001–003 done**. Next: **STAGE-004** Review Cycle.

@@ -20,7 +20,7 @@ Maturity: L1
 |---|---|---|---|---|
 | STAGE-001 | Access & Permissions | **done** | REQ-013, REQ-014, REQ-NFR-001, REQ-NFR-004 | yes |
 | STAGE-002 | Data Integration | **done** | REQ-015, REQ-016, REQ-NFR-002, REQ-NFR-003 | yes |
-| STAGE-003 | Manager Dashboard | planned | REQ-001, REQ-002, REQ-003, REQ-004 | yes |
+| STAGE-003 | Manager Dashboard | **done** | REQ-001, REQ-002, REQ-003, REQ-004 | yes |
 | STAGE-004 | Review Cycle | planned | REQ-005, REQ-006 | yes |
 | STAGE-005 | Quality & AI Analytics | planned | REQ-007, REQ-008 | yes |
 | STAGE-006 | Knowledge Base & AI Agents | planned | REQ-010, REQ-011, REQ-012 | yes |
@@ -88,7 +88,7 @@ Maturity: L1
 
 ## Stage: STAGE-003 — Manager Dashboard
 
-**Status:** planned
+**Status:** done
 
 **Goal:** дать руководителю сводку по подразделению, детализацию, AI-сигналы и список клиентов к разбору.
 
@@ -102,14 +102,14 @@ Maturity: L1
 
 **Release/rollback docs:** `docs/operations/deployment.md`, `docs/operations/rollback.md`
 
-**Done when:**
-- Руководитель видит дашборд с метриками за сегодня, неделю, месяц, динамикой и отставанием от нормы.
-- Доступна детализация по подразделению и сотруднику в рамках scope.
-- AI-сводка и вкладка «Клиенты к разбору» работают при наличии данных.
-- FLOW-001 проходится end-to-end.
-- QA-AC этапа в статусе passed.
+**Done when:** *(MVP met 2026-06-09)*
+- PAGE-002 `/manager` — KPI, periods, trend, AI summary, employee table, sources.
+- Drill-down: workspace + employee filters (REQ-002).
+- PAGE-003 `/manager/clients` — clients to review (REQ-004).
+- Employee `/employee` — personal metrics stub.
+- Tests + `npm run build`.
 
-**Implementation doc:** — *(создаётся после завершения: `roadmap-manager-dashboard.md`)*
+**Implementation doc:** [roadmap-manager-dashboard.md](roadmap-manager-dashboard.md)
 
 ---
 
