@@ -45,7 +45,7 @@
 | **P0-2** | **Prod secrets** — без них Django не стартует / demo-fallback | `DJANGO_SECRET_KEY`, `AI_CREDENTIALS_KEY`, `POSTGRES_PASSWORD`, `ALLOWED_HOSTS`, `CORS` |
 | **P0-3** | **LLM/STT cost abuse** — нет throttle на reports/upload/custom-reports | Rate limit на LLM-heavy endpoints до первых пользователей |
 | **P0-4** | **OpenRouter + PII** — транскрипты/KB в промптах | DPA/согласие с первым tenant до реальных данных |
-| **P0-5** | **Integrator runbook отсутствует** | Пошаговый VPS → tenant → Sheets (сейчас только checklist ниже) |
+| **P0-5** | **Integrator runbook отсутствует** | ✅ [`docs/operations/integrator-vps-pilot.md`](docs/operations/integrator-vps-pilot.md) |
 
 ---
 
@@ -134,7 +134,7 @@
 ## 8 этапов до первых пользователей на VPS
 
 1. **Закрыть P0** — Admin proxy, prod `.env`, LLM throttles, DPA
-2. **Runbook** — integrator VPS setup + first tenant (в `docs/operations/`)
+2. **Runbook** — [`docs/operations/integrator-vps-pilot.md`](docs/operations/integrator-vps-pilot.md)
 3. **VPS** — Docker, TLS, firewall, `docker-compose.prod.yml` (api, worker, **beat**, web, postgres, redis)
 4. **Smoke** — `/api/v1/health/ready/`, backup cron, restore drill
 5. **Tenant #1** — Admin: Tenant, Workspace, Invite, IntegrationSource + Sheets SA
@@ -146,7 +146,11 @@
 
 ## Pilot checklist (integrator)
 
-1. Django Admin доступен (proxy/VPN)
+Полная пошаговая инструкция: **[integrator-vps-pilot.md](docs/operations/integrator-vps-pilot.md)**.
+
+Краткий чеклист:
+
+1. Django Admin доступен (`https://<domain>/admin/` через BFF)
 2. Tenant, Workspace, `RegistrationInvite`
 3. Google Sheet + `IntegrationSource` (`config_json` template pre-filled)
 4. Share sheet с service account email

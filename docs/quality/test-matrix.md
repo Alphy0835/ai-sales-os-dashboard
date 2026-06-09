@@ -19,8 +19,9 @@ Maps features and critical flows to automated tests, environments, and release g
 | Suite | Tool | Location | Count | CI job |
 |---|---|---|---|---|
 | API integration | Django `TestCase` | `apps/api/**/tests/` | **103** (3 skipped on SQLite) | `api`, `api-postgres` |
-| Web unit | Vitest | `apps/web/src/lib/__tests__/` | **12** | `web` (`npm run test:unit`) |
-| E2E | Playwright | `apps/web/e2e/manager-critical-flow.spec.ts` | **1** spec | `e2e` |
+| Web unit | Vitest | `apps/web/src/lib/__tests__/` | **23** | `web` (`npm run test:unit`) |
+| E2E | Playwright | `apps/web/e2e/*.spec.ts` | **2** specs | `e2e` |
+| Web lint | ESLint | `apps/web` | — | `web` (`npm run lint`) |
 | Migrations check | `makemigrations --check` | `apps/api` | — | `api` |
 | Web build | `next build` | `apps/web` | — | `web`, `e2e` |
 
@@ -54,7 +55,9 @@ Maps features and critical flows to automated tests, environments, and release g
 | File | Tests | Focus |
 |---|---|---|
 | `auth.test.ts` | 5 | profile cache, home routes |
-| `api.test.ts` | 7 | login/logout cookies, refresh on 401, `authFetch` |
+| `api.test.ts` | 10 | login/logout cookies, refresh on 401, `authFetch`, register |
+| `dashboard.test.ts` | 4 | manager/employee dashboard query builders |
+| `reviews.test.ts` | 4 | review list/create/task update |
 
 ## Test Types
 
@@ -64,8 +67,8 @@ Unit · Integration (API) · E2E · Manual smoke · Security regression · Migra
 
 | Environment | Automated suites | Manual |
 |---|---|---|
-| local | API 52 + Vitest 12 + optional E2E | UI polish |
-| CI (GitHub Actions) | API + Vitest + E2E + build + migrations | — |
+| local | API 103 + Vitest 23 + optional E2E 2 | UI polish |
+| CI (GitHub Actions) | API + api-postgres + lint + Vitest + E2E 2 + build + migrations | — |
 | staging / production | smoke only | login → dashboard → analytics |
 
 ## Coverage Matrix
@@ -98,7 +101,7 @@ Unit · Integration (API) · E2E · Manual smoke · Security regression · Migra
 | Gap ID | Area | Missing Coverage | Risk | Action | Status |
 |---|---|---|---|---|---|
 | GAP-001 | Auth | Cross-tenant IDOR (2 tenants) | high | Add dedicated test module (P3-D4 T2) | open |
-| GAP-002 | Web lint | `npm run lint` not in CI | medium | Add to CI web job (P3-D4 T7) | open |
+| GAP-002 | Web lint | `npm run lint` not in CI | medium | Add to CI web job (P3-D4 T7) | closed |
 | GAP-003 | E2E | Employee flow + logout | low | Second Playwright spec (P3-D4 T8) | open |
 | GAP-004 | Vitest | `dashboard.ts`, `reviews.ts` query builders | low | Unit tests (P3-D4 T9) | open |
 | GAP-005 | Throttle | 429 login/agent tests | medium | P3-D4 T4 | open |

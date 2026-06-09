@@ -1,6 +1,5 @@
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
-from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from accounts.models import User
@@ -29,15 +28,12 @@ from ai.services.permissions import (
     resolve_report_scope,
 )
 from ai.services.reports import generate_analytics_report
+from ai.throttles import AgentRateThrottle, AnalyticsReportRunThrottle, CustomReportThrottle
 
 
 def require_manager(user):
     if user.role != User.Role.MANAGER:
         raise PermissionDenied("Manager role required")
-
-
-class AgentRateThrottle(UserRateThrottle):
-    scope = "agent"
 
 
 class QualityCriteriaListCreateView(APIView):
@@ -96,6 +92,8 @@ class AnalyticsReportsView(APIView):
 
 
 class AnalyticsReportRunView(APIView):
+    throttle_classes = [AnalyticsReportRunThrottle]
+
     def post(self, request):
         require_manager(request.user)
         if not can_run_reports(request.user):
@@ -236,6 +234,11 @@ class EmployeeAgentChatView(APIView):
 
 
 class CustomReportListCreateView(APIView):
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [CustomReportThrottle()]
+        return []
+
     def get(self, request):
         require_manager(request.user)
         if not can_view_criteria(request.user):
@@ -264,6 +267,11 @@ class CustomReportListCreateView(APIView):
 
 
 class CustomReportDetailView(APIView):
+    def get_throttles(self):
+        if self.request.method == "PATCH":
+            return [CustomReportThrottle()]
+        return []
+
     def _get(self, request, report_id):
         require_manager(request.user)
         if not can_view_criteria(request.user):

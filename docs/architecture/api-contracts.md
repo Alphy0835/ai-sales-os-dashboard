@@ -28,6 +28,18 @@ OpenAPI: `/api/schema/` (drf-spectacular)
 
 Implementation: `accounts/cookies.py`, `accounts/authentication.py` (`CookieJWTAuthentication`), `accounts/serializers_auth.py`, `apps/web/next.config.ts` rewrites.
 
+## Rate limiting (LLM / STT)
+
+Per-user throttles on cost-heavy endpoints (`ai/throttles.py`). Disabled when `TESTING=true`.
+
+| Endpoint | Scope | Default | Env |
+|---|---|---|---|
+| `POST /manager/analytics/reports/run/` | `analytics_run` | 10/min | `ANALYTICS_RUN_THROTTLE` |
+| `POST /manager/settings/custom-reports/` | `custom_report` | 10/min | — |
+| `POST /integrations/recordings/` | `recording_upload` | 5/min | — |
+
+Also: login/refresh `10/min` (`THROTTLE_LOGIN`), agent chat `30/min` (`THROTTLE_AGENT`). Exceeding limit → `429`.
+
 ## API Index
 
 | API ID | Method | Path | Purpose | Auth | Feature |
@@ -658,7 +670,7 @@ Requires `analytics: view` or `run`.
 
 ### `POST /api/v1/manager/analytics/reports/run/`
 
-Requires `analytics: run`. Body: `workspace_id`, optional `employee_id`, `template`, optional `custom_report_id`.
+Requires `analytics: run`. Body: `workspace_id`, optional `employee_id`, `template`, optional `custom_report_id`. **Throttle:** `analytics_run` (default 10/min per user).
 
 Returns canvas with stage scores, criteria breakdown, recommendations. Fails with 400 if no transcriptions. When `custom_report_id` is set, template becomes `custom` and criteria are filtered by structured query focus stages.
 
@@ -668,7 +680,7 @@ Returns canvas with stage scores, criteria breakdown, recommendations. Fails wit
 
 ### `GET/POST /api/v1/manager/settings/custom-reports/`
 
-Requires `settings: view` (GET) or `settings: edit` (POST). POST body: `title`, `description`. Server structures `structured_query` (MVP: rule-based stage keywords). List/detail scoped to custom reports whose author belongs to a workspace in the actor's manager scope (same pattern as `reports_queryset`).
+Requires `settings: view` (GET) or `settings: edit` (POST). POST body: `title`, `description`. POST **throttle:** `custom_report` (default 10/min per user). Server structures `structured_query` (MVP: rule-based stage keywords). List/detail scoped to custom reports whose author belongs to a workspace in the actor's manager scope (same pattern as `reports_queryset`).
 
 ### `GET/PATCH/DELETE .../custom-reports/{id}/`
 

@@ -17,6 +17,7 @@ from integrations.serializers import (
 )
 from integrations.services.aggregation import build_metrics_summary
 from integrations.services.scope import can_access_recording, recordings_queryset
+from ai.throttles import RecordingUploadThrottle
 from integrations.tasks import sync_integration_source, transcribe_recording_task
 
 
@@ -88,6 +89,11 @@ class MetricsSummaryView(APIView):
 
 class RecordingListCreateView(APIView):
     parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [RecordingUploadThrottle()]
+        return []
 
     def get(self, request):
         require_dashboard_view(request.user)

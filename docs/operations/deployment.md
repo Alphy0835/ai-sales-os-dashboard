@@ -2,7 +2,7 @@ Doc ID: OPS-DEPLOY-001
 Status: active
 Source of truth: yes
 Owner: operations
-Related docs: docs/operations/environments.md, docs/operations/rollback.md, docs/operations/backup-and-restore.md, docs/security/secrets-management.md
+Related docs: docs/operations/environments.md, docs/operations/rollback.md, docs/operations/backup-and-restore.md, docs/operations/integrator-vps-pilot.md, docs/security/secrets-management.md
 Update together with: docker-compose.prod.yml, .env.example, environments.md
 Update trigger: new service, port, env var, or deploy step change
 Review required: operations, backend
@@ -14,7 +14,7 @@ Production deploy uses [`docker-compose.prod.yml`](../../docker-compose.prod.yml
 
 ## Architecture (production)
 
-Browser traffic hits **one public hostname** (e.g. `https://app.example.com`). Next.js acts as a **BFF**: the browser calls same-origin `/api/v1/…` with httpOnly cookies; Next rewrites those requests to Django on the internal Docker network (`API_BACKEND_URL=http://api:8000`).
+Browser traffic hits **one public hostname** (e.g. `https://app.example.com`). Next.js acts as a **BFF**: the browser calls same-origin `/api/v1/…` with httpOnly cookies; Next rewrites those requests to Django on the internal Docker network (`API_BACKEND_URL=http://api:8000`). Django Admin and its static assets are proxied the same way at same-origin `/admin/` and `/static/` (see [`next.config.ts`](../../apps/web/next.config.ts)).
 
 Do **not** point the browser at a separate API subdomain in production — cross-origin API URLs break cookie auth.
 
@@ -54,7 +54,7 @@ Set these in `.env` before first deploy:
 | `CORS_ALLOWED_ORIGINS` | **yes** | Browser origin(s), e.g. `https://app.example.com` |
 | `NEXT_PUBLIC_API_URL` | **yes** | Must be **empty** (`""`) in production — browser uses same-origin `/api/v1`; do **not** set a cross-origin API URL |
 | `API_BACKEND_URL` | auto | Compose sets `http://api:8000` for Next rewrites; used as Docker build arg for `web` |
-| `REDIS_URL` | auto | Overridden to `redis://redis:6379/0` inside compose |
+| `REDIS_URL` | auto | Overridden to `redis://redis:6379/0` inside compose; also backs Django `CACHES` for DRF throttling |
 | `DATABASE_URL` | auto | Overridden to internal `postgres` host in compose |
 | `GUNICORN_WORKERS` | optional | Default `3` (range 2–4 recommended) |
 | `WEB_PORT` | optional | Host bind port for `web`; default `3000`, bound to `127.0.0.1` only |
@@ -66,6 +66,8 @@ Do **not** run `seed_demo` in production unless creating a one-off staging sandb
 ## Reverse proxy
 
 Terminate TLS on the host and proxy **only** to the Next.js container on localhost. Pass `X-Forwarded-Proto: https` so Django (via BFF rewrites) can detect HTTPS when `SECURE_SSL_REDIRECT` is enabled.
+
+**Django Admin:** integrators open `https://app.example.com/admin/` on the **same hostname** as the app. Next.js rewrites `/admin/` and `/static/` to the internal `api` service — no separate admin port or subdomain in nginx.
 
 Replace `app.example.com` with your domain. Ensure DNS points at this host before enabling TLS.
 
@@ -260,6 +262,7 @@ Keep `NEXT_PUBLIC_API_URL` empty for same-origin cookie auth.
 
 ## Related
 
+- [integrator-vps-pilot.md](integrator-vps-pilot.md) — pilot onboarding: VPS → tenant → Google Sheets → first user
 - [auth-and-access-control.md](../security/auth-and-access-control.md) — cookie auth flow, logout blacklist
 - [frontend-docs.md](../frontend/frontend-docs.md) — BFF client (`credentials: "include"`, empty `NEXT_PUBLIC_API_URL`)
 - [environments.md](environments.md) — local vs prod overview

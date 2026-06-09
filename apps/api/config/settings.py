@@ -118,7 +118,7 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 if IS_PRODUCTION:
     STORAGES = {
@@ -174,6 +174,9 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "login": None if TESTING else os.environ.get("THROTTLE_LOGIN", "10/min"),
         "agent": None if TESTING else os.environ.get("THROTTLE_AGENT", "30/min"),
+        "analytics_run": None if TESTING else os.environ.get("ANALYTICS_RUN_THROTTLE", "10/min"),
+        "custom_report": None if TESTING else "10/min",
+        "recording_upload": None if TESTING else "5/min",
     },
 }
 
@@ -191,8 +194,24 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
 }
 
-CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+_redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
+if _redis_url and not TESTING:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _redis_url,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
+
+CELERY_BROKER_URL = _redis_url
+CELERY_RESULT_BACKEND = _redis_url
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
