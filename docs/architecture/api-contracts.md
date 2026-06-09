@@ -413,6 +413,36 @@ Task object with `review_id`, `review_date`, `author_name`.
 
 ---
 
+## API-AI-001 — Quality criteria
+
+### `GET/POST /api/v1/manager/settings/quality-criteria/`
+
+Requires `settings: view` (GET) or `settings: edit` (POST).
+
+### `PATCH/DELETE .../quality-criteria/{id}/`
+
+Requires `settings: edit`.
+
+---
+
+## API-AI-002 — Analytics reports list
+
+### `GET /api/v1/manager/analytics/reports/`
+
+Requires `analytics: view` or `run`.
+
+---
+
+## API-AI-003 — Run analytics report
+
+### `POST /api/v1/manager/analytics/reports/run/`
+
+Requires `analytics: run`. Body: `workspace_id`, optional `employee_id`, `template`.
+
+Returns canvas with stage scores, criteria breakdown, recommendations. Fails with 400 if no transcriptions.
+
+---
+
 ## Related Docs
 
 - [data-model.md](data-model.md) — Tenant, User, integrations entities

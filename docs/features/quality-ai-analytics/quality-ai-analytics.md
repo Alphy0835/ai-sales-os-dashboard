@@ -1,9 +1,9 @@
 Doc ID: FEAT-005
-Status: draft
+Status: active
 Related requirements: REQ-007, REQ-008
 Related user flows: FLOW-003, FLOW-004
-Related API: TBD — `docs/architecture/api-contracts.md`
-Related data model: TBD — `docs/architecture/data-model.md`
+Related API: `docs/architecture/api-contracts.md` — API-AI-001 … API-AI-003
+Related data model: `docs/architecture/data-model.md` — QualityCriterion, AnalyticsReport
 Related security: `docs/security/data-classification.md`
 Related tests: QA-AC-007, QA-AC-008
 Update trigger: изменение критериев оценки, шаблонов отчётов или формата канваса

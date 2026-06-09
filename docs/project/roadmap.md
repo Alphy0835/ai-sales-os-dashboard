@@ -22,7 +22,7 @@ Maturity: L1
 | STAGE-002 | Data Integration | **done** | REQ-015, REQ-016, REQ-NFR-002, REQ-NFR-003 | yes |
 | STAGE-003 | Manager Dashboard | **done** | REQ-001, REQ-002, REQ-003, REQ-004 | yes |
 | STAGE-004 | Review Cycle | **done** | REQ-005, REQ-006 | yes |
-| STAGE-005 | Quality & AI Analytics | planned | REQ-007, REQ-008 | yes |
+| STAGE-005 | Quality & AI Analytics | **done** | REQ-007, REQ-008 | yes |
 | STAGE-006 | Knowledge Base & AI Agents | planned | REQ-010, REQ-011, REQ-012 | yes |
 | STAGE-007 | Custom AI Reports | planned | REQ-009 | no |
 
@@ -142,7 +142,7 @@ Maturity: L1
 
 ## Stage: STAGE-005 — Quality & AI Analytics
 
-**Status:** planned
+**Status:** **done**
 
 **Goal:** настроить критерии оценки качества и формировать AI-отчёты с канвасами по транскрипциям.
 
@@ -162,7 +162,7 @@ Maturity: L1
 - FLOW-003 проходится end-to-end при наличии транскрипций.
 - QA-AC этапа в статусе passed.
 
-**Implementation doc:** — *(создаётся после завершения: `roadmap-quality-ai-analytics.md`)*
+**Implementation doc:** [roadmap-quality-ai-analytics.md](roadmap-quality-ai-analytics.md)
 
 ---
 

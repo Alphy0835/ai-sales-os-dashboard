@@ -171,7 +171,7 @@ if ($RunTests) {
     Write-Step "Running API tests..."
     Push-Location $ApiDir
     $env:CELERY_TASK_ALWAYS_EAGER = "true"
-    & $py manage.py test accounts.tests integrations.tests analytics.tests reviews.tests -v 1
+    & $py manage.py test accounts.tests integrations.tests analytics.tests reviews.tests ai.tests -v 1
     $code = $LASTEXITCODE
     Pop-Location
     if ($code -ne 0) { exit $code }

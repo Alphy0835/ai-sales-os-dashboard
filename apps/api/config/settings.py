@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "integrations",
     "analytics",
     "reviews",
+    "ai",
 ]
 
 MIDDLEWARE = [

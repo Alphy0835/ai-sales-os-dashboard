@@ -235,6 +235,30 @@ Task assigned during a review; shown on employee dashboard (REQ-006).
 
 ---
 
+## Entity: QualityCriterion
+
+Tenant-scoped rule for AI quality scoring (REQ-008). MVP: keyword match in transcripts.
+
+| Field | Type | Description |
+|---|---|---|
+| funnel_stage | enum | greeting, discovery, presentation, objections, closing |
+| keywords | text | Comma-separated match tokens |
+| is_active | bool | Used in report generation |
+
+---
+
+## Entity: AnalyticsReport
+
+Stored AI analytics result with JSON canvas (REQ-007).
+
+| Field | Type | Description |
+|---|---|---|
+| template | enum | standard_quality, funnel_dynamics |
+| canvas | json | stages, criteria scores, recommendations |
+| employee_id | FK | Optional drill-down subject |
+
+---
+
 ## Multi-tenant rule
 
 Every query on tenant-scoped tables MUST filter by authenticated user's `tenant_id`. Enforced via middleware + custom managers (see `apps/api/core`).
