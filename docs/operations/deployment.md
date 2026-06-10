@@ -12,6 +12,8 @@ Maturity: L2
 
 Production deploy uses [`docker-compose.prod.yml`](../../docker-compose.prod.yml) at the repo root. Local dev stays on [`docker-compose.yml`](../../docker-compose.yml) (hot reload, `seed_demo`).
 
+**Gate A1 (local prod-like, not VPS):** see [local-gate-a1.md](local-gate-a1.md) — copy `.env.local-prod.example` → `.env`, run prod compose on `127.0.0.1:3000`, smoke with `scripts/local-prod-smoke.ps1` or `.sh`.
+
 ## Architecture (production)
 
 Browser traffic hits **one public hostname** (e.g. `https://app.example.com`). Next.js acts as a **BFF**: the browser calls same-origin `/api/v1/…` with httpOnly cookies; Next rewrites those requests to Django on the internal Docker network (`API_BACKEND_URL=http://api:8000`). Django Admin and its static assets are proxied the same way at same-origin `/admin/` and `/static/` (see [`next.config.ts`](../../apps/web/next.config.ts)).

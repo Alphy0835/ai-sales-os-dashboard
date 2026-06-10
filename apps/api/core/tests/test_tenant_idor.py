@@ -6,9 +6,11 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from accounts.models import ManagerScope, ModulePermission, Tenant, User, Workspace
-from analytics.models import ClientToReview
+from ai.models import AnalyticsReport, CustomReport, KnowledgeArticle
 from ai.services.agent import generate_agent_reply
+from analytics.models import ClientToReview
 from integrations.models import ConversationRecording, CrmLead, IntegrationSource, Transcription
+from reviews.models import Review, ReviewTask
 
 
 class CrossTenantIdorTests(TestCase):
@@ -19,6 +21,7 @@ class CrossTenantIdorTests(TestCase):
         self.ws_b = Workspace.objects.create(tenant=self.tenant_b, name="B Москва")
 
         self.manager_a = self._create_manager("mgr-a@test.local", self.tenant_a, self.ws_a)
+        self.manager_b = self._create_manager("mgr-b@test.local", self.tenant_b, self.ws_b)
         self.employee_a = User.objects.create_user(
             email="emp-a@test.local",
             password="pass1234",
@@ -98,6 +101,41 @@ class CrossTenantIdorTests(TestCase):
             manager_email="emp-a@test.local",
             employee=self.employee_a,
         )
+        self.foreign_review = Review.objects.create(
+            tenant=self.tenant_b,
+            workspace=self.ws_b,
+            employee=self.employee_b,
+            author=self.manager_b,
+            comment="Foreign review secret",
+            client_to_review=self.foreign_client,
+        )
+        self.foreign_task = ReviewTask.objects.create(
+            review=self.foreign_review,
+            title="Foreign task",
+        )
+        self.foreign_article = KnowledgeArticle.objects.create(
+            tenant=self.tenant_b,
+            title="ForeignSecretArticle",
+            category=KnowledgeArticle.Category.PRODUCT,
+            content="Foreign secret knowledge content",
+            access_level=KnowledgeArticle.AccessLevel.ALL,
+        )
+        self.foreign_report = AnalyticsReport.objects.create(
+            tenant=self.tenant_b,
+            author=self.manager_b,
+            workspace=self.ws_b,
+            employee=self.employee_b,
+            template=AnalyticsReport.Template.STANDARD_QUALITY,
+            status=AnalyticsReport.Status.COMPLETED,
+            summary_text="ForeignSecretReportSummary",
+        )
+        self.foreign_custom_report = CustomReport.objects.create(
+            tenant=self.tenant_b,
+            author=self.manager_b,
+            title="Foreign custom report",
+            description="Secret custom report",
+            structured_query={"focus_stages": ["greeting"]},
+        )
 
         self.client = APIClient()
         self._login(self.manager_a)
@@ -123,6 +161,12 @@ class CrossTenantIdorTests(TestCase):
                 user=manager, module=module, defaults={"level": level}
             )
         return manager
+
+    def _grant(self, user, **modules):
+        for module, level in modules.items():
+            ModulePermission.objects.update_or_create(
+                user=user, module=module, defaults={"level": level}
+            )
 
     def _login(self, user):
         response = self.client.post(
@@ -180,3 +224,122 @@ class CrossTenantIdorTests(TestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         mock_delay.assert_not_called()
+
+    def test_foreign_user_id_on_manager_dashboard_returns_404(self):
+        response = self.client.get(f"/api/v1/manager/dashboard/?user_id={self.employee_b.id}")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_manager_clients_excludes_foreign_tenant_clients(self):
+        response = self.client.get("/api/v1/manager/clients/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        client_ids = {row["id"] for row in response.data["results"]}
+        self.assertNotIn(str(self.foreign_client.id), client_ids)
+        client_names = {row["client_name"] for row in response.data["results"]}
+        self.assertNotIn("Foreign Corp", client_names)
+
+    def test_manager_clients_foreign_employee_filter_returns_empty(self):
+        response = self.client.get(f"/api/v1/manager/clients/?employee_id={self.employee_b.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 0)
+        self.assertEqual(response.data["results"], [])
+
+    def test_manager_reviews_excludes_foreign_tenant_reviews(self):
+        response = self.client.get("/api/v1/manager/reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        review_ids = {row["id"] for row in response.data["results"]}
+        self.assertNotIn(str(self.foreign_review.id), review_ids)
+
+    def test_manager_reviews_foreign_employee_filter_returns_empty(self):
+        response = self.client.get(f"/api/v1/manager/reviews/?employee_id={self.employee_b.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 0)
+        self.assertEqual(response.data["results"], [])
+
+    def test_foreign_review_task_patch_returns_404(self):
+        self._login(self.employee_a)
+        response = self.client.patch(
+            f"/api/v1/employee/tasks/{self.foreign_task.id}/",
+            {"status": ReviewTask.Status.DONE},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_analytics_reports_list_excludes_foreign_tenant(self):
+        self._grant(self.manager_a, analytics=ModulePermission.Level.VIEW)
+        response = self.client.get("/api/v1/manager/analytics/reports/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        report_ids = {row["id"] for row in response.data["results"]}
+        self.assertNotIn(str(self.foreign_report.id), report_ids)
+        summaries = {row.get("summary_text", "") for row in response.data["results"]}
+        self.assertNotIn("ForeignSecretReportSummary", summaries)
+
+    def test_analytics_report_run_rejects_foreign_workspace(self):
+        self._grant(self.manager_a, analytics=ModulePermission.Level.RUN)
+        response = self.client.post(
+            "/api/v1/manager/analytics/reports/run/",
+            {"workspace_id": str(self.ws_b.id)},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_analytics_report_run_rejects_foreign_employee(self):
+        self._grant(self.manager_a, analytics=ModulePermission.Level.RUN)
+        response = self.client.post(
+            "/api/v1/manager/analytics/reports/run/",
+            {
+                "workspace_id": str(self.ws_a.id),
+                "employee_id": str(self.employee_b.id),
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_analytics_report_run_rejects_foreign_custom_report(self):
+        self._grant(self.manager_a, analytics=ModulePermission.Level.RUN)
+        response = self.client.post(
+            "/api/v1/manager/analytics/reports/run/",
+            {
+                "workspace_id": str(self.ws_a.id),
+                "custom_report_id": str(self.foreign_custom_report.id),
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("custom_report_id", response.data)
+
+    def test_knowledge_list_excludes_foreign_tenant_articles(self):
+        self._grant(self.manager_a, settings=ModulePermission.Level.VIEW)
+        response = self.client.get("/api/v1/manager/settings/knowledge/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        titles = {row["title"] for row in response.data["results"]}
+        self.assertNotIn("ForeignSecretArticle", titles)
+
+    def test_foreign_knowledge_article_patch_returns_404(self):
+        self._grant(self.manager_a, settings=ModulePermission.Level.EDIT)
+        response = self.client.patch(
+            f"/api/v1/manager/settings/knowledge/{self.foreign_article.id}/",
+            {"title": "Hijacked"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.foreign_article.refresh_from_db()
+        self.assertEqual(self.foreign_article.title, "ForeignSecretArticle")
+
+    def test_manager_cannot_access_employee_dashboard(self):
+        response = self.client.get("/api/v1/employee/dashboard/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_agent_chat_does_not_leak_foreign_recording(self):
+        self._grant(self.manager_a, agent=ModulePermission.Level.USE)
+        response = self.client.post(
+            "/api/v1/manager/agent/chat/",
+            {
+                "message": "Подскажи следующий шаг по переговорам",
+                "client_name": "Foreign Client",
+                "client_note": "Разбор звонка",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        assistant = [m for m in response.data["messages"] if m["role"] == "assistant"][-1]
+        self.assertNotIn("Secret transcript", assistant["content"])

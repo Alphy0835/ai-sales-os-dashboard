@@ -174,3 +174,13 @@ jobs:
             sleep 2
           done
           npm run test:e2e
+
+  prod-compose-smoke:
+    name: Prod compose smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run prod compose smoke
+        run: bash scripts/ci-prod-smoke.sh

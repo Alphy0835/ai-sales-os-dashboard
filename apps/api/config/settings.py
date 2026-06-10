@@ -173,6 +173,7 @@ REST_FRAMEWORK = {
     # Rate=None disables the throttle (used in tests).
     "DEFAULT_THROTTLE_RATES": {
         "login": None if TESTING else os.environ.get("THROTTLE_LOGIN", "10/min"),
+        "password_reset": None if TESTING else os.environ.get("THROTTLE_PASSWORD_RESET", "5/min"),
         "agent": None if TESTING else os.environ.get("THROTTLE_AGENT", "30/min"),
         "analytics_run": None if TESTING else os.environ.get("ANALYTICS_RUN_THROTTLE", "10/min"),
         "custom_report": None if TESTING else "10/min",
@@ -187,6 +188,15 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
 }
+
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ai-sales-os.local")
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend"
+    if not IS_PRODUCTION
+    else "django.core.mail.backends.smtp.EmailBackend",
+)
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "AI Sales OS API",

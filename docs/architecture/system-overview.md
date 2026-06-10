@@ -25,11 +25,11 @@ AI Sales OS — SaaS для контроля и развития отдела п
 | API docs | drf-spectacular | OpenAPI schema |
 | Auth (User) | JWT access + refresh | STAGE-001; tenant + scope in middleware |
 | Auth (Integration) | Django Admin (session) | Integrator config, later |
-| Database | PostgreSQL 16 + pgvector | Relational data + RAG embeddings (later) |
+| Database | PostgreSQL 16 + pgvector | Relational data + RAG embeddings (PostgreSQL prod) |
 | Cache / broker | Redis 7 | Celery broker, KPI cache (later) |
 | Workers | Celery | CRM sync, transcription, embeddings (STAGE-002+) |
-| Object storage | S3-compatible (MinIO local) | Call recordings (STAGE-002+) |
-| AI | Pluggable adapter → OpenAI API | Analytics, agents (STAGE-005+) |
+| Object storage | — | **Not used** — audio not persisted; transcripts in PostgreSQL only |
+| AI | Pluggable adapter → OpenRouter | Analytics, agents (STAGE-005+) |
 | Local runtime | Docker Compose | postgres, redis, api, web, worker |
 | Production | Managed cloud (TBD) | Railway / Render / Fly.io |
 
@@ -53,7 +53,6 @@ flowchart LR
   subgraph data [Data]
     PG[(PostgreSQL)]
     Redis[(Redis)]
-    S3[(Object storage)]
   end
 
   subgraph external [External]
@@ -71,7 +70,6 @@ flowchart LR
   API --> Redis
   Worker --> PG
   Worker --> Redis
-  Worker --> S3
   Worker --> CRM
   Worker --> Tel
   Worker --> LLM
@@ -106,8 +104,8 @@ Frontend routes ↔ [pages-map.md](../project/design-guide/pages-map.md) — с�
 
 1. User → Next.js → JWT → Django API (tenant-scoped queryset).
 2. Integrations → Celery task → external API → normalize → PostgreSQL.
-3. Recordings → S3 → transcription job → transcript → AI evaluation (later).
-4. Knowledge chunks → embeddings → pgvector → RAG retrieval (later).
+3. Call audio (transient upload) → STT job → transcript in PostgreSQL → AI evaluation (later).
+4. Knowledge chunks → embeddings → pgvector → RAG retrieval.
 
 ## External Dependencies
 

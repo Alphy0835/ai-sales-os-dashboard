@@ -21,10 +21,10 @@ Source of truth для требований User Level. Описывает, чт
 
 | Requirement ID | Name | Type | Priority | Status | Related Features | Acceptance Criteria |
 |---|---|---|---|---|---|---|
-| REQ-001 | Дашборд руководителя | functional | high | draft | FEAT-003 | QA-AC-001 |
-| REQ-002 | Детализация по сотруднику/подразделению | functional | high | draft | FEAT-003 | QA-AC-002 |
-| REQ-003 | AI-сводка на дашборде | functional | high | draft | FEAT-003 | QA-AC-003 |
-| REQ-004 | Клиенты к разбору | functional | high | draft | FEAT-003 | QA-AC-004 |
+| REQ-001 | Дашборд руководителя | functional | high | pilot | FEAT-003 | QA-AC-001 |
+| REQ-002 | Детализация по сотруднику/подразделению | functional | high | pilot | FEAT-003 | QA-AC-002 |
+| REQ-003 | AI-сводка на дашборде | functional | high | pilot | FEAT-003 | QA-AC-003 |
+| REQ-004 | Клиенты к разбору | functional | high | pilot | FEAT-003 | QA-AC-004 |
 | REQ-005 | История разборов и задачи | functional | high | draft | FEAT-004 | QA-AC-005 |
 | REQ-006 | Личный дашборд сотрудника | functional | high | draft | FEAT-004 | QA-AC-006 |
 | REQ-007 | AI-аналитика и канвасы | functional | high | draft | FEAT-005 | QA-AC-007 |
@@ -35,8 +35,8 @@ Source of truth для требований User Level. Описывает, чт
 | REQ-012 | AI-агент сотрудника | functional | high | draft | FEAT-006 | QA-AC-012 |
 | REQ-013 | Управление правами сотрудников | functional | high | draft | FEAT-001 | QA-AC-013 |
 | REQ-014 | Иерархия руководителей и правило потолка | functional | high | draft | FEAT-001 | QA-AC-014 |
-| REQ-015 | Агрегация данных CRM/телефонии/отчётности | functional | high | draft | FEAT-002 | QA-AC-015 |
-| REQ-016 | Приём записей общений и транскрипция | functional | high | draft | FEAT-002 | QA-AC-016 |
+| REQ-015 | Агрегация данных CRM/телефонии/отчётности | functional | high | pilot | FEAT-002 | QA-AC-015 |
+| REQ-016 | Приём записей общений и транскрипция | functional | high | pilot | FEAT-002 | QA-AC-016 |
 | REQ-NFR-001 | Безопасность и изоляция данных по scope | non-functional | high | draft | FEAT-001 | QA-AC-NFR-001 |
 | REQ-NFR-002 | Актуальность данных для раннего выявления просадок | non-functional | high | draft | FEAT-002 | QA-AC-NFR-002 |
 | REQ-NFR-003 | Пустые/частичные состояния при недоступности интеграций | non-functional | medium | draft | FEAT-002 | QA-AC-NFR-003 |

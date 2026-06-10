@@ -26,6 +26,7 @@ from accounts.serializers import (
 )
 from accounts.services.audit import log_scope_denied
 from accounts.services.grant import PermissionGrantError, grant_permissions
+from accounts.services.password_reset import reset_password, resolve_user_for_reset, send_password_reset_email
 from accounts.services.permissions import can_grant_permissions, can_view_audit, get_user_permissions
 from accounts.services.scope import get_accessible_users, get_scoped_workspaces, user_in_scope
 from ai.services.knowledge_grants import KnowledgeGrantError, list_knowledge_grants, update_knowledge_grants
@@ -56,6 +57,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class LoginRateThrottle(AnonRateThrottle):
     scope = "login"
+
+
+class PasswordResetRateThrottle(AnonRateThrottle):
+    scope = "password_reset"
 
 
 class LoginView(TokenObtainPairView):
@@ -154,6 +159,77 @@ class RegisterView(APIView):
         )
         set_auth_cookies(response, str(access), str(refresh))
         return response
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetRequestView(APIView):
+    """
+    Request a password reset email.
+
+    Always returns HTTP 200 to avoid email enumeration. When the user exists and
+    is active, sends a reset link. With ``EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend``
+    (default in local/pilot dev), the link is printed to the server console.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [PasswordResetRateThrottle]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].strip().lower()
+        user = User.objects.filter(email__iexact=email, is_active=True).first()
+        if user:
+            send_password_reset_email(user)
+        return Response(
+            {
+                "detail": (
+                    "Если аккаунт с таким email существует, "
+                    "мы отправили инструкции по сбросу пароля."
+                )
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    uid = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        uid = (attrs.get("uid") or "").strip()
+        email = (attrs.get("email") or "").strip()
+        if not uid and not email:
+            raise ValidationError(
+                {"non_field_errors": ["Укажите uid или email."]},
+            )
+        user = resolve_user_for_reset(uid=uid or None, email=email or None)
+        if user is None:
+            raise ValidationError(
+                {"token": "Недействительная или просроченная ссылка для сброса пароля."},
+            )
+        attrs["user"] = user
+        return attrs
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [PasswordResetRateThrottle]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        if not reset_password(user, serializer.validated_data["token"], serializer.validated_data["new_password"]):
+            raise ValidationError(
+                {"token": "Недействительная или просроченная ссылка для сброса пароля."},
+            )
+        return Response({"detail": "Пароль успешно изменён."}, status=status.HTTP_200_OK)
 
 
 class RefreshView(TokenRefreshView):

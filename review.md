@@ -10,11 +10,11 @@
 
 | Метрика | Балл |
 |---|---:|
-| **Готовность к VPS + первым пользователям** | **~78 / 100** |
-| **Pilot path с integrator'ом** (Admin + Sheets, без телефонии) | **~82 / 100** |
+| **Готовность к VPS + первым пользователям** | **~82 / 100** |
+| **Pilot path с integrator'ом** (Admin + Sheets, без телефонии) | **~85 / 100** |
 | **Production-grade** (SLO, staging, полный PRD, compliance) | **45 / 100** |
 
-**Вердикт:** **P0 code blockers закрыты** (`fd4f703`); **P1 hardening** частично (`6ee0c9c` — throttles, IDOR tests, upload validation). К **ограниченному пилоту на VPS** можно идти после integrator ops checklist (prod `.env`, DPA, restore drill, smoke). Полноценный prod — staging, Sentry full ops, QA-AC pilot sign-off.
+**Вердикт:** **P0 code blockers закрыты** (`fd4f703`); **P1 hardening** частично (`6ee0c9c`). **Последний спринт:** B1-1 KPI из `CrmLead`, B1-5 stale CRM flags, `seed_pilot_local`, B1-3 QA-AC/PRD pilot sign-off. К **ограниченному пилоту на VPS** можно идти по integrator ops checklist (prod `.env`, DPA, restore drill, smoke). Остаток: password reset (B1-4), staging, Sentry full ops.
 
 ---
 
@@ -22,18 +22,18 @@
 
 | # | Блок | /10 | /100 | Комментарий |
 |---|---|---:|---:|---|
-| 1 | **Backend** | 7.5 | 75 | Prod settings, Redis throttle cache, LLM limits на reports/custom-reports/upload, CRM query — зрелые. Минус: Sheets не даёт KPI дашборда |
+| 1 | **Backend** | 8.0 | 80 | Prod settings, Redis throttle cache, LLM limits, CRM query, **KPI dashboard из `CrmLead`** (B1-1), stale CRM flags (B1-5) |
 | 2 | **Frontend** | 7.5 | 75 | BFF cookies + Admin/static proxy, basic CSP headers, CI build/lint/e2e. Минус: mobile, route guards, error boundaries |
 | 3 | **User flow** | 6.5 | 65 | FLOW-001…007 в коде; pilot = Admin + invites + Sheets. Нет password reset, review edit, upload в агент |
 | 4 | **Стабильность** | 7.5 | 75 | 109 API tests, health/ready, backup docs, Redis-backed throttles, optional `SENTRY_DSN`. Минус: staging, Beat без мониторинга |
-| 5 | **Документация** | 7.5 | 75 | Runbook, release-checklist, test-matrix, **definition-of-done** заполнены. Минус: PRD/QA-AC dashboard `draft`, support runbook |
+| 5 | **Документация** | 8.0 | 80 | Runbook, release-checklist, test-matrix, **definition-of-done**; QA-AC pilot sign-off ✅ (B1-3). Минус: support runbook |
 | 6 | **Безопасность (требования)** | 8.0 | 80 | Tenant isolation, httpOnly JWT, scope, Fernet, LLM throttles, **basic CSP**, IDOR/throttle tests. Минус: strict CSP nonce, Sentry full ops, audit gaps |
 | 7 | **Риски** (взлом, ключи, DDoS, prompt injection) | 6.5 | 65 | LLM abuse mitigated; CSP partial. См. матрицу рисков ниже |
 | 8 | **RAG + vector** | 6.0 | 60 | pgvector end-to-end в prod CI; нет index/chunking/monitoring embed failures |
-| 9 | **Зрелость процесса** | 6.5 | 65 | DoD + release checklist L2; QA-AC pilot sign-off и Legal L1 |
+| 9 | **Зрелость процесса** | 7.0 | 70 | DoD + release checklist L2; QA-AC pilot sign-off ✅; Legal L1 |
 | 10 | **Этапы до прода** | 7.5 | 75 | P0 code closed; integrator runbook; 8 фаз ниже — шаг 1 ✅ |
 
-**Среднее (равные веса): ~78/100**
+**Среднее (равные веса): ~82/100**
 
 ---
 
@@ -55,11 +55,13 @@
 - ~~**GAP-001** cross-tenant IDOR~~ ✅ partial — `test_tenant_idor` (`6ee0c9c`)
 - ~~**GAP-005** login/agent/LLM throttle 429~~ ✅ partial — `test_auth_throttle`, `test_agent_throttle`, `test_llm_throttles` (`6ee0c9c`)
 - ~~Upload validation tests~~ ✅ `test_upload_validation` (`6ee0c9c`)
+- ~~**Dashboard KPI** пустой при только Google Sheets~~ ✅ KPI из `CrmLead` (B1-1)
+- ~~**Beat down → stale CRM** без алертов~~ ✅ stale/completeness flags (B1-5)
 - **Beat/Redis** без healthcheck и persistence volume
-- **Dashboard KPI** пустой при только Google Sheets (hero metrics = demo telephony или empty)
 - **Python 3.12 (Docker) vs 3.13 (CI)** — выровнять
 - **requirements.txt vs lock** в Dockerfile
-- **Docs drift:** `release-checklist.md`, `roadmap-data-integration.md`, PRD все `draft`
+- ~~**Docs drift:** PRD dashboard `draft`~~ ✅ B1-3 pilot sign-off
+- **Docs drift:** `release-checklist.md`, `roadmap-data-integration.md` (остальные REQ `draft`)
 - **Нет staging** — прямой deploy на VPS
 
 ---
@@ -77,7 +79,7 @@
 | **KB poison** | L | M | ACL grants | Менеджер может залить вредный RAG |
 | **XSS → session abuse** | L | H | React escape + basic CSP | Tighten `script-src` (nonce); httpOnly blocks token exfil |
 | **Admin/swagger leak** | L | H | API internal in compose | Misconfigured nginx |
-| **Beat down → stale CRM** | M | M | Hourly cron | Нет алертов |
+| **Beat down → stale CRM** | M | M | Hourly sync + stale/completeness flags (B1-5) | Нет внешних алертов (Sentry ops) |
 | **Backup failure** | M | H | Scripts + docs | Restore drill не проведён |
 
 ---
@@ -89,7 +91,7 @@
 | CRM лиды | Google Sheets → `CrmLead` | — |
 | Клиенты к разбору | `review_rules` + sync | — |
 | Agent CRM queries | SQL + rule-based NL | LLM parse optional |
-| Dashboard KPI | **empty/partial** без demo sources | Demo: calls=8, quality=78 |
+| Dashboard KPI | **`CrmLead` deals** (Sheets sync, B1-1) | Telephony quality — demo/partial |
 | Telephony | **wishlist** | Demo metrics |
 | AI agent / analytics LLM | OpenRouter | Rule-based без ключа |
 | RAG semantic search | pgvector + embed | Keyword-only без ключа |
@@ -111,10 +113,10 @@
 
 | Область | Статус |
 |---|---|
-| REQ-001…014 User Level | ✅ Код + тесты |
-| REQ-015 интеграции | ⚠️ CRM Sheets real; telephony/reporting demo |
-| REQ-016 записи | ⚠️ Manual upload + STT; webhook wishlist |
-| QA-AC формальная приёмка | ❌ Большинство `draft` |
+| REQ-001…004 dashboard | ✅ pilot — KPI из `CrmLead`, QA-AC passed |
+| REQ-015 интеграции | ✅ pilot — CRM Sheets real; telephony/reporting demo |
+| REQ-016 записи | ✅ pilot — manual upload + STT; telephony webhook wishlist |
+| QA-AC формальная приёмка | ✅ Pilot-критерии 001–004, 015–016, NFR-001–004 — `passed` (B1-3) |
 | Integration Level UI | ❌ By design — Admin only |
 
 ---
@@ -142,7 +144,7 @@
 5. **Tenant #1** — Admin: Tenant, Workspace, Invite, IntegrationSource + Sheets SA
 6. **LLM** — keys + `reindex_knowledge` + smoke agent/analytics
 7. **Users** — `/register` → login → CRM sync → clients + agent query
-8. **Pilot gate** — manual QA-AC 001–004, мониторинг логов 48h
+8. **Pilot gate** — QA-AC pilot sign-off ✅ (B1-3); мониторинг логов 48h на VPS
 
 ---
 
@@ -199,6 +201,6 @@ Gaps: prod compose smoke, cross-tenant IDOR matrix (partial ✅), recording uplo
 
 **Pilot CRM = Google Sheets cache + on-demand agent queries**, не batch LLM и не 24/7 realtime sync.
 
-**~78/100 VPS-ready** — P0 code blockers закрыты (`fd4f703`); P1 hardening частично (`6ee0c9c`). Остаётся **ops-only:** secrets, DPA, restore drill; wishlist: telephony; **staging / Sentry full ops.** **Controlled pilot** (~82/100 с integrator) реалистичен.
+**~82/100 VPS-ready** — P0 code blockers закрыты; pilot QA-AC sign-off (B1-3). Спринт: KPI `CrmLead` (B1-1), stale CRM (B1-5), `seed_pilot_local`, docs. Остаётся **ops-only:** secrets, DPA, restore drill; wishlist: telephony webhook, password reset (B1-4), staging / Sentry full ops. **Controlled pilot** (~85/100 с integrator) реалистичен.
 
-**План:** `plan_0.md` (локально) — P4b-GS ✅ · P4c ✅ · P4b telephony = wishlist.
+**План:** `plan_0.md` — VPS-first после B1-3 · P4b-GS ✅ · P4c ✅ · P4b telephony = wishlist.

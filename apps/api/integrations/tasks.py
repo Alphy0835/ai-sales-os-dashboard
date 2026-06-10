@@ -1,8 +1,13 @@
+import logging
+
 from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
 
 from integrations.models import ConversationRecording, IntegrationSource, Transcription
+from integrations.services.health import crm_stale_reason, crm_sync_interval_minutes, is_crm_source_stale
+
+logger = logging.getLogger(__name__)
 
 
 def should_sync_source(source: IntegrationSource, *, force: bool = False) -> bool:
@@ -40,8 +45,28 @@ def sync_all_sources() -> dict:
     for source_id in source_ids:
         source = IntegrationSource.objects.get(id=source_id)
         if should_sync_source(source):
+            if source.source_type == IntegrationSource.SourceType.CRM and is_crm_source_stale(source):
+                logger.warning(
+                    "CRM source %s stale; queued catch-up sync (last_sync_at=%s)",
+                    source_id,
+                    source.last_sync_at,
+                )
             sync_integration_source.delay(str(source_id))
             queued += 1
+        elif source.source_type == IntegrationSource.SourceType.CRM:
+            if is_crm_source_stale(source):
+                logger.warning(
+                    "CRM source %s skipped but data is stale: %s",
+                    source_id,
+                    crm_stale_reason(source),
+                )
+            else:
+                logger.info(
+                    "CRM source %s skipped (throttled, last_sync_at=%s, interval=%s min)",
+                    source_id,
+                    source.last_sync_at,
+                    crm_sync_interval_minutes(),
+                )
     return {"queued": queued, "total": len(source_ids)}
 
 

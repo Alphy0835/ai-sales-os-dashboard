@@ -133,6 +133,35 @@ export async function register(payload: RegisterPayload): Promise<LoginResponse>
   return parseJson<LoginResponse>(res);
 }
 
+export async function requestPasswordReset(email: string): Promise<{ detail: string }> {
+  const res = await fetch(`${API_URL}/api/v1/auth/password-reset/`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  return parseJson<{ detail: string }>(res);
+}
+
+export type PasswordResetConfirmPayload = {
+  token: string;
+  new_password: string;
+  uid?: string;
+  email?: string;
+};
+
+export async function confirmPasswordReset(
+  payload: PasswordResetConfirmPayload,
+): Promise<{ detail: string }> {
+  const res = await fetch(`${API_URL}/api/v1/auth/password-reset/confirm/`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<{ detail: string }>(res);
+}
+
 export async function logout(): Promise<void> {
   await fetch(`${API_URL}/api/v1/auth/logout/`, {
     method: "POST",

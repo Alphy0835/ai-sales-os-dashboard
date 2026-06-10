@@ -16,7 +16,7 @@ Maturity: L2
 | Backend | Django 5 + DRF + drf-spectacular | Active |
 | Frontend | Next.js 15 + TypeScript + Tailwind | Active |
 | Queue | Celery + Redis 7 | Active |
-| Auth | JWT (User Level) + Django Admin session (Integration) | Active — tokens in browser `localStorage`; httpOnly BFF planned (P2) |
+| Auth | JWT (User Level) + Django Admin session (Integration) | Active — httpOnly JWT cookies (secure, SameSite=Lax); browser `localStorage` caches profile/permissions only |
 | Multi-tenant | `tenant_id` column on rows | Active — filtered in **views/services**, not custom ORM managers |
 | Object storage | ~~S3-compatible~~ | **Not used by design** — audio not persisted; transcripts in PostgreSQL only |
 | AI / LLM | Adapter → **OpenRouter** (vendor-pluggable) | **Active** — `llm_adapter.py`; tenant/workspace keys in Admin; rule-based fallback without key |

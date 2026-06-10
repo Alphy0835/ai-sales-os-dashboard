@@ -215,6 +215,24 @@ class CrmLead(models.Model):
     class Meta:
         ordering = ["-synced_at"]
         unique_together = [["tenant", "external_lead_id", "integration_source"]]
+        indexes = [
+            models.Index(
+                fields=["tenant", "employee"],
+                name="crmlead_tenant_employee_idx",
+            ),
+            models.Index(
+                fields=["tenant", "pipeline_stage"],
+                name="crmlead_tenant_pipeline_idx",
+            ),
+            models.Index(
+                fields=["tenant", "status_stage"],
+                name="crmlead_tenant_status_idx",
+            ),
+            models.Index(
+                fields=["tenant", "-synced_at"],
+                name="crmlead_tenant_synced_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.client_name} ({self.external_lead_id})"

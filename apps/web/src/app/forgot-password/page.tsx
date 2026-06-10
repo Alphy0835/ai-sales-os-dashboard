@@ -1,32 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { login } from "@/lib/api";
-import { homeRouteForRole, saveSession } from "@/lib/auth";
+import { requestPasswordReset } from "@/lib/api";
 import { AmbientBackground } from "@/components/AppShell";
 
-const showDemoHint =
-  process.env.NEXT_PUBLIC_DEMO_HINT === "true" || process.env.NODE_ENV === "development";
-
-export default function LoginPage() {
-  const router = useRouter();
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setLoading(true);
     try {
-      const data = await login(email, password);
-      saveSession(data.user);
-      router.replace(homeRouteForRole(data.user.role));
+      const data = await requestPasswordReset(email);
+      setSuccess(data.detail);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка входа");
+      setError(err instanceof Error ? err.message : "Ошибка запроса");
     } finally {
       setLoading(false);
     }
@@ -42,6 +36,9 @@ export default function LoginPage() {
               <div className="h-8 w-8 rounded-[11px] bg-accent-cyan/10" />
               AI Sales OS
             </div>
+            <p className="mb-4 text-center text-xs text-muted">
+              Введите email — мы отправим ссылку для сброса пароля.
+            </p>
             <form className="flex flex-col gap-3" onSubmit={onSubmit}>
               <label className="text-[11px] uppercase tracking-wide text-muted">
                 Email
@@ -53,37 +50,18 @@ export default function LoginPage() {
                   required
                 />
               </label>
-              <label className="text-[11px] uppercase tracking-wide text-muted">
-                Пароль
-                <input
-                  className="input mt-1.5"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </label>
               {error && <p className="text-xs text-status-error">{error}</p>}
+              {success && <p className="text-xs text-status-success">{success}</p>}
               <button className="btn-primary mt-1 w-full" type="submit" disabled={loading}>
-                {loading ? "Вход…" : "Войти"}
+                {loading ? "Отправка…" : "Отправить ссылку"}
               </button>
-              <p className="text-center text-[11px]">
-                <Link className="text-accent-cyan hover:underline" href="/forgot-password">
-                  Забыли пароль?
-                </Link>
-              </p>
             </form>
           </div>
           <p className="mt-3 text-center text-[11px] text-muted">
-            <Link className="text-accent-cyan hover:underline" href="/register">
-              Есть код приглашения?
+            <Link className="text-accent-cyan hover:underline" href="/login">
+              Вернуться ко входу
             </Link>
           </p>
-          {showDemoHint && (
-            <p className="mt-2 text-center text-[11px] text-muted">
-              Demo: manager@demo.local / employee@demo.local — пароль demo1234
-            </p>
-          )}
         </div>
       </div>
     </>
