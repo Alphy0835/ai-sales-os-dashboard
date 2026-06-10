@@ -152,10 +152,6 @@ class Stage004TestCase(TestCase):
         task = ReviewTask.objects.create(review=review, title="Task one")
 
         self._login("emp@test.local")
-        dash = self.api.get("/api/v1/employee/dashboard/")
-        self.assertEqual(dash.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(dash.data["tasks"]), 1)
-
         patch = self.api.patch(
             f"/api/v1/employee/tasks/{task.id}/",
             {"status": ReviewTask.Status.DONE},

@@ -94,19 +94,13 @@ export function fetchManagerClients(params?: {
   return authFetch(`/api/v1/manager/clients${q ? `?${q}` : ""}`);
 }
 
-export function fetchEmployeeDashboard(): Promise<{
-  periods: Record<MetricPeriod, MetricsSummary>;
-  hero: { full_name: string };
-  tasks: Array<{
-    id: string;
-    title: string;
-    status: "pending" | "in_progress" | "done";
-    review_id: string;
-    review_date: string;
-    author_name: string;
-    workspace_name: string;
-    updated_at: string;
-  }>;
-}> {
-  return authFetch("/api/v1/employee/dashboard/");
+export function fetchEmployeeDashboard(params?: {
+  workspace_id?: string;
+  user_id?: string;
+}): Promise<ManagerDashboard> {
+  const qs = new URLSearchParams();
+  if (params?.workspace_id) qs.set("workspace_id", params.workspace_id);
+  if (params?.user_id) qs.set("user_id", params.user_id);
+  const q = qs.toString();
+  return authFetch(`/api/v1/employee/dashboard/${q ? `?${q}` : ""}`);
 }

@@ -58,7 +58,7 @@ describe("dashboard query builders", () => {
   });
 
   it("fetchEmployeeDashboard calls employee endpoint", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ hero: { full_name: "Emp" }, tasks: [] }));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ filters: {}, periods: {}, employees: [] }));
     const { fetchEmployeeDashboard } = await import("../dashboard");
     await fetchEmployeeDashboard();
     expect(fetchMock).toHaveBeenCalledWith(

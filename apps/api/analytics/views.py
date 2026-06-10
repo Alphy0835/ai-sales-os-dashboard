@@ -66,18 +66,11 @@ class EmployeeDashboardView(APIView):
         require_dashboard_view(request.user)
         if request.user.role != User.Role.EMPLOYEE:
             raise PermissionDenied("Employee role required")
-        from integrations.services.aggregation import build_metrics_summary
-
-        periods = {
-            key: build_metrics_summary(actor=request.user, period=key)
-            for key in ("today", "week", "month")
-        }
-        from reviews.views import employee_tasks_payload
-
-        return Response(
-            {
-                "periods": periods,
-                "hero": {"full_name": request.user.full_name},
-                "tasks": employee_tasks_payload(request.user),
-            }
+        data = build_manager_dashboard(
+            actor=request.user,
+            workspace_id=request.query_params.get("workspace_id"),
+            user_id=request.query_params.get("user_id"),
         )
+        if data is None:
+            raise NotFound("Dashboard not available for requested scope")
+        return Response(data)

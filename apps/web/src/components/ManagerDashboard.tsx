@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
+  fetchEmployeeDashboard,
   fetchManagerDashboard,
   type ManagerDashboard,
   type MetricPeriod,
@@ -32,7 +33,8 @@ function sourceDot(status: string) {
   return "dot-bad";
 }
 
-export function ManagerDashboardView() {
+export function ManagerDashboardView({ variant = "manager" }: { variant?: "manager" | "employee" }) {
+  const isManager = variant === "manager";
   const [period, setPeriod] = useState<MetricPeriod>("today");
   const [workspaceId, setWorkspaceId] = useState<string>("");
   const [userId, setUserId] = useState<string>("");
@@ -44,17 +46,22 @@ export function ManagerDashboardView() {
     setLoading(true);
     setError(null);
     try {
-      const dash = await fetchManagerDashboard({
-        workspace_id: workspaceId || undefined,
-        user_id: userId || undefined,
-      });
+      const dash = isManager
+        ? await fetchManagerDashboard({
+            workspace_id: workspaceId || undefined,
+            user_id: userId || undefined,
+          })
+        : await fetchEmployeeDashboard({
+            workspace_id: workspaceId || undefined,
+            user_id: userId || undefined,
+          });
       setData(dash);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка загрузки");
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, userId]);
+  }, [workspaceId, userId, isManager]);
 
   useEffect(() => {
     load();
@@ -84,7 +91,7 @@ export function ManagerDashboardView() {
         <header className="topbar">
           <div>
             <div className="text-muted text-[11px]">Home / Dashboard</div>
-            <h1 className="page-title">Дашборд руководителя</h1>
+            <h1 className="page-title">Дашборд</h1>
           </div>
           <select
             value={workspaceId}
@@ -162,12 +169,16 @@ export function ManagerDashboardView() {
           <div className="card card-pad">
             <div className="kpi-label">Требует внимания</div>
             <p className="ai-text">{data.attention.text ?? "Показатели в норме"}</p>
-            <Link href="/manager/clients" className="btn-secondary inline-flex items-center">
-              Клиенты к разбору →
-            </Link>
-            <Link href="/manager/reviews" className="btn-secondary inline-flex items-center mt-2">
-              История разборов →
-            </Link>
+            {isManager && (
+              <>
+                <Link href="/manager/clients" className="btn-secondary inline-flex items-center">
+                  Клиенты к разбору →
+                </Link>
+                <Link href="/manager/reviews" className="btn-secondary inline-flex items-center mt-2">
+                  История разборов →
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -200,9 +211,11 @@ export function ManagerDashboardView() {
                     </span>
                   ))}
                 </div>
-                <Link href="/manager/clients" className="btn-secondary">
-                  Suggested Action: Разбор →
-                </Link>
+                {isManager && (
+                  <Link href="/manager/clients" className="btn-secondary">
+                    Suggested Action: Разбор →
+                  </Link>
+                )}
               </>
             ) : (
               <p className="ai-text">Недостаточно данных для AI-сводки. Отображаются числовые метрики.</p>
@@ -222,7 +235,7 @@ export function ManagerDashboardView() {
                   <th>Качество</th>
                   <th>Звонки</th>
                   <th>Статус</th>
-                  <th>Действия</th>
+                  {isManager && <th>Действия</th>}
                 </tr>
               </thead>
               <tbody>
@@ -232,14 +245,16 @@ export function ManagerDashboardView() {
                     <td>{emp.quality_score != null ? `${Math.round(emp.quality_score)}%` : "—"}</td>
                     <td>{emp.calls}</td>
                     <td>{statusBadge(emp.status)}</td>
-                    <td>
-                      <Link
-                        href={`/manager/reviews?employee_id=${emp.id}`}
-                        className="link-btn"
-                      >
-                        Разбор
-                      </Link>
-                    </td>
+                    {isManager && (
+                      <td>
+                        <Link
+                          href={`/manager/reviews?employee_id=${emp.id}`}
+                          className="link-btn"
+                        >
+                          Разбор
+                        </Link>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

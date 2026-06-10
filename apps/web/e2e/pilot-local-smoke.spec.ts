@@ -23,7 +23,7 @@ test.describe("Pilot local smoke (Gate A2 tenant)", () => {
     await page.getByRole("button", { name: "Войти" }).click();
 
     await expect(page).toHaveURL(/\/manager\/?$/);
-    await expect(page.getByRole("heading", { name: "Дашборд руководителя" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Дашборд" })).toBeVisible({
       timeout: 20_000,
     });
   });

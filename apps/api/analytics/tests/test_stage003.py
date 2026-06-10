@@ -102,6 +102,11 @@ class Stage003TestCase(TestCase):
         response = self.client.get("/api/v1/employee/dashboard/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("periods", response.data)
+        self.assertIn("employees", response.data)
+        self.assertIn("trend", response.data)
+        self.assertIn("hero", response.data)
+        self.assertEqual(len(response.data["employees"]), 1)
+        self.assertEqual(response.data["employees"][0]["full_name"], "Employee One")
 
     def test_employee_cannot_access_manager_clients(self):
         self._login("emp@test.local")
