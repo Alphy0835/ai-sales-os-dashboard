@@ -8,12 +8,19 @@ import {
   type ManagerDashboard,
   type MetricPeriod,
 } from "@/lib/dashboard";
+import { updateEmployeeTask, type EmployeeTask } from "@/lib/reviews";
 
 const PERIOD_LABELS: Record<MetricPeriod, string> = {
   today: "Сегодня",
   week: "Неделя",
   month: "Месяц",
 };
+
+const TASK_STATUS: Array<{ value: EmployeeTask["status"]; label: string }> = [
+  { value: "pending", label: "Ожидает" },
+  { value: "in_progress", label: "В работе" },
+  { value: "done", label: "Готово" },
+];
 
 function statusBadge(status: string) {
   if (status === "ok") return <span className="badge badge-ok">Норма</span>;
@@ -41,6 +48,7 @@ export function ManagerDashboardView({ variant = "manager" }: { variant?: "manag
   const [data, setData] = useState<ManagerDashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,10 +59,7 @@ export function ManagerDashboardView({ variant = "manager" }: { variant?: "manag
             workspace_id: workspaceId || undefined,
             user_id: userId || undefined,
           })
-        : await fetchEmployeeDashboard({
-            workspace_id: workspaceId || undefined,
-            user_id: userId || undefined,
-          });
+        : await fetchEmployeeDashboard();
       setData(dash);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка загрузки");
@@ -62,6 +67,16 @@ export function ManagerDashboardView({ variant = "manager" }: { variant?: "manag
       setLoading(false);
     }
   }, [workspaceId, userId, isManager]);
+
+  const onTaskStatus = async (taskId: string, status: EmployeeTask["status"]) => {
+    setUpdatingTaskId(taskId);
+    try {
+      await updateEmployeeTask(taskId, status);
+      await load();
+    } finally {
+      setUpdatingTaskId(null);
+    }
+  };
 
   useEffect(() => {
     load();
@@ -83,7 +98,12 @@ export function ManagerDashboardView({ variant = "manager" }: { variant?: "manag
   if (!data) return null;
 
   const metrics = data.periods[period];
-  const maxTrend = Math.max(...data.trend.values, 1);
+  const maxTrend = Math.max(...(data.trend?.values ?? [0]), 1);
+  const workspaceLabel = data.filters.workspaces[0]?.name ?? "—";
+  const employeeLabel = data.filters.employees[0]?.full_name ?? "—";
+  const personalMetrics = data.employees[0];
+  const growthItems = data.attention.items ?? [];
+  const managerTasks = data.tasks ?? [];
 
   return (
     <div className="manager-layout">
@@ -94,28 +114,42 @@ export function ManagerDashboardView({ variant = "manager" }: { variant?: "manag
             <h1 className="page-title">Дашборд</h1>
           </div>
           <select
-            value={workspaceId}
+            value={isManager ? workspaceId : data.filters.workspace_id ?? ""}
             onChange={(e) => setWorkspaceId(e.target.value)}
             aria-label="Подразделение"
+            disabled={!isManager}
           >
-            <option value="">Все подразделения</option>
-            {data.filters.workspaces.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
+            {isManager ? (
+              <>
+                <option value="">Все подразделения</option>
+                {data.filters.workspaces.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </>
+            ) : (
+              <option value={data.filters.workspace_id ?? ""}>{workspaceLabel}</option>
+            )}
           </select>
           <select
-            value={userId}
+            value={isManager ? userId : data.filters.user_id ?? ""}
             onChange={(e) => setUserId(e.target.value)}
             aria-label="Сотрудник"
+            disabled={!isManager}
           >
-            <option value="">Все сотрудники</option>
-            {data.filters.employees.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.full_name}
-              </option>
-            ))}
+            {isManager ? (
+              <>
+                <option value="">Все сотрудники</option>
+                {data.filters.employees.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.full_name}
+                  </option>
+                ))}
+              </>
+            ) : (
+              <option value={data.filters.user_id ?? ""}>{employeeLabel}</option>
+            )}
           </select>
           <div className="chips">
             {(Object.keys(PERIOD_LABELS) as MetricPeriod[]).map((p) => (
@@ -167,8 +201,21 @@ export function ManagerDashboardView({ variant = "manager" }: { variant?: "manag
             </div>
           </div>
           <div className="card card-pad">
-            <div className="kpi-label">Требует внимания</div>
-            <p className="ai-text">{data.attention.text ?? "Показатели в норме"}</p>
+            <div className="kpi-label">{isManager ? "Требует внимания" : "Зоны роста"}</div>
+            {isManager ? (
+              <p className="ai-text">{data.attention.text ?? "Показатели в норме"}</p>
+            ) : growthItems.length > 0 ? (
+              <ul className="space-y-2">
+                {growthItems.map((item) => (
+                  <li key={item.text} className="ai-text text-[12px]">
+                    {item.author_name ? `${item.author_name}: ` : ""}
+                    {item.text}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="ai-text">{data.attention.text ?? "Показатели в норме"}</p>
+            )}
             {isManager && (
               <>
                 <Link href="/manager/clients" className="btn-secondary inline-flex items-center">
@@ -188,8 +235,12 @@ export function ManagerDashboardView({ variant = "manager" }: { variant?: "manag
               <h3>Динамика звонков (7д)</h3>
             </div>
             <div className="chart-bars">
-              {data.trend.values.map((v, i) => (
-                <span key={data.trend.labels[i]} style={{ height: `${(v / maxTrend) * 100}%` }} title={`${data.trend.labels[i]}: ${v}`} />
+              {(data.trend?.values ?? []).map((v, i) => (
+                <span
+                  key={data.trend.labels[i] ?? i}
+                  style={{ height: `${(v / maxTrend) * 100}%` }}
+                  title={`${data.trend.labels[i]}: ${v}`}
+                />
               ))}
             </div>
             {data.ai_summary?.text && (
@@ -226,26 +277,26 @@ export function ManagerDashboardView({ variant = "manager" }: { variant?: "manag
         <div className="row-bot">
           <div className="card card-pad">
             <div className="section-head">
-              <h3>Сотрудники · показатели</h3>
+              <h3>{isManager ? "Сотрудники · показатели" : "Мои показатели"}</h3>
             </div>
-            <table className="dash-table">
-              <thead>
-                <tr>
-                  <th>Сотрудник</th>
-                  <th>Качество</th>
-                  <th>Звонки</th>
-                  <th>Статус</th>
-                  {isManager && <th>Действия</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {data.employees.map((emp) => (
-                  <tr key={emp.id}>
-                    <td>{emp.full_name}</td>
-                    <td>{emp.quality_score != null ? `${Math.round(emp.quality_score)}%` : "—"}</td>
-                    <td>{emp.calls}</td>
-                    <td>{statusBadge(emp.status)}</td>
-                    {isManager && (
+            {isManager ? (
+              <table className="dash-table">
+                <thead>
+                  <tr>
+                    <th>Сотрудник</th>
+                    <th>Качество</th>
+                    <th>Звонки</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.employees.map((emp) => (
+                    <tr key={emp.id}>
+                      <td>{emp.full_name}</td>
+                      <td>{emp.quality_score != null ? `${Math.round(emp.quality_score)}%` : "—"}</td>
+                      <td>{emp.calls}</td>
+                      <td>{statusBadge(emp.status)}</td>
                       <td>
                         <Link
                           href={`/manager/reviews?employee_id=${emp.id}`}
@@ -254,11 +305,36 @@ export function ManagerDashboardView({ variant = "manager" }: { variant?: "manag
                           Разбор
                         </Link>
                       </td>
-                    )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : personalMetrics ? (
+              <table className="dash-table">
+                <thead>
+                  <tr>
+                    <th>Качество</th>
+                    <th>Звонки</th>
+                    <th>Сделки</th>
+                    <th>Встречи</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      {personalMetrics.quality_score != null
+                        ? `${Math.round(personalMetrics.quality_score)}%`
+                        : "—"}
+                    </td>
+                    <td>{personalMetrics.calls}</td>
+                    <td>{metrics.metrics.deals?.value ?? 0}</td>
+                    <td>{metrics.metrics.meetings?.value ?? 0}</td>
+                  </tr>
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-secondary">Нет данных за выбранный период</p>
+            )}
           </div>
           <div className="card card-pad">
             <div className="section-head">
@@ -279,15 +355,40 @@ export function ManagerDashboardView({ variant = "manager" }: { variant?: "manag
 
       <aside className="insight-panel">
         <div className="card insight-card card-pad">
-          <h4>Быстрая сводка</h4>
-          {data.ai_summary?.highlights?.length ? (
-            data.ai_summary.highlights.map((h) => (
-              <div key={h.text} className="insight-item">
-                {h.text}
+          <h4>{isManager ? "Быстрая сводка" : "Задачи от руководителя"}</h4>
+          {isManager ? (
+            data.ai_summary?.highlights?.length ? (
+              data.ai_summary.highlights.map((h) => (
+                <div key={h.text} className="insight-item">
+                  {h.text}
+                </div>
+              ))
+            ) : (
+              <div className="insight-item">Нет активных сигналов</div>
+            )
+          ) : managerTasks.length > 0 ? (
+            managerTasks.map((task) => (
+              <div key={task.id} className="insight-item">
+                <div className="font-medium">{task.title}</div>
+                <div className="text-[10px] text-muted mb-1">
+                  {task.author_name} · {new Date(task.review_date).toLocaleDateString("ru-RU")}
+                </div>
+                <select
+                  className="input mt-1"
+                  value={task.status}
+                  disabled={updatingTaskId === task.id}
+                  onChange={(e) => onTaskStatus(task.id, e.target.value as EmployeeTask["status"])}
+                >
+                  {TASK_STATUS.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             ))
           ) : (
-            <div className="insight-item">Нет активных сигналов</div>
+            <div className="insight-item">Нет активных задач</div>
           )}
         </div>
         <div className="card insight-card card-pad">

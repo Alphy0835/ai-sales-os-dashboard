@@ -105,6 +105,123 @@ def _build_ai_summary(*, metrics_today, employees_table, completeness):
     }
 
 
+def _build_employee_growth_attention(*, actor: User, today_metrics, tasks):
+    items = []
+    metrics = today_metrics.get("metrics", {})
+    calls_metric = metrics.get("calls", {})
+    quality_metric = metrics.get("quality_score", {})
+    calls = calls_metric.get("value") or 0
+    plan = float(PLAN_CALLS_PER_DAY)
+
+    if calls < plan * 0.7:
+        items.append(
+            {
+                "text": f"Активность звонков ниже плана: {int(calls)} из {int(plan)} за сегодня.",
+                "source": "analytics",
+            }
+        )
+    elif calls < plan:
+        items.append(
+            {
+                "text": f"До плана звонков осталось {int(plan - calls)} за сегодня.",
+                "source": "analytics",
+            }
+        )
+
+    if quality_metric.get("available") and quality_metric.get("value") is not None:
+        quality = quality_metric["value"]
+        if quality < 70:
+            items.append(
+                {
+                    "text": f"Качество общения {quality:.0f}% — требует приоритетного внимания.",
+                    "source": "analytics",
+                }
+            )
+        elif quality < float(PLAN_QUALITY):
+            items.append(
+                {
+                    "text": f"Качество {quality:.0f}% — ниже целевого {int(PLAN_QUALITY)}%.",
+                    "source": "analytics",
+                }
+            )
+
+    reason = today_metrics.get("completeness_reason")
+    if today_metrics.get("completeness") == "partial" and reason:
+        items.append({"text": reason, "source": "analytics"})
+
+    from reviews.models import Review
+
+    recent_reviews = (
+        Review.objects.filter(tenant_id=actor.tenant_id, employee=actor)
+        .select_related("author")
+        .order_by("-created_at")[:3]
+    )
+    for review in recent_reviews:
+        if review.comment.strip():
+            items.append(
+                {
+                    "text": review.comment.strip(),
+                    "source": "feedback",
+                    "author_name": review.author.full_name,
+                }
+            )
+        if review.discussion.strip():
+            items.append(
+                {
+                    "text": review.discussion.strip(),
+                    "source": "feedback",
+                    "author_name": review.author.full_name,
+                }
+            )
+
+    pending_tasks = [t for t in tasks if t.get("status") != "done"]
+    if not items and pending_tasks:
+        items.append(
+            {
+                "text": f"Выполните {len(pending_tasks)} задач от руководителя.",
+                "source": "tasks",
+            }
+        )
+
+    summary = items[0]["text"] if items else "Показатели в норме. Продолжайте в том же темпе."
+    return {"count": len(items), "text": summary, "items": items[:5]}
+
+
+def build_employee_dashboard(*, actor: User):
+    from reviews.views import employee_tasks_payload
+
+    workspace_id = str(actor.workspace_id) if actor.workspace_id else None
+    data = build_manager_dashboard(
+        actor=actor,
+        workspace_id=workspace_id,
+        user_id=str(actor.id),
+    )
+    if data is None:
+        data = build_manager_dashboard(actor=actor, user_id=str(actor.id))
+    if data is None:
+        return None
+
+    tasks = employee_tasks_payload(actor)
+    workspace_name = actor.workspace.name if actor.workspace_id else "—"
+
+    data["filters"] = {
+        "workspaces": [{"id": str(actor.workspace_id), "name": workspace_name}] if actor.workspace_id else [],
+        "employees": [{"id": str(actor.id), "full_name": actor.full_name}],
+        "workspace_id": workspace_id,
+        "user_id": str(actor.id),
+    }
+    data["tasks"] = tasks
+    data["attention"] = _build_employee_growth_attention(
+        actor=actor,
+        today_metrics=data["periods"]["today"],
+        tasks=tasks,
+    )
+    if data.get("ai_summary"):
+        data["ai_summary"] = {**data["ai_summary"], "highlights": []}
+
+    return data
+
+
 def build_manager_dashboard(*, actor: User, workspace_id: str | None = None, user_id: str | None = None):
     workspaces = list(get_scoped_workspaces(actor))
     workspace_ids = {w.id for w in workspaces}

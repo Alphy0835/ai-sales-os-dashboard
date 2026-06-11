@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from accounts.models import ModulePermission, User
 from accounts.services.permissions import get_user_permissions
 from analytics.serializers import ClientToReviewSerializer
-from analytics.services.dashboard import build_manager_dashboard, clients_queryset
+from analytics.services.dashboard import build_employee_dashboard, build_manager_dashboard, clients_queryset
 
 
 def require_dashboard_view(user):
@@ -66,11 +66,7 @@ class EmployeeDashboardView(APIView):
         require_dashboard_view(request.user)
         if request.user.role != User.Role.EMPLOYEE:
             raise PermissionDenied("Employee role required")
-        data = build_manager_dashboard(
-            actor=request.user,
-            workspace_id=request.query_params.get("workspace_id"),
-            user_id=request.query_params.get("user_id"),
-        )
+        data = build_employee_dashboard(actor=request.user)
         if data is None:
             raise NotFound("Dashboard not available for requested scope")
         return Response(data)

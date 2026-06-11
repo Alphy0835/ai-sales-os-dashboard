@@ -105,8 +105,12 @@ class Stage003TestCase(TestCase):
         self.assertIn("employees", response.data)
         self.assertIn("trend", response.data)
         self.assertIn("hero", response.data)
+        self.assertIn("tasks", response.data)
+        self.assertIn("attention", response.data)
+        self.assertIn("items", response.data["attention"])
         self.assertEqual(len(response.data["employees"]), 1)
         self.assertEqual(response.data["employees"][0]["full_name"], "Employee One")
+        self.assertEqual(response.data["filters"]["user_id"], str(self.employee.id))
 
     def test_employee_cannot_access_manager_clients(self):
         self._login("emp@test.local")

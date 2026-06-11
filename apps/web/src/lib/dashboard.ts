@@ -1,4 +1,5 @@
 import { authFetch } from "./api";
+import type { EmployeeTask } from "./reviews";
 
 export type MetricPeriod = "today" | "week" | "month";
 
@@ -55,7 +56,12 @@ export type ManagerDashboard = {
     highlights: Array<{ type: string; text: string }>;
   } | null;
   trend: { labels: string[]; values: number[] };
-  attention: { count: number; text: string | null };
+  attention: {
+    count: number;
+    text: string | null;
+    items?: Array<{ text: string; source: string; author_name?: string }>;
+  };
+  tasks?: EmployeeTask[];
 };
 
 export type ClientToReview = {
@@ -102,5 +108,6 @@ export function fetchEmployeeDashboard(params?: {
   if (params?.workspace_id) qs.set("workspace_id", params.workspace_id);
   if (params?.user_id) qs.set("user_id", params.user_id);
   const q = qs.toString();
-  return authFetch(`/api/v1/employee/dashboard/${q ? `?${q}` : ""}`);
+  const base = "/api/v1/employee/dashboard/";
+  return authFetch(q ? `${base}?${q}` : base);
 }
