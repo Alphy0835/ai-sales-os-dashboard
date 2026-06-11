@@ -173,6 +173,7 @@ def generate_analytics_report(
                     },
                 ],
                 config=config,
+                content_guard=False,
             )
             if llm_summary:
                 summary = llm_summary

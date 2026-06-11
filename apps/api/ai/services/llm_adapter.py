@@ -2,6 +2,7 @@ import json
 import logging
 import re
 
+from ai.services.content_guard import ContentGuardError, check_user_content
 from ai.services.credentials import AiConfig
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,20 @@ def _client(config: AiConfig):
     )
 
 
-def chat_completion(*, messages: list[dict], config: AiConfig, temperature: float = 0.3) -> str:
+def chat_completion(
+    *,
+    messages: list[dict],
+    config: AiConfig,
+    temperature: float = 0.3,
+    content_guard: bool = True,
+) -> str:
+    if content_guard:
+        for msg in messages:
+            if msg.get("role") == "user":
+                decision = check_user_content(msg.get("content", ""))
+                if not decision.allowed:
+                    raise ContentGuardError(decision)
+
     client = _client(config)
     response = client.chat.completions.create(
         model=config.chat_model,

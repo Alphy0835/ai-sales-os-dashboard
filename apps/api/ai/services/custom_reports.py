@@ -2,6 +2,7 @@ import logging
 
 from accounts.models import User
 from ai.models import QualityCriterion
+from ai.services.content_guard import check_user_content
 from ai.services.credentials import llm_available, resolve_ai_config
 from ai.services.llm_adapter import LlmAdapterError, chat_completion, parse_json_object
 
@@ -37,6 +38,10 @@ def _rule_based_structure(*, title: str, description: str) -> dict:
 
 def structure_custom_report(*, title: str, description: str, actor: User | None = None) -> dict:
     if actor is not None:
+        for field in (title, description):
+            if not check_user_content(field).allowed:
+                return _rule_based_structure(title=title, description=description)
+
         config = resolve_ai_config(actor)
         if llm_available(config):
             stages_list = ", ".join(VALID_STAGES)
@@ -54,6 +59,7 @@ def structure_custom_report(*, title: str, description: str, actor: User | None 
                         {"role": "user", "content": prompt},
                     ],
                     config=config,
+                    content_guard=False,
                 )
                 parsed = parse_json_object(raw)
                 focus_stages = [s for s in parsed.get("focus_stages", []) if s in VALID_STAGES]

@@ -4,6 +4,7 @@ import logging
 import re
 
 from accounts.models import User
+from ai.services.content_guard import check_user_content
 from ai.services.credentials import llm_available, resolve_ai_config
 from ai.services.llm_adapter import LlmAdapterError, chat_completion, parse_json_object
 from integrations.models import IntegrationSource
@@ -77,6 +78,9 @@ def _rule_based_filters(message: str, source: IntegrationSource | None) -> tuple
 
 
 def _llm_extract_filters(message: str, actor: User, source: IntegrationSource | None) -> tuple[CrmQueryFilters, str] | None:
+    if not check_user_content(message).allowed:
+        return None
+
     config = resolve_ai_config(actor)
     if not llm_available(config):
         return None
