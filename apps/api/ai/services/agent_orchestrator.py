@@ -149,11 +149,50 @@ def parse_agent_plan(raw: str) -> AgentPlan | None:
     )
 
 
-def emergency_plan_from_message(message: str) -> AgentPlan | None:
+_CLIENT_CONTEXT_PHRASES = (
+    "коментар",
+    "такому клиенту",
+    "этому клиенту",
+    "этого клиента",
+    "ему ",
+    " него ",
+    "занимается",
+    "напомни",
+    "какие вопросы",
+    "что ему",
+    "что ей",
+)
+
+
+def _lead_id_from_dialog(dialog_messages: list[AgentChatMessage] | None) -> str | None:
+    if not dialog_messages:
+        return None
+    for msg in reversed(dialog_messages[-MAX_HISTORY_MESSAGES:]):
+        match = LEAD_ID_PATTERN.search(msg.content)
+        if match:
+            return match.group(1)
+    return None
+
+
+def _message_needs_client_crm(message: str) -> bool:
+    msg = message.lower()
+    if LEAD_ID_PATTERN.search(message):
+        return True
+    return any(phrase in msg for phrase in _CLIENT_CONTEXT_PHRASES)
+
+
+def emergency_plan_from_message(
+    message: str,
+    dialog_messages: list[AgentChatMessage] | None = None,
+) -> AgentPlan | None:
     msg = message.lower()
     id_match = LEAD_ID_PATTERN.search(message)
     if id_match:
         return AgentPlan(crm_search=id_match.group(1))
+    if _message_needs_client_crm(message):
+        lead_id = _lead_id_from_dialog(dialog_messages)
+        if lead_id:
+            return AgentPlan(crm_search=lead_id)
     if "сколько" in msg and ("crm" in msg or "клиент" in msg):
         return AgentPlan(crm_count=True)
     if "gamma" in msg:
@@ -281,6 +320,34 @@ def _rule_based_fallback(
     return reply, sources, warnings
 
 
+def _synthesize_with_context(
+    *,
+    actor: User,
+    system: str,
+    message: str,
+    client_name: str,
+    client_note: str,
+    user_content: str,
+    dialog_messages: list[AgentChatMessage] | None,
+    context: str,
+    assistant_preface: str | None = None,
+) -> str:
+    follow_up_user = build_user_content(
+        user_message=message,
+        client_name=client_name,
+        client_note=client_note,
+        context_block=context,
+        dialog_messages=None,
+    )
+    follow_messages: list[dict] = [{"role": "system", "content": system}]
+    follow_messages.extend(_history_to_messages(dialog_messages))
+    follow_messages.append({"role": "user", "content": user_content})
+    if assistant_preface:
+        follow_messages.append({"role": "assistant", "content": assistant_preface})
+    follow_messages.append({"role": "user", "content": follow_up_user})
+    return _call_llm(actor=actor, messages=follow_messages).strip()
+
+
 def run_agent_turn(
     *,
     actor: User,
@@ -293,7 +360,7 @@ def run_agent_turn(
     system = build_system_prompt(actor)
 
     if not llm_available(config):
-        plan = emergency_plan_from_message(message)
+        plan = emergency_plan_from_message(message, dialog_messages)
         if plan and plan.needs_fetch():
             context, sources = execute_plan(actor, plan)
             if context != CONTEXT_EMPTY and context.startswith("--- CRM ---"):
@@ -316,7 +383,7 @@ def run_agent_turn(
         first = _call_llm(actor=actor, messages=messages)
     except LlmAdapterError as exc:
         logger.warning("Agent plan LLM failed: %s", exc)
-        plan = emergency_plan_from_message(message)
+        plan = emergency_plan_from_message(message, dialog_messages)
         if plan and plan.needs_fetch():
             context, sources = execute_plan(actor, plan)
             if context != CONTEXT_EMPTY:
@@ -324,34 +391,53 @@ def run_agent_turn(
         return _rule_based_fallback(actor, message, client_name=client_name, client_note=client_note)
 
     if not looks_like_json_plan(first):
+        plan = emergency_plan_from_message(message, dialog_messages)
+        if plan and plan.needs_fetch() and _crm_available(actor):
+            context, sources = execute_plan(actor, plan)
+            if context != CONTEXT_EMPTY:
+                try:
+                    reply = _synthesize_with_context(
+                        actor=actor,
+                        system=system,
+                        message=message,
+                        client_name=client_name,
+                        client_note=client_note,
+                        user_content=user_content,
+                        dialog_messages=dialog_messages,
+                        context=context,
+                    )
+                    return reply, sources, []
+                except LlmAdapterError as exc:
+                    logger.warning("Agent forced CRM answer failed: %s", exc)
+                    if context.startswith("--- CRM ---"):
+                        return context.replace("--- CRM ---\n", "", 1), sources, []
         return first.strip(), [], []
 
     plan = parse_agent_plan(first)
     if plan is None:
-        plan = emergency_plan_from_message(message)
+        plan = emergency_plan_from_message(message, dialog_messages)
     if plan is None or not plan.needs_fetch():
         return first.strip() or "Не удалось разобрать запрос.", [], []
 
     context, sources = execute_plan(actor, plan)
 
-    follow_up_user = build_user_content(
-        user_message=message,
-        client_name=client_name,
-        client_note=client_note,
-        context_block=context,
-        dialog_messages=None,
-    )
-    follow_messages: list[dict] = [{"role": "system", "content": system}]
-    follow_messages.extend(_history_to_messages(dialog_messages))
-    follow_messages.append({"role": "user", "content": user_content})
-    follow_messages.append({"role": "assistant", "content": first.strip()})
-    follow_messages.append({"role": "user", "content": follow_up_user})
-
     try:
-        reply = _call_llm(actor=actor, messages=follow_messages)
-        return reply.strip(), sources, []
+        reply = _synthesize_with_context(
+            actor=actor,
+            system=system,
+            message=message,
+            client_name=client_name,
+            client_note=client_note,
+            user_content=user_content,
+            dialog_messages=dialog_messages,
+            context=context,
+            assistant_preface=first.strip(),
+        )
+        return reply, sources, []
     except LlmAdapterError as exc:
         logger.warning("Agent answer LLM failed: %s", exc)
         if context != CONTEXT_EMPTY:
+            if context.startswith("--- CRM ---"):
+                return context.replace("--- CRM ---\n", "", 1), sources, []
             return context, sources, []
         return _rule_based_fallback(actor, message, client_name=client_name, client_note=client_note)

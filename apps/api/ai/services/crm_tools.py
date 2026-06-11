@@ -142,25 +142,35 @@ def execute_crm_query(actor: User, filters: CrmQueryFilters, mode: str = "list")
     )
 
 
+def _format_lead_details(lead: dict, *, bullet: str = "") -> str:
+    stage = lead.get("pipeline_stage") or "—"
+    status = lead.get("status_stage") or "—"
+    lead_ref = lead.get("external_lead_id") or lead.get("client_name")
+    lines = [
+        f"{bullet}Клиент {lead_ref}: {lead['client_name']} "
+        f"(этап: {stage}, статус: {status})"
+    ]
+    phone = (lead.get("phone") or "").strip()
+    if phone:
+        lines.append(f"{bullet}  тел: {phone}")
+    city = (lead.get("city") or "").strip()
+    if city:
+        lines.append(f"{bullet}  город: {city}")
+    comment = (lead.get("communication_comment") or "").strip()
+    lines.append(f"{bullet}  комментарий: {comment or '—'}")
+    return "\n".join(lines)
+
+
 def format_crm_result(result: dict, mode: str) -> str:
     if mode == "count":
         return f"В CRM найдено клиентов: {result['count']}."
     if not result.get("leads"):
         return "По запросу клиенты в CRM не найдены."
     if len(result["leads"]) == 1:
-        lead = result["leads"][0]
-        stage = lead.get("pipeline_stage") or "—"
-        status = lead.get("status_stage") or "—"
-        lead_ref = lead.get("external_lead_id") or lead.get("client_name")
-        return (
-            f"Клиент {lead_ref}: {lead['client_name']} "
-            f"(этап: {stage}, статус: {status})."
-        )
+        return _format_lead_details(result["leads"][0])
     lines = [f"Найдено {result['count']} клиент(ов):"]
     for lead in result["leads"][:10]:
-        stage = lead.get("pipeline_stage") or "—"
-        status = lead.get("status_stage") or "—"
-        lines.append(f"- {lead['client_name']} (этап: {stage}, статус: {status})")
+        lines.append(_format_lead_details(lead, bullet="- "))
     if result["count"] > len(result["leads"]):
         lines.append(f"... и ещё {result['count'] - len(result['leads'])}.")
     return "\n".join(lines)
