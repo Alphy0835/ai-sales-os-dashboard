@@ -20,21 +20,30 @@ Maturity: L2
 | Telephony | `telephony` | calls, quality_score | demo sync (webhook deferred) |
 | Reporting | `reporting` | meetings, revenue | demo sync |
 
-### Production CRM — Google Sheets (P4b-GS)
+### Production CRM — Google Sheets (P4b-GS, hybrid sync)
 
-First production CRM connector: **Google Sheets API** (read-only). Integrator shares the spreadsheet with the service account email; backend reads rows and caches them in PostgreSQL (`CrmLead`).
+First production CRM connector: **Google Sheets API** (read-only). Integrator shares the spreadsheet with the service account email. The backend uses a **hybrid model**:
+
+| Path | When | Behavior |
+|---|---|---|
+| **Sync** (hourly Celery Beat, Admin action, `POST …/sync/`) | Dashboard metrics + review queue | One sheet read → `MetricSnapshot` (`deals` per employee) + `ClientToReview` for matching `review_rules` |
+| **Agent CRM query** | On demand in chat | Live sheet read → in-memory filters (no `CrmLead` bulk cache) |
+
+Typical sync pass for ~100k rows: ~30s–2min depending on sheet size and API latency.
 
 | Data | Sheet source | Maps to |
 |---|---|---|
-| Lead / client rows | One row per deal or client | `CrmLead` (DB cache) |
+| Deals per employee | Row count assigned via `manager_email` | `MetricSnapshot.metric_key=deals` |
 | Clients to review | Rows matching explicit `review_rules` | `ClientToReview` (derived on sync) |
-| `deals` / `revenue` | amoCRM adapter or demo sync only | `MetricSnapshot` — **not** from Google Sheets in P4c |
+| Agent lookups (list/count/search) | Live read same sheet | In-memory filter; `as_of` = query time |
 
 **Provider:** `google_sheets` in `IntegrationSource.config_json.provider`. Spreadsheet ID in `config_json.spreadsheet_id`.
 
 **Service account:** JSON key with Sheets read scope. Store **per tenant** encrypted in `IntegrationSource.credentials_encrypted` via Django Admin (recommended). Optional global default: `GOOGLE_SERVICE_ACCOUNT_JSON` env path for single-tenant dev — see `.env.example`.
 
-**Header mapping:** `IntegrationSource.config_json.header_map` maps **sheet row-1 header text** (case-insensitive) → internal `CrmLead` field. Admin form stores the exact label from the sheet (e.g. `"id лида" → lead_id`). Sync reader lowercases row-1 headers before lookup.
+**Column mapping:** Either `header_map` + `header_row` (header text → internal field) **or** `column_map` (Excel letters A/B/C…) + `data_start_row` when headers are not on row 1. Admin form supports both modes.
+
+**Legacy `CrmLead` rows:** Pre-hybrid deployments may still have cached rows. Run `python manage.py purge_google_sheets_crm_leads` after migration. New sync does not write `CrmLead` for Google Sheets.
 
 ```json
 {
@@ -82,15 +91,15 @@ First production CRM connector: **Google Sheets API** (read-only). Integrator sh
 }
 ```
 
-- **`skip_status_stages`:** closed leads excluded from empty-comment review rule (still cached in `CrmLead`).
+- **`skip_status_stages`:** closed leads excluded from empty-comment review rule.
 - **`review_rules`:** only rows matching at least one rule become `ClientToReview` — **not** all open leads. Rules: sheet `needs_review` column (`TRUE`/`да`), `auto_review_statuses`, optional `empty_comment_on_active`.
-- **`crm_vocabulary`:** maps **canonical sheet values** → aliases for NL queries. Structure: `stages` / `statuses` → `{ "Closing": ["closing", "дожатие"], … }`. Used by agent + `query_crm_leads`.
+- **`crm_vocabulary`:** maps **canonical sheet values** → aliases for NL queries. Structure: `stages` / `statuses` → `{ "Closing": ["closing", "дожатие"], … }`. Used by agent + live `query_crm_leads`.
 
-Employee mapping: sheet `manager_email` ↔ `User.email` (tenant-scoped, active employee/manager). Sets `CrmLead.employee` on sync.
+Employee mapping: sheet `manager_email` ↔ `User.email` (tenant-scoped, active employee/manager). Used for deals snapshots and review queue assignment.
 
-**RegistrationInvite flow:** Integrator pre-creates rows in the sheet with `manager_email`. In Django Admin, create `RegistrationInvite` with matching **Expected email** (optional but recommended), tenant, workspace, and role. Invite **code** auto-generates on save; Admin shows **registration_url** (`FRONTEND_URL/register?code=…`). User submits `email`, `password`, `full_name`, `invite_code` → `POST /auth/register/` → default `ModulePermission` rows by role. CRM sync and `CrmLead.employee` linking run on the next `POST /auth/login/`, Celery Beat, manual **Sync CRM now**, or agent `refresh_crm` — not on register itself.
+**RegistrationInvite flow:** Integrator pre-creates rows in the sheet with `manager_email`. In Django Admin, create `RegistrationInvite` with matching **Expected email** (optional but recommended), tenant, workspace, and role. Invite **code** auto-generates on save; Admin shows **registration_url** (`FRONTEND_URL/register?code=…`). User submits `email`, `password`, `full_name`, `invite_code` → `POST /auth/register/` → default `ModulePermission` rows by role. Metrics/review sync runs on the next Celery Beat pass, manual **Refresh metrics and review queue**, or `POST …/sync/` — not on register itself.
 
-**Django Admin CRM form (integrator):** structured fields for provider, spreadsheet ID, sheet name, per-column header labels, and credentials JSON. Collapsed **Advanced JSON** accepts only `review_rules` and `crm_vocabulary`; full `config_json` is assembled on save. List action **Sync CRM now** for Google Sheets sources.
+**Django Admin CRM form (integrator):** structured fields for provider, spreadsheet ID, sheet name, column letters or header labels, and credentials JSON. Collapsed **Advanced JSON** accepts only `review_rules` and `crm_vocabulary`; full `config_json` is assembled on save. List action **Refresh metrics and review queue** for Google Sheets sources.
 
 **No User Level Integration UI:** All CRM setup (service account JSON, spreadsheet ID, column map, invite rows) is **Django Admin only** for MVP. User Level exposes read-only source health via `GET /integrations/sources/` and metrics; manual sync remains `POST /integrations/sources/{id}/sync/` for managers with `settings: edit`.
 

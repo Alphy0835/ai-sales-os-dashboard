@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from accounts.models import ManagerScope, ModulePermission, Tenant, User, Workspace
-from integrations.models import CrmLead, IntegrationSource, MetricSnapshot
+from integrations.models import IntegrationSource, MetricSnapshot
 from integrations.services.aggregation import build_metrics_summary
 
 
@@ -65,17 +65,16 @@ class SheetsDashboardMetricsTests(TestCase):
             value=Decimal("5"),
         )
 
-        now = timezone.now()
-        for idx in range(3):
-            CrmLead.objects.create(
-                tenant=self.tenant,
-                workspace=self.workspace,
-                employee=self.employee,
-                integration_source=self.sheets_crm,
-                external_lead_id=f"L-{idx}",
-                client_name=f"Client {idx}",
-                synced_at=now,
-            )
+        today = timezone.localdate()
+        MetricSnapshot.objects.create(
+            tenant=self.tenant,
+            workspace=self.workspace,
+            user=self.employee,
+            source=self.sheets_crm,
+            metric_key="deals",
+            period_date=today,
+            value=Decimal("3"),
+        )
 
         self.client = APIClient()
 
@@ -87,7 +86,7 @@ class SheetsDashboardMetricsTests(TestCase):
         )
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
 
-    def test_build_metrics_summary_deals_from_crm_leads(self):
+    def test_build_metrics_summary_deals_from_metric_snapshots(self):
         summary = build_metrics_summary(actor=self.manager, period="today")
         deals = summary["metrics"]["deals"]
         self.assertTrue(deals["available"])
@@ -171,14 +170,14 @@ class SheetsDashboardMetricsTests(TestCase):
             status=IntegrationSource.Status.CONNECTED,
             config_json={"provider": "google_sheets", "spreadsheet_id": "sheet-2"},
         )
-        CrmLead.objects.create(
+        MetricSnapshot.objects.create(
             tenant=self.tenant,
-            workspace=None,
-            employee=self.employee,
-            integration_source=tenant_wide,
-            external_lead_id="TW-1",
-            client_name="Tenant-wide lead",
-            synced_at=timezone.now(),
+            workspace=self.workspace,
+            user=self.employee,
+            source=tenant_wide,
+            metric_key="deals",
+            period_date=timezone.localdate(),
+            value=Decimal("1"),
         )
         summary = build_metrics_summary(actor=self.manager, period="today")
         self.assertEqual(summary["metrics"]["deals"]["value"], 4.0)

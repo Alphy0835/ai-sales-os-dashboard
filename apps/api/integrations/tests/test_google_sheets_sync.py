@@ -1,10 +1,12 @@
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
+from django.utils import timezone
+from decimal import Decimal
 
 from accounts.models import Tenant, User, Workspace
 from analytics.models import ClientToReview
-from integrations.models import CrmLead, IntegrationSource
+from integrations.models import CrmLead, IntegrationSource, MetricSnapshot
 from integrations.services.crm_adapter import encrypt_source_credentials
 from integrations.services.crm.google_sheets import sync_google_sheets
 from integrations.services.sync import run_source_sync
@@ -89,20 +91,21 @@ class GoogleSheetsSyncTests(TestCase):
         ]
 
     @patch("integrations.services.crm.google_sheets._read_sheet_rows")
-    def test_google_sheets_sync_upserts_crm_leads_and_clients(self, mock_read):
+    def test_google_sheets_sync_writes_metric_snapshots_and_clients(self, mock_read):
         mock_read.return_value = self._parsed_rows()
         run_source_sync(self.source)
         self.source.refresh_from_db()
 
         self.assertEqual(self.source.status, IntegrationSource.Status.CONNECTED)
-        lead = CrmLead.objects.get(external_lead_id="L-100", integration_source=self.source)
-        self.assertEqual(lead.client_name, "Acme Corp")
-        self.assertEqual(lead.employee_id, self.employee.id)
-        self.assertEqual(lead.phone, "+79990001122")
-        self.assertEqual(lead.city, "Moscow")
+        self.assertFalse(CrmLead.objects.filter(integration_source=self.source).exists())
 
-        closed = CrmLead.objects.get(external_lead_id="L-200", integration_source=self.source)
-        self.assertEqual(closed.status_stage, "done")
+        snapshot = MetricSnapshot.objects.get(
+            source=self.source,
+            user=self.employee,
+            metric_key="deals",
+            period_date=timezone.localdate(),
+        )
+        self.assertEqual(snapshot.value, Decimal("3"))
 
         review = ClientToReview.objects.get(
             tenant=self.tenant,
@@ -116,20 +119,26 @@ class GoogleSheetsSyncTests(TestCase):
         )
 
     @patch("integrations.services.crm.google_sheets._read_sheet_rows")
-    def test_google_sheets_sync_updates_existing_lead(self, mock_read):
-        CrmLead.objects.create(
+    def test_google_sheets_sync_updates_deals_snapshot(self, mock_read):
+        MetricSnapshot.objects.create(
             tenant=self.tenant,
             workspace=self.workspace,
-            integration_source=self.source,
-            external_lead_id="L-100",
-            client_name="Old Name",
+            user=self.employee,
+            source=self.source,
+            metric_key="deals",
+            period_date=timezone.localdate(),
+            value=Decimal("1"),
         )
         mock_read.return_value = self._parsed_rows()
         run_source_sync(self.source)
 
-        lead = CrmLead.objects.get(external_lead_id="L-100", integration_source=self.source)
-        self.assertEqual(lead.client_name, "Acme Corp")
-        self.assertEqual(CrmLead.objects.filter(integration_source=self.source).count(), 3)
+        snapshot = MetricSnapshot.objects.get(
+            source=self.source,
+            user=self.employee,
+            metric_key="deals",
+            period_date=timezone.localdate(),
+        )
+        self.assertEqual(snapshot.value, Decimal("3"))
         self.assertFalse(
             ClientToReview.objects.filter(client_external_id="L-300").exists()
         )

@@ -406,7 +406,7 @@ class IntegrationSourceAdmin(admin.ModelAdmin):
             ),
         )
 
-    @admin.action(description="Sync CRM now")
+    @admin.action(description="Refresh metrics and review queue")
     def sync_crm_now(self, request, queryset):
         queued = 0
         skipped = 0
@@ -432,7 +432,7 @@ class IntegrationSourceAdmin(admin.ModelAdmin):
         if queued:
             self.message_user(
                 request,
-                f"CRM sync queued for {queued} source(s).",
+                f"Metrics/review sync queued for {queued} source(s).",
                 level=messages.SUCCESS,
             )
         if skipped and not queued:

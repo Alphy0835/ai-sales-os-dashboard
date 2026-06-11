@@ -196,7 +196,18 @@ if (-not (Test-Path (Join-Path $WebDir "node_modules"))) {
     Pop-Location
 }
 
+function Stop-DevPortListeners([int[]]$Ports) {
+    foreach ($port in $Ports) {
+        Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+            ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 Write-Step "Starting API and Next.js (new windows)..."
+
+Write-Host "Stopping previous listeners on ports 8000 and 3000..." -ForegroundColor DarkGray
+Stop-DevPortListeners @(8000, 3000)
+Start-Sleep -Seconds 1
 
 $launcherDir = Join-Path $env:TEMP "ai-sales-os-launch"
 New-Item -ItemType Directory -Force -Path $launcherDir | Out-Null

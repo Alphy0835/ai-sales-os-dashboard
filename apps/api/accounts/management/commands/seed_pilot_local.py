@@ -15,7 +15,7 @@ from accounts.services.default_permissions import (
 from accounts.models import RegistrationInvite, Tenant, User, Workspace
 from analytics.models import ClientToReview
 from integrations.config_templates import GOOGLE_SHEETS_CONFIG_TEMPLATE
-from integrations.models import CrmLead, IntegrationSource
+from integrations.models import IntegrationSource, MetricSnapshot
 
 PILOT_TENANT_SLUG = "pilot-local"
 PILOT_WORKSPACE_NAME = "Pilot Office"
@@ -166,25 +166,9 @@ class Command(BaseCommand):
 
         now = timezone.now()
         review_count = 0
+        deals_for_employee = 0
         for lead in PILOT_LEADS:
-            CrmLead.objects.update_or_create(
-                tenant=tenant,
-                external_lead_id=lead["external_lead_id"],
-                integration_source=sheets_source,
-                defaults={
-                    "workspace": workspace,
-                    "employee": employee,
-                    "client_name": lead["client_name"],
-                    "phone": lead["phone"],
-                    "city": lead["city"],
-                    "communication_comment": lead["communication_comment"],
-                    "pipeline_stage": lead["pipeline_stage"],
-                    "status_stage": lead["status_stage"],
-                    "manager_email": employee.email,
-                    "supervisor_email": manager.email,
-                    "synced_at": now,
-                },
-            )
+            deals_for_employee += 1
             if lead["needs_review"]:
                 ClientToReview.objects.update_or_create(
                     tenant=tenant,
@@ -200,6 +184,18 @@ class Command(BaseCommand):
                 )
                 review_count += 1
 
+        from decimal import Decimal
+
+        MetricSnapshot.objects.update_or_create(
+            tenant=tenant,
+            workspace=workspace,
+            user=employee,
+            source=sheets_source,
+            metric_key="deals",
+            period_date=now.date(),
+            defaults={"value": Decimal(str(deals_for_employee))},
+        )
+
         self.stdout.write(self.style.SUCCESS("Pilot-local tenant ready (Gate A demo):"))
         self.stdout.write(f"  Tenant: {PILOT_TENANT_SLUG} / workspace «{PILOT_WORKSPACE_NAME}»")
         self.stdout.write("  pilot-mgr@local.test / pilot1234 (manager, full scope)")
@@ -207,5 +203,5 @@ class Command(BaseCommand):
         self.stdout.write(f"  Registration invite: {PILOT_INVITE_CODE} (max 10 uses)")
         self.stdout.write(
             f"  Google Sheets CRM source: {sheets_source.name} "
-            f"({review_count} clients to review, {len(PILOT_LEADS)} CRM leads)"
+            f"({review_count} clients to review, {deals_for_employee} deals snapshot)"
         )

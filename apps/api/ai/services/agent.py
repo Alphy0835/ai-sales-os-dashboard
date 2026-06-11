@@ -15,6 +15,7 @@ from ai.services.crm_tools import (
 from ai.services.knowledge import search_knowledge
 from ai.services.llm_adapter import LlmAdapterError, chat_completion
 from integrations.models import Transcription
+from integrations.services.crm_adapter import CrmAdapterError
 from integrations.services.scope import recordings_queryset
 
 logger = logging.getLogger(__name__)
@@ -95,17 +96,24 @@ def _format_as_of(as_of) -> str:
 
 
 def _try_crm_reply(actor: User, message: str) -> tuple[str | None, str]:
-    has_intent, filters, mode = detect_crm_intent(message, actor)
-    if not has_intent or filters is None:
-        return None, ""
+    try:
+        has_intent, filters, mode = detect_crm_intent(message, actor)
+        if not has_intent or filters is None:
+            return None, ""
 
-    maybe_refresh_crm(actor)
-    result = execute_crm_query(actor, filters, mode=mode)
-    reply = format_crm_result(result, mode)
-    as_of_note = _format_as_of(result.get("as_of"))
-    if as_of_note:
-        reply = f"{reply}\n\n{as_of_note}"
-    return reply, as_of_note
+        maybe_refresh_crm(actor)
+        result = execute_crm_query(actor, filters, mode=mode)
+        reply = format_crm_result(result, mode)
+        as_of_note = _format_as_of(result.get("as_of"))
+        if as_of_note:
+            reply = f"{reply}\n\n{as_of_note}"
+        return reply, as_of_note
+    except CrmAdapterError as exc:
+        logger.warning("CRM query failed: %s", exc)
+        return f"CRM временно недоступен: {exc}", ""
+    except LlmAdapterError as exc:
+        logger.warning("CRM intent LLM failed: %s", exc)
+        return f"AI-сервис временно недоступен. Попробуйте через минуту.", ""
 
 
 def generate_agent_reply(

@@ -1,10 +1,12 @@
 import logging
+from collections import Counter
+from decimal import Decimal
 
 from django.utils import timezone
 
 from accounts.models import User
 from analytics.models import ClientToReview
-from integrations.models import CrmLead, IntegrationSource
+from integrations.models import IntegrationSource, MetricSnapshot
 from integrations.services.crm_adapter import CrmAdapterError, decrypt_source_credentials
 
 logger = logging.getLogger(__name__)
@@ -164,6 +166,21 @@ def _read_sheet_rows(source: IntegrationSource, credentials: dict) -> list[dict[
     return parse_sheet_values(values, config)
 
 
+SHEET_ROWS_CACHE_TTL = 300
+
+
+def read_sheet_rows_cached(source: IntegrationSource, credentials: dict) -> list[dict[str, str]]:
+    from django.core.cache import cache
+
+    cache_key = f"google_sheets_rows:{source.id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    rows = _read_sheet_rows(source, credentials)
+    cache.set(cache_key, rows, SHEET_ROWS_CACHE_TTL)
+    return rows
+
+
 def _resolve_employee(source: IntegrationSource, manager_email: str) -> User | None:
     email = manager_email.strip().lower()
     if not email:
@@ -205,7 +222,37 @@ def _upsert_client_to_review(
     )
 
 
-def sync_google_sheets(source: IntegrationSource) -> None:
+def _write_deals_snapshots(source: IntegrationSource, rows: list[dict[str, str]]) -> None:
+    deals_by_employee: Counter = Counter()
+    for row in rows:
+        employee = _resolve_employee(source, row.get("manager_email", ""))
+        if employee:
+            deals_by_employee[employee.id] += 1
+
+    employees = User.objects.filter(
+        tenant_id=source.tenant_id,
+        role=User.Role.EMPLOYEE,
+        is_active=True,
+    )
+    if source.workspace_id:
+        employees = employees.filter(workspace_id=source.workspace_id)
+
+    today = timezone.localdate()
+    for employee in employees:
+        if not employee.workspace_id:
+            continue
+        MetricSnapshot.objects.update_or_create(
+            tenant_id=source.tenant_id,
+            workspace_id=employee.workspace_id,
+            user_id=employee.id,
+            source=source,
+            metric_key="deals",
+            period_date=today,
+            defaults={"value": Decimal(str(deals_by_employee.get(employee.id, 0)))},
+        )
+
+
+def sync_google_sheets_metrics(source: IntegrationSource) -> None:
     credentials = decrypt_source_credentials(source)
     if not credentials.get("client_email") or not credentials.get("private_key"):
         source.status = IntegrationSource.Status.ERROR
@@ -214,42 +261,22 @@ def sync_google_sheets(source: IntegrationSource) -> None:
         source.save(update_fields=["status", "last_error", "last_sync_at"])
         return
 
-    skip_stages = _skip_status_stages(source)
-
     try:
-        rows = _read_sheet_rows(source, credentials)
+        rows = read_sheet_rows_cached(source, credentials)
+        _write_deals_snapshots(source, rows)
         for row in rows:
             employee = _resolve_employee(source, row.get("manager_email", ""))
-            defaults = {
-                "client_name": row["client_name"],
-                "phone": row.get("phone", ""),
-                "city": row.get("city", ""),
-                "communication_comment": row.get("communication_comment", ""),
-                "pipeline_stage": row.get("pipeline_stage", ""),
-                "status_stage": row.get("status_stage", ""),
-                "recording_url": row.get("recording_url", ""),
-                "manager_email": row.get("manager_email", ""),
-                "supervisor_email": row.get("supervisor_email", ""),
-                "workspace": source.workspace,
-                "employee": employee,
-            }
-            CrmLead.objects.update_or_create(
-                tenant_id=source.tenant_id,
-                external_lead_id=row["lead_id"],
-                integration_source=source,
-                defaults=defaults,
-            )
-
-            if employee:
-                add_review, reason = _should_add_to_review(source, row)
-                if add_review:
-                    _upsert_client_to_review(
-                        source,
-                        employee=employee,
-                        lead_id=row["lead_id"],
-                        client_name=row["client_name"],
-                        reason=reason,
-                    )
+            if not employee:
+                continue
+            add_review, reason = _should_add_to_review(source, row)
+            if add_review:
+                _upsert_client_to_review(
+                    source,
+                    employee=employee,
+                    lead_id=row["lead_id"],
+                    client_name=row["client_name"],
+                    reason=reason,
+                )
 
         source.status = IntegrationSource.Status.CONNECTED
         source.last_error = ""
@@ -267,3 +294,7 @@ def sync_google_sheets(source: IntegrationSource) -> None:
         source.last_error = str(exc)[:500]
         source.last_sync_at = timezone.now()
         source.save(update_fields=["status", "last_error", "last_sync_at"])
+
+
+def sync_google_sheets(source: IntegrationSource) -> None:
+    sync_google_sheets_metrics(source)

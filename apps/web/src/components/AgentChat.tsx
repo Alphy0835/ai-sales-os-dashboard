@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { sendAgentMessage, type AgentMessage, type AgentSession } from "@/lib/agent-api";
+import { isApiError, sendAgentMessage, type AgentMessage, type AgentSession } from "@/lib/agent-api";
 
 type Props = {
   variant: "manager" | "employee";
@@ -40,7 +40,11 @@ export function AgentChatView({ variant, initialClientName = "", initialClientNo
       setSession(result);
       setInput("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка отправки");
+      if (isApiError(err) && err.status === 500) {
+        setError("Ошибка сервера (HTTP 500). CRM-запрос может занимать до минуты — перезапустите dev-сервер после обновления и подождите.");
+      } else {
+        setError(err instanceof Error ? err.message : "Ошибка отправки");
+      }
     } finally {
       setLoading(false);
       focusInput();
@@ -112,9 +116,14 @@ export function AgentChatView({ variant, initialClientName = "", initialClientNo
                 autoFocus
               />
               <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? "…" : "Отправить"}
+                {loading ? "Ждём ответ…" : "Отправить"}
               </button>
             </form>
+            {loading && (
+              <p className="text-[11px] text-muted mt-2">
+                Запрос к CRM может занять до минуты при первом обращении к Google Sheets.
+              </p>
+            )}
           </div>
         </div>
       </div>

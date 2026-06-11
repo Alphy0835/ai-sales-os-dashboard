@@ -24,11 +24,9 @@ def count_crm_leads_deals(
     start: date,
     end: date,
 ) -> int:
-    """Count CrmLead rows as a deals fallback for Google Sheets CRM.
+    """Legacy CrmLead deals count for Google Sheets (pre-hybrid sync).
 
-    Google Sheets sync upserts CrmLead but does not write MetricSnapshot.
-    We use ``synced_at`` (updated on each sync upsert) as the period proxy
-    because the sheet schema has no reliable per-deal close date field.
+    Prefer MetricSnapshot.metric_key=deals written by sync_google_sheets_metrics.
     """
     if not employee_ids:
         return 0

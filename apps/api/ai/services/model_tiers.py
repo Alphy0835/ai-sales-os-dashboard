@@ -2,7 +2,7 @@ from ai.models import ModelTier, TenantAiConfig, WorkspaceAiConfig
 
 TIER_PRESETS: dict[str, dict[str, str]] = {
     ModelTier.FREE: {
-        "chat_model": "meta-llama/llama-3.3-70b-instruct:free",
+        "chat_model": "google/gemma-4-31b-it:free",
         "embedding_model": "",
     },
     ModelTier.STANDARD: {

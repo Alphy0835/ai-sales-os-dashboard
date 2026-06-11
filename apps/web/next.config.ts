@@ -23,6 +23,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // CRM live-read via Google Sheets can exceed the default 30s rewrite proxy limit.
+  experimental: {
+    proxyTimeout: 120_000,
+  },
   async headers() {
     return [
       {

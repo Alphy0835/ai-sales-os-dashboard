@@ -8,7 +8,7 @@ from django.utils import timezone
 from accounts.models import ManagerScope, ModulePermission, RegistrationInvite, Tenant, User, Workspace
 from analytics.models import ClientToReview
 from integrations.config_templates import GOOGLE_SHEETS_CONFIG_TEMPLATE
-from integrations.models import CrmLead, IntegrationSource
+from integrations.models import IntegrationSource, MetricSnapshot
 
 
 class SeedPilotLocalCommandTests(TestCase):
@@ -71,11 +71,13 @@ class SeedPilotLocalCommandTests(TestCase):
         self.assertEqual(source.credentials_encrypted, "")
         self.assertIsNotNone(source.last_sync_at)
 
-        leads = CrmLead.objects.filter(tenant=tenant, integration_source=source)
-        self.assertEqual(leads.count(), 5)
-        self.assertTrue(
-            leads.filter(employee=employee, external_lead_id="PILOT-L-001").exists()
+        snapshot = MetricSnapshot.objects.get(
+            tenant=tenant,
+            user=employee,
+            source=source,
+            metric_key="deals",
         )
+        self.assertEqual(snapshot.value, 5)
 
         reviews = ClientToReview.objects.filter(tenant=tenant, employee=employee)
         self.assertEqual(reviews.count(), 3)

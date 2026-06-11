@@ -40,11 +40,14 @@ def chat_completion(
                     raise ContentGuardError(decision)
 
     client = _client(config)
-    response = client.chat.completions.create(
-        model=config.chat_model,
-        messages=messages,
-        temperature=temperature,
-    )
+    try:
+        response = client.chat.completions.create(
+            model=config.chat_model,
+            messages=messages,
+            temperature=temperature,
+        )
+    except Exception as exc:
+        raise LlmAdapterError(str(exc)) from exc
     content = response.choices[0].message.content
     if not content:
         raise LlmAdapterError("Empty LLM response")

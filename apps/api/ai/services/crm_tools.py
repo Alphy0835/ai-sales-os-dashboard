@@ -8,195 +8,127 @@ from ai.services.content_guard import check_user_content
 from ai.services.credentials import llm_available, resolve_ai_config
 from ai.services.llm_adapter import LlmAdapterError, chat_completion, parse_json_object
 from integrations.models import IntegrationSource
-from integrations.services.crm.query import CrmQueryFilters, query_crm_leads, resolve_vocabulary
+from integrations.services.crm.query import (
+    CrmQueryFilters,
+    query_crm_leads,
+    resolve_tenant_crm_source,
+)
+from integrations.services.crm_adapter import CrmAdapterError
 from integrations.tasks import should_sync_source, trigger_tenant_crm_sync
 
 logger = logging.getLogger(__name__)
 
-CRM_KEYWORDS = (
-    "сколько",
-    "дожат",
-    "менеджер",
-    "этап",
-    "статус",
-    "покажи",
-    "список",
-    "найди",
-    "crm",
-)
+_CRM_INTENT_SYSTEM = """You decide whether a sales assistant message requires a CRM database lookup.
 
-# Coaching / script questions — not CRM lookups even if they mention "клиент"
-_COACHING_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
-    re.compile(pattern, re.IGNORECASE)
-    for pattern in (
-        r"как\s+(?:ему\s+|ей\s+|им\s+|мне\s+)?(?:ответить|отработать|ответ|сказать)",
-        r"не\s+знаю\s+как",
-        r"говорит\s+дорого",
-        r"возражен",
-        r"что\s+(?:ему|ей|им|мне)\s+(?:ответить|сказать)",
-        r"помог(?:и|ите)\s+(?:с\s+)?(?:скрипт|ответ|формулиров)",
-    )
-)
+Return JSON only:
+{
+  "needs_crm_query": boolean,
+  "mode": "list" | "count",
+  "manager_email": string | null,
+  "pipeline_stage": string | null,
+  "status_stage": string | null,
+  "search": string | null,
+  "needs_review": boolean | null
+}
 
+Set needs_crm_query=true when the user asks to find, count, or list clients/leads/deals in CRM,
+including lookup by lead id (e.g. TW26055), client name, pipeline stage, status, or manager.
 
-def _is_coaching_question(message: str) -> bool:
-    return any(pattern.search(message) for pattern in _COACHING_PATTERNS)
+Set needs_crm_query=false for coaching, scripts, objection handling, or strategy without CRM lookup.
+Examples of false: "клиент говорит дорого", "как ему ответить", "помоги со скриптом".
 
-
-def _has_crm_keywords(message: str) -> bool:
-    msg = message.lower()
-    if _is_coaching_question(msg):
-        return False
-    if any(kw in msg for kw in CRM_KEYWORDS):
-        return True
-    if re.search(r"\bклиент\w*\s+[^\s,?]{2,}", msg):
-        return True
-    # Explicit CRM lookup phrasing with "клиент"
-    return bool(
-        re.search(r"\b(сколько|список|покажи|найди)\b.*\bклиент", msg)
-        or re.search(r"\bклиент\w*\b.*\b(этап|статус|crm)\b", msg)
-    )
+When needs_crm_query=true:
+- mode=count for totals ("сколько клиентов", "количество сделок")
+- mode=list for named lookups and filtered lists
+- search: lead id, client name fragment, phone — never put verbs like "зовут" into search
+- needs_review=true only when user explicitly asks about review queue / разбор
+- map stage/status terms using crm_vocabulary when provided
+"""
 
 
 def _tenant_crm_source(actor: User) -> IntegrationSource | None:
-    return (
-        IntegrationSource.objects.filter(
-            tenant_id=actor.tenant_id,
-            is_enabled=True,
-            source_type=IntegrationSource.SourceType.CRM,
-        )
-        .order_by("-last_sync_at")
-        .first()
+    return resolve_tenant_crm_source(actor)
+
+
+def _build_intent_prompt(source: IntegrationSource | None) -> str:
+    vocabulary = (source.config_json or {}).get("crm_vocabulary", {}) if source else {}
+    return f"{_CRM_INTENT_SYSTEM}\ncrm_vocabulary: {vocabulary}"
+
+
+def _parse_crm_intent_payload(data: dict) -> tuple[bool, CrmQueryFilters | None, str]:
+    needs_crm = bool(data.get("needs_crm_query"))
+    if not needs_crm:
+        return False, None, "list"
+
+    mode = data.get("mode", "list")
+    if mode not in ("list", "count"):
+        mode = "list"
+
+    needs_review = data.get("needs_review")
+    if needs_review is not None and not isinstance(needs_review, bool):
+        needs_review = bool(needs_review)
+
+    filters = CrmQueryFilters(
+        manager_email=data.get("manager_email") or None,
+        pipeline_stage=data.get("pipeline_stage") or None,
+        status_stage=data.get("status_stage") or None,
+        search=data.get("search") or None,
+        needs_review=needs_review,
     )
+    return True, filters, mode
 
 
-def _rule_based_filters(message: str, source: IntegrationSource | None) -> tuple[CrmQueryFilters, str]:
-    msg = message.lower()
-    mode = "count" if "сколько" in msg else "list"
-    filters = CrmQueryFilters()
-
-    stage_match = re.search(r"этап[еу]?\s+(\S+)", msg)
-    if stage_match:
-        term = stage_match.group(1)
-        if source:
-            term = resolve_vocabulary(source, "stages", term)
-        filters.pipeline_stage = term
-    elif "дожат" in msg:
-        filters.pipeline_stage = "дожатие" if source is None else resolve_vocabulary(source, "stages", "дожатие")
-
-    status_match = re.search(r"статус[еу]?\s+(\S+)", msg)
-    if status_match:
-        term = status_match.group(1)
-        if source:
-            term = resolve_vocabulary(source, "statuses", term)
-        filters.status_stage = term
-
-    manager_match = re.search(r"менеджер[а]?\s+(\S+@\S+)", msg)
-    if manager_match:
-        filters.manager_email = manager_match.group(1)
-
-    client_match = re.search(r"клиент\w*\s+([^\s,?]+)", msg)
-    if client_match and "сколько" not in msg:
-        filters.search = client_match.group(1)
-    elif re.search(r"зовут|назван|имя", msg):
-        id_match = re.search(r"\b([A-Za-z]{1,5}\d{2,})\b", message, re.IGNORECASE)
-        if id_match:
-            filters.search = id_match.group(1)
-
-    if "разбор" in msg or "review" in msg:
-        filters.needs_review = True
-
-    return filters, mode
-
-
-def _llm_extract_filters(message: str, actor: User, source: IntegrationSource | None) -> tuple[CrmQueryFilters, str] | None:
+def _llm_classify_crm_intent(
+    message: str,
+    actor: User,
+    source: IntegrationSource | None,
+) -> tuple[bool, CrmQueryFilters | None, str] | None:
     if not check_user_content(message).allowed:
-        return None
+        return False, None, "list"
 
     config = resolve_ai_config(actor)
     if not llm_available(config):
         return None
 
-    vocabulary = (source.config_json or {}).get("crm_vocabulary", {}) if source else {}
-    system = (
-        "Extract CRM query filters from the user message. "
-        'Return JSON only: {"mode": "list"|"count", "manager_email": null, '
-        '"pipeline_stage": null, "status_stage": null, "search": null, "needs_review": null}. '
-        f"Use crm_vocabulary aliases when matching stages/statuses: {vocabulary}"
-    )
     try:
         raw = chat_completion(
             messages=[
-                {"role": "system", "content": system},
+                {"role": "system", "content": _build_intent_prompt(source)},
                 {"role": "user", "content": message},
             ],
             config=config,
             temperature=0.0,
         )
         data = parse_json_object(raw)
-        filters = CrmQueryFilters(
-            manager_email=data.get("manager_email") or None,
-            pipeline_stage=data.get("pipeline_stage") or None,
-            status_stage=data.get("status_stage") or None,
-            search=data.get("search") or None,
-            needs_review=data.get("needs_review") if data.get("needs_review") is not None else None,
-        )
-        mode = data.get("mode", "list")
-        if mode not in ("list", "count"):
-            mode = "list"
-        return filters, mode
+        return _parse_crm_intent_payload(data)
     except (LlmAdapterError, ValueError, TypeError) as exc:
-        logger.warning("CRM LLM filter extraction failed: %s", exc)
+        logger.warning("CRM LLM intent classification failed: %s", exc)
         return None
 
 
-def _rule_based_is_specific(filters: CrmQueryFilters, mode: str, message: str = "") -> bool:
-    if mode == "count":
-        return True
-    if any(
-        [
-            filters.pipeline_stage,
-            filters.status_stage,
-            filters.manager_email,
-            filters.search,
-            filters.needs_review is not None,
-        ]
-    ):
-        return True
+def _emergency_crm_intent_fallback(message: str) -> tuple[bool, CrmQueryFilters | None, str] | None:
+    """Only when LLM is unavailable (rate limit, outage). Not the primary router."""
     msg = message.lower()
-    return bool(re.search(r"\b(покажи|список|найди)\b", msg) and "клиент" in msg)
-
-
-def _filters_are_empty(filters: CrmQueryFilters) -> bool:
-    return not any(
-        [
-            filters.pipeline_stage,
-            filters.status_stage,
-            filters.manager_email,
-            filters.search,
-            filters.needs_review is not None,
-        ]
-    )
+    id_match = re.search(r"\b([A-Za-z]{1,5}\d{2,})\b", message, re.IGNORECASE)
+    if id_match:
+        return True, CrmQueryFilters(search=id_match.group(1)), "list"
+    if "сколько" in msg and ("crm" in msg or "клиент" in msg):
+        return True, CrmQueryFilters(), "count"
+    return None
 
 
 def detect_crm_intent(message: str, actor: User) -> tuple[bool, CrmQueryFilters | None, str]:
-    if not _has_crm_keywords(message):
-        return False, None, "list"
-
     source = _tenant_crm_source(actor)
-    filters, mode = _rule_based_filters(message, source)
-    if _rule_based_is_specific(filters, mode, message):
-        return True, filters, mode
-
-    llm_result = _llm_extract_filters(message, actor, source)
+    llm_result = _llm_classify_crm_intent(message, actor, source)
     if llm_result is not None:
-        llm_filters, llm_mode = llm_result
-        if llm_mode == "count" or not _filters_are_empty(llm_filters):
-            return True, llm_filters, llm_mode
+        return llm_result
 
-    if mode == "count":
-        return True, filters, mode
+    fallback = _emergency_crm_intent_fallback(message)
+    if fallback is not None:
+        logger.info("CRM intent emergency fallback for actor %s", actor.id)
+        return fallback
 
+    logger.info("CRM intent skipped: LLM unavailable for actor %s", actor.id)
     return False, None, "list"
 
 
@@ -235,12 +167,12 @@ def format_crm_result(result: dict, mode: str) -> str:
 
 
 def maybe_refresh_crm(actor: User, *, force: bool = False) -> bool:
+    """Queue CRM sync for non-Sheets sources only. Google Sheets agent reads live."""
     sources = IntegrationSource.objects.filter(
         tenant_id=actor.tenant_id,
         is_enabled=True,
         source_type=IntegrationSource.SourceType.CRM,
-        config_json__provider="google_sheets",
-    ).exclude(credentials_encrypted="")
+    ).exclude(credentials_encrypted="").exclude(config_json__provider="google_sheets")
     stale = [s for s in sources if should_sync_source(s, force=force)]
     if not stale:
         return False

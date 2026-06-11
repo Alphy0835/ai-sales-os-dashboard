@@ -1,5 +1,4 @@
 from datetime import date, timedelta
-from decimal import Decimal
 from uuid import UUID
 
 from django.db.models import Q, Sum
@@ -9,7 +8,6 @@ from accounts.models import User
 from accounts.services.scope import get_accessible_users, get_scoped_workspace_ids
 from integrations.models import IntegrationSource, MetricSnapshot
 from integrations.services.health import crm_stale_reason, is_crm_source_stale
-from integrations.services.crm.metrics import count_crm_leads_deals, google_sheets_crm_sources
 
 METRIC_DEFINITIONS = {
     "calls": {"sources": [IntegrationSource.SourceType.TELEPHONY], "label": "Звонки"},
@@ -148,56 +146,19 @@ def build_metrics_summary(*, actor: User, period: str = "today", workspace_id: s
 
         value = None
         if available:
-            if key == "deals" and IntegrationSource.SourceType.CRM in usable_types:
-                gs_sources = [
-                    s
-                    for s in google_sheets_crm_sources(sources)
-                    if s.status
-                    in (IntegrationSource.Status.CONNECTED, IntegrationSource.Status.DEGRADED)
-                ]
-                non_gs_source_ids = [
-                    s.id
-                    for s in sources
-                    if s.source_type == IntegrationSource.SourceType.CRM
-                    and (s.config_json or {}).get("provider") != "google_sheets"
-                    and s.status
-                    in (IntegrationSource.Status.CONNECTED, IntegrationSource.Status.DEGRADED)
-                ]
-                snapshot_total = Decimal("0")
-                if non_gs_source_ids:
-                    agg = snapshots.filter(
-                        metric_key=key,
-                        source_id__in=non_gs_source_ids,
-                    ).aggregate(total=Sum("value"))
-                    if agg["total"] is not None:
-                        snapshot_total = agg["total"]
-                gs_count = 0
-                if gs_sources:
-                    gs_count = count_crm_leads_deals(
-                        tenant_id=actor.tenant_id,
-                        source_ids=[s.id for s in gs_sources],
-                        workspace_ids=workspace_ids,
-                        employee_ids=employee_ids,
-                        start=start,
-                        end=end,
-                    )
-                combined = float(snapshot_total) + gs_count
-                if combined > 0 or gs_sources or non_gs_source_ids:
-                    value = combined
-                else:
+            agg = snapshots.filter(
+                metric_key=key,
+                source__source_type__in=usable_types,
+            ).aggregate(total=Sum("value"))
+            total = agg["total"]
+            if total is None:
+                if employee_ids:
                     available = False
                     reason = reason or "Нет данных за период"
+                else:
+                    value = 0.0
             else:
-                agg = snapshots.filter(
-                    metric_key=key,
-                    source__source_type__in=usable_types,
-                ).aggregate(total=Sum("value"))
-                total = agg["total"]
-                if total is None:
-                    available = False
-                    reason = reason or "Нет данных за период"
-                else:
-                    value = float(total)
+                value = float(total)
 
         metrics_payload[key] = {
             "label": definition["label"],

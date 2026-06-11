@@ -48,6 +48,28 @@ def _vocabulary_search_terms(source: IntegrationSource, field: str, user_term: s
     return [t for t in terms if t]
 
 
+def resolve_tenant_crm_source(actor: User) -> IntegrationSource | None:
+    """Pick CRM source for agent queries: scoped to manager OPs, prefer live Google Sheets."""
+    qs = IntegrationSource.objects.filter(
+        tenant_id=actor.tenant_id,
+        is_enabled=True,
+        source_type=IntegrationSource.SourceType.CRM,
+    )
+    scoped_ws = get_scoped_workspace_ids(actor)
+    if scoped_ws:
+        qs = qs.filter(Q(workspace_id__in=scoped_ws) | Q(workspace__isnull=True))
+
+    gs = (
+        qs.filter(config_json__provider="google_sheets")
+        .exclude(credentials_encrypted="")
+        .order_by("-last_sync_at")
+        .first()
+    )
+    if gs:
+        return gs
+    return qs.order_by("-last_sync_at").first()
+
+
 def _resolve_source(
     actor: User,
     integration_source: IntegrationSource | None,
@@ -56,15 +78,7 @@ def _resolve_source(
         if integration_source.tenant_id != actor.tenant_id:
             return None
         return integration_source
-    return (
-        IntegrationSource.objects.filter(
-            tenant_id=actor.tenant_id,
-            is_enabled=True,
-            source_type=IntegrationSource.SourceType.CRM,
-        )
-        .order_by("-last_sync_at")
-        .first()
-    )
+    return resolve_tenant_crm_source(actor)
 
 
 def _lead_to_dict(lead: CrmLead) -> dict:
@@ -110,6 +124,17 @@ def query_crm_leads(
     integration_source: IntegrationSource | None = None,
 ) -> dict:
     source = _resolve_source(actor, integration_source)
+    if source is not None and (source.config_json or {}).get("provider") == "google_sheets":
+        from integrations.services.crm.google_sheets_live import query_google_sheets_live
+
+        return query_google_sheets_live(
+            actor,
+            source,
+            filters=filters,
+            mode=mode,
+            limit=limit,
+        )
+
     qs = CrmLead.objects.filter(tenant_id=actor.tenant_id).select_related("employee")
 
     if source is not None:
