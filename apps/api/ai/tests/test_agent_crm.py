@@ -7,7 +7,7 @@ from accounts.models import ManagerScope, Tenant, User, Workspace
 from integrations.models import IntegrationSource
 from integrations.services.crm_adapter import encrypt_source_credentials
 from ai.services.agent import generate_agent_reply
-from ai.services.crm_tools import CrmQueryFilters
+from ai.services.agent_prompts import CONTEXT_EMPTY
 
 
 SERVICE_ACCOUNT = {
@@ -17,19 +17,29 @@ SERVICE_ACCOUNT = {
 }
 
 
-def _mock_crm_intent(message: str, actor, source):
-    msg = message.lower()
-    if "дорого" in msg or "не знаю как" in msg:
-        return False, None, "list"
-    if "сколько" in msg:
-        return True, CrmQueryFilters(), "count"
-    if "tw26055" in msg:
-        return True, CrmQueryFilters(search="TW26055"), "list"
-    if "tw6090" in msg:
-        return True, CrmQueryFilters(search="TW6090"), "list"
-    if "gamma" in msg:
-        return True, CrmQueryFilters(search="Gamma"), "list"
-    return False, None, "list"
+def _mock_llm(actor, messages):
+    last = messages[-1]["content"]
+    if CONTEXT_EMPTY in last:
+        lower = last.lower()
+        if "сколько" in lower:
+            return '{"crm": {"count": true}}'
+        if "tw26055" in lower:
+            return '{"crm": {"search": "TW26055"}}'
+        if "tw6090" in lower:
+            return '{"crm": {"search": "TW6090"}}'
+        if "gamma" in lower:
+            return '{"crm": {"search": "Gamma"}}'
+        if "дорого" in lower:
+            return "Сфокусируйтесь на ценности продукта."
+    if "--- CRM ---" in last:
+        if "найдено клиентов: 2" in last.lower():
+            return "В CRM найдено клиентов: 2.\n\nДанные на 01.01.2025 12:00."
+        if "gamma inc" in last.lower():
+            return "Клиент Gamma Inc (этап: Closing, статус: open).\n\nДанные на 01.01.2025 12:00."
+        if "елена" in last.lower():
+            lead = "TW26055" if "tw26055" in last.lower() else "TW6090"
+            return f"Клиент {lead} — Елена.\n\nДанные на 01.01.2025 12:00."
+    return "OK"
 
 
 @override_settings(AI_CREDENTIALS_KEY="test-credentials-key-32chars!!", CRM_SYNC_INTERVAL_MINUTES=60)
@@ -92,17 +102,23 @@ class AgentCrmTests(TestCase):
                 "needs_review": "",
             },
         ]
-        self.intent_patcher = patch(
-            "ai.services.crm_tools._llm_classify_crm_intent",
-            side_effect=_mock_crm_intent,
+        self.llm_patcher = patch(
+            "ai.services.agent_orchestrator._call_llm",
+            side_effect=_mock_llm,
         )
-        self.intent_patcher.start()
+        self.llm_available_patcher = patch(
+            "ai.services.agent_orchestrator.llm_available",
+            return_value=True,
+        )
+        self.llm_patcher.start()
+        self.llm_available_patcher.start()
 
     def tearDown(self):
-        self.intent_patcher.stop()
+        self.llm_patcher.stop()
+        self.llm_available_patcher.stop()
 
     @patch("integrations.services.crm.google_sheets_live.read_sheet_rows_cached")
-    @patch("ai.services.agent.maybe_refresh_crm")
+    @patch("ai.services.agent_orchestrator.maybe_refresh_crm")
     def test_llm_routed_crm_count_in_agent_reply(self, mock_refresh, mock_read):
         mock_read.return_value = self.sheet_rows
         reply, sources, warnings = generate_agent_reply(
@@ -116,7 +132,7 @@ class AgentCrmTests(TestCase):
         mock_refresh.assert_called_once()
 
     @patch("integrations.services.crm.google_sheets_live.read_sheet_rows_cached")
-    @patch("ai.services.agent.maybe_refresh_crm")
+    @patch("ai.services.agent_orchestrator.maybe_refresh_crm")
     def test_llm_routed_crm_list_in_agent_reply(self, mock_refresh, mock_read):
         mock_read.return_value = self.sheet_rows
         reply, _, _ = generate_agent_reply(
@@ -127,7 +143,7 @@ class AgentCrmTests(TestCase):
         self.assertIn("Данные на", reply)
 
     @patch("integrations.services.crm.google_sheets_live.read_sheet_rows_cached")
-    @patch("ai.services.agent.maybe_refresh_crm")
+    @patch("ai.services.agent_orchestrator.maybe_refresh_crm")
     def test_employee_crm_query_scoped_to_self(self, mock_refresh, mock_read):
         other = User.objects.create_user(
             email="other@agent.local",
@@ -159,21 +175,18 @@ class AgentCrmTests(TestCase):
         self.assertIn("найдено клиентов: 2", reply.lower())
         self.assertNotIn("Hidden Client", reply)
 
-    @patch("ai.services.crm_tools._llm_classify_crm_intent", return_value=(False, None, "list"))
-    @patch("ai.services.agent.chat_completion", return_value="Сфокусируйтесь на ценности продукта.")
-    @patch("ai.services.agent.llm_available", return_value=True)
-    @patch("ai.services.agent.maybe_refresh_crm")
-    def test_coaching_question_skips_crm_and_uses_llm(self, mock_refresh, _mock_llm, _mock_chat, _mock_crm):
+    @patch("ai.services.agent_orchestrator.maybe_refresh_crm")
+    def test_coaching_question_skips_crm_and_uses_llm(self, mock_refresh):
         reply, _, _ = generate_agent_reply(
             actor=self.manager,
             message="У меня клиент говорит дорого, не знаю как ему ответить",
         )
         self.assertNotIn("CRM не найдены", reply)
         mock_refresh.assert_not_called()
-        _mock_chat.assert_called_once()
+        self.assertIn("ценности", reply.lower())
 
     @patch("integrations.services.crm.google_sheets_live.read_sheet_rows_cached")
-    @patch("ai.services.agent.maybe_refresh_crm")
+    @patch("ai.services.agent_orchestrator.maybe_refresh_crm")
     def test_client_name_lookup_routes_to_crm(self, mock_refresh, mock_read):
         mock_read.return_value = self.sheet_rows
         reply, _, _ = generate_agent_reply(
@@ -185,7 +198,7 @@ class AgentCrmTests(TestCase):
         mock_refresh.assert_called_once()
 
     @patch("integrations.services.crm.google_sheets_live.read_sheet_rows_cached")
-    @patch("ai.services.agent.maybe_refresh_crm")
+    @patch("ai.services.agent_orchestrator.maybe_refresh_crm")
     def test_lookup_by_lead_id_with_kak_zovut_phrasing(self, mock_refresh, mock_read):
         mock_read.return_value = self.sheet_rows + [
             {
@@ -194,7 +207,7 @@ class AgentCrmTests(TestCase):
                 "phone": "",
                 "city": "",
                 "communication_comment": "",
-                "manager_email": "Не email",
+                "manager_email": "emp@agent.local",
                 "supervisor_email": "",
                 "pipeline_stage": "Closing",
                 "status_stage": "open",
@@ -210,7 +223,7 @@ class AgentCrmTests(TestCase):
         self.assertNotIn("не найдены", reply.lower())
 
     @patch("integrations.services.crm.google_sheets_live.read_sheet_rows_cached")
-    @patch("ai.services.agent.maybe_refresh_crm")
+    @patch("ai.services.agent_orchestrator.maybe_refresh_crm")
     def test_lookup_by_external_lead_id(self, mock_refresh, mock_read):
         mock_read.return_value = self.sheet_rows + [
             {
@@ -219,7 +232,7 @@ class AgentCrmTests(TestCase):
                 "phone": "",
                 "city": "",
                 "communication_comment": "",
-                "manager_email": "Не email",
+                "manager_email": "emp@agent.local",
                 "supervisor_email": "",
                 "pipeline_stage": "Closing",
                 "status_stage": "open",
@@ -234,3 +247,28 @@ class AgentCrmTests(TestCase):
         self.assertIn("Елена", reply)
         self.assertNotIn("не найдены", reply.lower())
         mock_refresh.assert_called_once()
+
+    @patch("integrations.services.crm.google_sheets_live.read_sheet_rows_cached")
+    @patch("ai.services.agent_orchestrator.llm_available", return_value=False)
+    @patch("ai.services.agent_orchestrator.maybe_refresh_crm")
+    def test_llm_down_emergency_crm_fallback(self, mock_refresh, _mock_llm, mock_read):
+        mock_read.return_value = self.sheet_rows + [
+            {
+                "lead_id": "TW26055",
+                "client_name": "Елена",
+                "phone": "",
+                "city": "",
+                "communication_comment": "",
+                "manager_email": "emp@agent.local",
+                "supervisor_email": "",
+                "pipeline_stage": "Closing",
+                "status_stage": "open",
+                "recording_url": "",
+                "needs_review": "",
+            },
+        ]
+        reply, _, _ = generate_agent_reply(
+            actor=self.manager,
+            message="TW26055 как клиента зовут?",
+        )
+        self.assertIn("Елена", reply)
