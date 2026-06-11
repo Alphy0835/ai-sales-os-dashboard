@@ -1,5 +1,7 @@
+import secrets
 import uuid
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
@@ -175,7 +177,12 @@ class AuditLog(models.Model):
 
 class RegistrationInvite(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    code = models.CharField(max_length=64, unique=True, db_index=True)
+    code = models.CharField(max_length=64, unique=True, db_index=True, blank=True, default="")
+    expected_email = models.EmailField(
+        blank=True,
+        default="",
+        help_text="Если указан, регистрация разрешена только с этим email.",
+    )
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="registration_invites")
     workspace = models.ForeignKey(
         Workspace,
@@ -207,6 +214,22 @@ class RegistrationInvite(models.Model):
 
     def __str__(self):
         return f"{self.code} ({self.tenant.slug})"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if not self.workspace_id:
+            raise ValidationError({"workspace": "Укажите подразделение (ОП) для invite."})
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            self.code = secrets.token_urlsafe(16)
+        super().save(*args, **kwargs)
+
+    @property
+    def registration_url(self) -> str:
+        base = settings.FRONTEND_URL.rstrip("/")
+        return f"{base}/register?code={self.code}"
 
     @property
     def is_valid(self) -> bool:

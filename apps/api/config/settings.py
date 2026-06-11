@@ -204,7 +204,13 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
 }
 
-_redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+_redis_raw = os.environ.get("REDIS_URL", "redis://localhost:6379/0").strip()
+# "disabled" / empty — local dev without Redis (PowerShell cannot pass empty env vars reliably)
+_redis_url = (
+    ""
+    if _redis_raw.lower() in ("", "0", "false", "none", "disabled")
+    else _redis_raw
+)
 
 if _redis_url and not TESTING:
     CACHES = {

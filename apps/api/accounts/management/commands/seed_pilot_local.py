@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from accounts.management.commands.seed_demo import (
+from accounts.services.default_permissions import (
     EMPLOYEE_PERMISSIONS,
     MANAGER_PERMISSIONS,
     set_manager_scope,

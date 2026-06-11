@@ -64,3 +64,13 @@ class HealthEndpointTests(TestCase):
         response = self.client.get(reverse("health-ready"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
+
+    @override_settings(CELERY_BROKER_URL="", CELERY_TASK_ALWAYS_EAGER=True)
+    @patch("core.views.check_database", return_value=(True, None))
+    def test_readiness_skips_broker_when_redis_disabled(self, *_mocks):
+        response = self.client.get(reverse("health-ready"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["checks"]["redis"]["status"], "ok")
+        self.assertEqual(data["checks"]["celery"]["status"], "ok")

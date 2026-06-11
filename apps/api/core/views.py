@@ -26,6 +26,8 @@ def check_database():
 
 
 def check_redis():
+    if not settings.CELERY_BROKER_URL:
+        return True, None
     try:
         client = redis.from_url(settings.CELERY_BROKER_URL, socket_connect_timeout=2)
         client.ping()
@@ -36,6 +38,8 @@ def check_redis():
 
 
 def check_celery():
+    if not settings.CELERY_BROKER_URL or settings.CELERY_TASK_ALWAYS_EAGER:
+        return True, None
     try:
         result = app.control.inspect(timeout=2.0).ping()
         if result:

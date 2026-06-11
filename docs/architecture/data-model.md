@@ -322,33 +322,33 @@ One-time signup token for employees (and optionally managers) onboarded via Goog
 
 ### Purpose
 
-Allow invited users to create a password and `User` row without integrator manually setting passwords. Ties registration email to sheet `employee_email` column.
+Allow invited users to create a password and `User` row without integrator manually setting passwords. Optional `expected_email` ties registration to sheet `manager_email`.
 
 ### Fields
 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | id | UUID | yes | PK |
+| code | string | yes | Invite code (auto-generated on save if blank; unique) |
+| expected_email | string | no | If set, registration email must match |
 | tenant_id | UUID FK | yes | Tenant |
-| workspace_id | UUID FK | no | Primary workspace for new user |
-| email | string | yes | Must match sheet `employee_email` |
+| workspace_id | UUID FK | yes | ОП (workspace); обязателен для invite — без него manager scope не создаётся |
 | role | enum | yes | `manager` \| `employee` |
-| manager_id | UUID FK User | no | Parent manager for employees |
-| token | string | yes | Opaque invite token (URL query) |
 | expires_at | datetime | yes | Invite expiry |
-| used_at | datetime | no | Set on successful registration |
-| created_by_id | UUID FK User | no | Admin or manager who issued invite |
+| max_uses | int | yes | Max successful registrations (default 1) |
+| use_count | int | yes | Successful registrations so far |
+| used_at | datetime | no | Set on first successful registration |
+| created_by_id | UUID FK User | no | Admin who issued invite |
 | created_at | datetime | yes | Audit |
 
 ### Relations
 
-- Registration consumes invite → creates `User` + default `ModulePermission` rows.
+- Registration consumes invite → creates `User` + default `ModulePermission` rows (role-based; manager also gets `ManagerScope` for invite workspace).
 - Post-registration login triggers CRM sync (if not throttled) to link `CrmLead.employee_id` via `manager_email`.
 
 ### Validation
 
-- Email unique among open invites per tenant; cannot reuse after `used_at` set.
-- `POST /auth/register/` rejects expired or used tokens.
+- `POST /auth/register/` rejects expired invites or when `use_count >= max_uses`; rejects email mismatch when `expected_email` is set.
 
 ### Deletion
 

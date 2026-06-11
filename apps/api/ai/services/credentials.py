@@ -5,6 +5,7 @@ from django.conf import settings
 from accounts.models import User
 from ai.models import TenantAiConfig, WorkspaceAiConfig
 from ai.services.crypto import decrypt_secret
+from ai.services.model_tiers import resolve_models
 
 
 @dataclass(frozen=True)
@@ -45,10 +46,6 @@ def _merge_config(*, base: AiConfig, tenant_cfg: TenantAiConfig | None, workspac
                 api_key = decrypted
         if tenant_cfg.base_url:
             base_url = tenant_cfg.base_url
-        if tenant_cfg.chat_model:
-            chat_model = tenant_cfg.chat_model
-        if tenant_cfg.embedding_model:
-            embedding_model = tenant_cfg.embedding_model
         is_enabled = tenant_cfg.is_enabled
         source = "tenant"
 
@@ -59,13 +56,19 @@ def _merge_config(*, base: AiConfig, tenant_cfg: TenantAiConfig | None, workspac
                 api_key = decrypted
         if workspace_cfg.base_url:
             base_url = workspace_cfg.base_url
-        if workspace_cfg.chat_model:
-            chat_model = workspace_cfg.chat_model
-        if workspace_cfg.embedding_model:
-            embedding_model = workspace_cfg.embedding_model
         if workspace_cfg.is_enabled is not None:
             is_enabled = workspace_cfg.is_enabled
         source = "workspace"
+
+    if tenant_cfg or workspace_cfg:
+        chat_model, embedding_model = resolve_models(
+            tenant_cfg,
+            workspace_cfg,
+            fallback_chat=base.chat_model,
+            fallback_embedding=base.embedding_model,
+        )
+    else:
+        chat_model, embedding_model = base.chat_model, base.embedding_model
 
     return AiConfig(
         api_key=api_key,

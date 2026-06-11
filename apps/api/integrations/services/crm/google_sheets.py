@@ -27,12 +27,6 @@ DEFAULT_HEADER_MAP = {
 DEFAULT_SKIP_STATUS_STAGES = ["done", "closed"]
 
 
-def _header_map(source: IntegrationSource) -> dict[str, str]:
-    config = source.config_json or {}
-    custom = config.get("header_map") or {}
-    return {**DEFAULT_HEADER_MAP, **custom}
-
-
 def _skip_status_stages(source: IntegrationSource) -> set[str]:
     config = source.config_json or {}
     stages = config.get("skip_status_stages", DEFAULT_SKIP_STATUS_STAGES)
@@ -70,14 +64,87 @@ def _should_add_to_review(source: IntegrationSource, row: dict[str, str]) -> tup
     return False, ""
 
 
+def _column_index_from_sheet_headers(
+    headers: list[str], header_map: dict[str, str]
+) -> dict[str, int]:
+    reverse_map = {k.strip().lower(): v for k, v in header_map.items()}
+    col_index: dict[str, int] = {}
+    for idx, header in enumerate(headers):
+        field = reverse_map.get(str(header).strip().lower())
+        if field:
+            col_index[field] = idx
+    return col_index
+
+
+def column_letter_to_index(letter: str) -> int:
+    normalized = (letter or "").strip().upper()
+    if not normalized or not normalized.isalpha():
+        raise CrmAdapterError(f"Invalid column letter: {letter!r}")
+    index = 0
+    for char in normalized:
+        index = index * 26 + (ord(char) - ord("A") + 1)
+    return index - 1
+
+
+def column_index_from_letters(column_map: dict[str, str]) -> dict[str, int]:
+    return {field: column_letter_to_index(letter) for field, letter in column_map.items()}
+
+
+def _effective_column_map(config: dict) -> dict[str, str]:
+    raw = config.get("column_map") or {}
+    return {
+        field: str(letter).strip().upper()
+        for field, letter in raw.items()
+        if field and str(letter).strip()
+    }
+
+
+def _rows_from_col_index(values: list[list], col_index: dict[str, int]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for raw_row in values:
+        row: dict[str, str] = {}
+        for field, idx in col_index.items():
+            if idx < len(raw_row):
+                row[field] = str(raw_row[idx]).strip()
+            else:
+                row[field] = ""
+        if row.get("lead_id") and row.get("client_name"):
+            rows.append(row)
+    return rows
+
+
+def parse_sheet_values(values: list[list], config: dict) -> list[dict[str, str]]:
+    if not values:
+        return []
+
+    column_map = _effective_column_map(config)
+    if column_map:
+        if "lead_id" not in column_map or "client_name" not in column_map:
+            raise CrmAdapterError("column_map must include lead_id and client_name columns")
+        col_index = column_index_from_letters(column_map)
+        data_start_row = max(1, int(config.get("data_start_row") or 1))
+        if len(values) < data_start_row:
+            raise CrmAdapterError(f"Sheet has fewer rows than data_start_row={data_start_row}")
+        return _rows_from_col_index(values[data_start_row - 1 :], col_index)
+
+    header_map = {**DEFAULT_HEADER_MAP, **(config.get("header_map") or {})}
+    header_row = max(1, int(config.get("header_row") or 1))
+    if len(values) < header_row:
+        raise CrmAdapterError(f"Sheet has fewer rows than header_row={header_row}")
+    headers = [str(h).strip().lower() for h in values[header_row - 1]]
+    col_index = _column_index_from_sheet_headers(headers, header_map)
+    if "lead_id" not in col_index or "client_name" not in col_index:
+        raise CrmAdapterError("Sheet must include lead_id and client_name columns")
+    return _rows_from_col_index(values[header_row:], col_index)
+
+
 def _read_sheet_rows(source: IntegrationSource, credentials: dict) -> list[dict[str, str]]:
     spreadsheet_id = (source.config_json or {}).get("spreadsheet_id", "")
     if not spreadsheet_id:
         raise CrmAdapterError("spreadsheet_id missing in config_json")
 
     sheet_name = (source.config_json or {}).get("sheet_name", "Leads")
-    header_map = _header_map(source)
-    reverse_map = {v.strip().lower(): k for k, v in header_map.items()}
+    config = dict(source.config_json or {})
 
     from google.oauth2 import service_account
     from googleapiclient.discovery import build
@@ -94,30 +161,7 @@ def _read_sheet_rows(source: IntegrationSource, credentials: dict) -> list[dict[
         .execute()
     )
     values = result.get("values", [])
-    if not values:
-        return []
-
-    headers = [str(h).strip().lower() for h in values[0]]
-    col_index = {}
-    for idx, header in enumerate(headers):
-        field = reverse_map.get(header)
-        if field:
-            col_index[field] = idx
-
-    if "lead_id" not in col_index or "client_name" not in col_index:
-        raise CrmAdapterError("Sheet must include lead_id and client_name columns")
-
-    rows: list[dict[str, str]] = []
-    for raw_row in values[1:]:
-        row: dict[str, str] = {}
-        for field, idx in col_index.items():
-            if idx < len(raw_row):
-                row[field] = str(raw_row[idx]).strip()
-            else:
-                row[field] = ""
-        if row.get("lead_id") and row.get("client_name"):
-            rows.append(row)
-    return rows
+    return parse_sheet_values(values, config)
 
 
 def _resolve_employee(source: IntegrationSource, manager_email: str) -> User | None:

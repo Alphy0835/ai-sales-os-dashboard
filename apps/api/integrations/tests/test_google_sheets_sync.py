@@ -186,3 +186,57 @@ class GoogleSheetsSyncTests(TestCase):
         self.source.refresh_from_db()
         self.assertEqual(self.source.status, IntegrationSource.Status.ERROR)
         self.assertIn("spreadsheet_id", self.source.last_error)
+
+    def test_column_index_maps_custom_header_labels(self):
+        from integrations.services.crm.google_sheets import _column_index_from_sheet_headers
+
+        header_map = {
+            "ID лида": "lead_id",
+            "Клиент": "client_name",
+            "Email менеджера": "manager_email",
+        }
+        col_index = _column_index_from_sheet_headers(
+            ["id лида", "клиент", "email менеджера"],
+            header_map,
+        )
+        self.assertEqual(col_index["lead_id"], 0)
+        self.assertEqual(col_index["client_name"], 1)
+        self.assertEqual(col_index["manager_email"], 2)
+
+    def test_parse_sheet_values_by_column_letters_skips_header_rows(self):
+        from integrations.services.crm.google_sheets import parse_sheet_values
+
+        values = [
+            ["Заголовок воронки"],
+            ["LID", "Имя", "Телефон"],
+            ["L-001", "Acme", "+7999"],
+            ["L-002", "Beta", ""],
+        ]
+        rows = parse_sheet_values(
+            values,
+            {
+                "column_map": {"lead_id": "A", "client_name": "B", "phone": "C"},
+                "data_start_row": 3,
+            },
+        )
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["lead_id"], "L-001")
+        self.assertEqual(rows[0]["client_name"], "Acme")
+
+    def test_parse_sheet_values_by_header_row(self):
+        from integrations.services.crm.google_sheets import parse_sheet_values
+
+        values = [
+            ["ignored title"],
+            ["LID", "Имя"],
+            ["L-100", "Gamma"],
+        ]
+        rows = parse_sheet_values(
+            values,
+            {
+                "header_row": 2,
+                "header_map": {"LID": "lead_id", "Имя": "client_name"},
+            },
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["client_name"], "Gamma")

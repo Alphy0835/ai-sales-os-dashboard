@@ -190,28 +190,31 @@ On `200`, may queue async CRM sync for the user's tenant (Google Sheets → `Crm
 
 ### Purpose
 
-Create User Level account from `RegistrationInvite` (Google Sheets onboarding). Public endpoint; invite token proves eligibility.
+Create User Level account from `RegistrationInvite` (Google Sheets onboarding). Public endpoint; invite `code` proves eligibility.
 
 ### Authorization
 
-Public. Requires valid `token` query param or body field matching unused, unexpired `RegistrationInvite`.
+Public. Requires valid `invite_code` in request body matching unused, unexpired `RegistrationInvite`.
 
 ### Request
 
 ```json
 {
-  "token": "<invite_token>",
+  "invite_code": "<invite_code>",
+  "email": "employee@company.local",
   "password": "secure-password-min-8",
   "full_name": "Иван Иванов"
 }
 ```
 
-`email` is taken from the invite record (not client-supplied). Optional `full_name` overrides display name; default from invite metadata or email local-part.
+If `RegistrationInvite.expected_email` is set, `email` must match (case-insensitive). Otherwise any unused email is accepted.
 
 ### Response `201`
 
 ```json
 {
+  "access": "<jwt>",
+  "refresh": "<jwt>",
   "user": {
     "id": "uuid",
     "email": "employee@demo.local",
@@ -223,15 +226,15 @@ Public. Requires valid `token` query param or body field matching unused, unexpi
 }
 ```
 
-Does **not** set auth cookies — client redirects to login. After first `POST /auth/login/`, CRM sync (if not throttled) links `CrmLead` rows by `manager_email` match to `User.email`.
+Sets auth cookies (`access_token`, `refresh_token`) like login. CRM sync and `CrmLead.employee` linking happen on the next login, scheduled sync, manual **Sync CRM now**, or agent refresh — not during register. Rate-limited with the same throttle as login (`THROTTLE_LOGIN`).
 
 ### Errors
 
 | Code | Meaning | Client behavior |
 |---|---|---|
-| 400 | Weak password, validation | Show field errors |
-| 404 | Unknown token | Invalid invite link |
-| 410 | Expired or already used invite | Ask manager for new invite |
+| 400 | Weak password, validation, email mismatch | Show field errors |
+| 400 | Unknown or invalid `invite_code` | Invalid invite link |
+| 400 | Expired or already used invite | Ask manager for new invite |
 
 Invite creation: Django Admin only (MVP). See [integrations.md](integrations.md) RegistrationInvite flow.
 

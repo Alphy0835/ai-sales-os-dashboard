@@ -93,7 +93,7 @@ Follow [integrator-vps-pilot.md](integrator-vps-pilot.md) §5–11 with **localh
 
 - [ ] **Admin → RegistrationInvite** for manager role; note invite code
 
-- [ ] **IntegrationSource** (`google_sheets`): spreadsheet shared with service account, `config_json` + credentials saved, first sync OK
+- [ ] **IntegrationSource** (`google_sheets`): spreadsheet shared with service account, structured Admin CRM form + credentials saved, first sync OK (or **Sync CRM now** action)
 
 - [ ] **Register with invite:** http://127.0.0.1:3000/register — email matches `manager_email` in sheet → auto-login → manager home
 

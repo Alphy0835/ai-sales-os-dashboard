@@ -121,6 +121,37 @@ class CrmQueryTests(TestCase):
         )
         self.assertEqual(result["count"], 1)
 
+    def test_search_filter_matches_external_lead_id(self):
+        result = query_crm_leads(
+            self.manager,
+            filters=CrmQueryFilters(search="L-2"),
+            mode="list",
+            integration_source=self.source,
+        )
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(result["leads"][0]["client_name"], "Beta LLC")
+
+    def test_manager_sees_unassigned_lead_in_scoped_workspace(self):
+        CrmLead.objects.create(
+            tenant=self.tenant,
+            workspace=self.workspace,
+            integration_source=self.source,
+            external_lead_id="TW6090",
+            client_name="Елена",
+            pipeline_stage="Closing",
+            status_stage="open",
+            manager_email="Не email",
+            employee=None,
+        )
+        result = query_crm_leads(
+            self.manager,
+            filters=CrmQueryFilters(search="TW6090"),
+            mode="list",
+            integration_source=self.source,
+        )
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(result["leads"][0]["client_name"], "Елена")
+
     def test_needs_review_filter(self):
         result = query_crm_leads(
             self.manager,

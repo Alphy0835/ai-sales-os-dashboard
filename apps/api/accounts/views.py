@@ -27,6 +27,7 @@ from accounts.serializers import (
 from accounts.services.audit import log_scope_denied
 from accounts.services.grant import PermissionGrantError, grant_permissions
 from accounts.services.password_reset import reset_password, resolve_user_for_reset, send_password_reset_email
+from accounts.services.registration import apply_role_defaults
 from accounts.services.permissions import can_grant_permissions, can_view_audit, get_user_permissions
 from accounts.services.scope import get_accessible_users, get_scoped_workspaces, user_in_scope
 from ai.services.knowledge_grants import KnowledgeGrantError, list_knowledge_grants, update_knowledge_grants
@@ -121,8 +122,12 @@ class RegisterView(APIView):
             raise ValidationError({"invite_code": "Invite has expired"})
         if invite.use_count >= invite.max_uses:
             raise ValidationError({"invite_code": "Invite has reached maximum uses"})
+        if not invite.workspace_id:
+            raise ValidationError({"invite_code": "Invite is missing workspace assignment"})
 
         email = data["email"].lower()
+        if invite.expected_email and invite.expected_email.lower() != email:
+            raise ValidationError({"email": "This invite is restricted to a different email address"})
         if User.objects.filter(email__iexact=email).exists():
             raise ValidationError({"email": "A user with this email already exists"})
 
@@ -134,6 +139,7 @@ class RegisterView(APIView):
             full_name=data["full_name"],
             role=invite.role,
         )
+        apply_role_defaults(user, invite)
 
         invite.use_count += 1
         update_fields = ["use_count"]

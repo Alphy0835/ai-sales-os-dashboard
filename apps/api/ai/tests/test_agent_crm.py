@@ -108,3 +108,45 @@ class AgentCrmTests(TestCase):
         )
         self.assertIn("найдено клиентов: 2", reply.lower())
         self.assertNotIn("Hidden Client", reply)
+
+    @patch("ai.services.agent.chat_completion", return_value="Сфокусируйтесь на ценности продукта.")
+    @patch("ai.services.agent.llm_available", return_value=True)
+    @patch("ai.services.agent.maybe_refresh_crm")
+    def test_coaching_question_skips_crm_and_uses_llm(self, mock_refresh, _mock_llm, _mock_chat):
+        reply, _, _ = generate_agent_reply(
+            actor=self.manager,
+            message="У меня клиент говорит дорого, не знаю как ему ответить",
+        )
+        self.assertNotIn("CRM не найдены", reply)
+        mock_refresh.assert_not_called()
+        _mock_chat.assert_called_once()
+
+    @patch("ai.services.agent.maybe_refresh_crm")
+    def test_client_name_lookup_routes_to_crm(self, mock_refresh):
+        reply, _, _ = generate_agent_reply(
+            actor=self.manager,
+            message="клиент Gamma",
+        )
+        self.assertIn("Gamma Inc", reply)
+        self.assertIn("Данные на", reply)
+        mock_refresh.assert_called_once()
+
+    @patch("ai.services.agent.maybe_refresh_crm")
+    def test_lookup_by_external_lead_id(self, mock_refresh):
+        CrmLead.objects.create(
+            tenant=self.tenant,
+            workspace=self.workspace,
+            integration_source=self.source,
+            external_lead_id="TW6090",
+            client_name="Елена",
+            pipeline_stage="Closing",
+            status_stage="open",
+            employee=None,
+        )
+        reply, _, _ = generate_agent_reply(
+            actor=self.manager,
+            message="Как зовут клиента TW6090",
+        )
+        self.assertIn("Елена", reply)
+        self.assertNotIn("не найдены", reply.lower())
+        mock_refresh.assert_called_once()

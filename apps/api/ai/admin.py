@@ -15,6 +15,22 @@ from ai.models import (
 from ai.services.crypto import encrypt_secret
 
 
+class TenantAiConfigInline(admin.StackedInline):
+    model = TenantAiConfig
+    max_num = 1
+    extra = 0
+    fields = ("is_enabled", "model_tier")
+    verbose_name_plural = "AI configuration"
+
+
+class WorkspaceAiConfigInline(admin.StackedInline):
+    model = WorkspaceAiConfig
+    max_num = 1
+    extra = 0
+    fields = ("is_enabled", "model_tier")
+    verbose_name_plural = "AI configuration"
+
+
 class EncryptedApiKeyMixin:
     api_key_plain = forms.CharField(
         label="API key",
@@ -32,8 +48,25 @@ class EncryptedApiKeyMixin:
 
 @admin.register(TenantAiConfig)
 class TenantAiConfigAdmin(EncryptedApiKeyMixin, admin.ModelAdmin):
-    list_display = ("tenant", "is_enabled", "chat_model", "embedding_model", "updated_at")
+    list_display = ("tenant", "is_enabled", "model_tier", "chat_model", "embedding_model", "updated_at")
     readonly_fields = ("updated_at",)
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("tenant", "is_enabled", "model_tier", "api_key_plain", "base_url"),
+            },
+        ),
+        (
+            "Advanced model override",
+            {
+                "classes": ("collapse",),
+                "fields": ("chat_model", "embedding_model"),
+                "description": "Optional. Overrides the selected model tier preset.",
+            },
+        ),
+        ("Metadata", {"fields": ("updated_at",)}),
+    )
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
@@ -44,8 +77,26 @@ class TenantAiConfigAdmin(EncryptedApiKeyMixin, admin.ModelAdmin):
 
 @admin.register(WorkspaceAiConfig)
 class WorkspaceAiConfigAdmin(EncryptedApiKeyMixin, admin.ModelAdmin):
-    list_display = ("workspace", "is_enabled", "chat_model", "embedding_model", "updated_at")
+    list_display = ("workspace", "is_enabled", "model_tier", "chat_model", "embedding_model", "updated_at")
     readonly_fields = ("updated_at",)
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("workspace", "is_enabled", "model_tier", "api_key_plain", "base_url"),
+                "description": "Leave model tier blank to inherit the tenant default.",
+            },
+        ),
+        (
+            "Advanced model override",
+            {
+                "classes": ("collapse",),
+                "fields": ("chat_model", "embedding_model"),
+                "description": "Optional. Overrides the selected model tier preset.",
+            },
+        ),
+        ("Metadata", {"fields": ("updated_at",)}),
+    )
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)

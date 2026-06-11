@@ -5,7 +5,8 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from accounts.models import RegistrationInvite, Tenant, User, Workspace
+from accounts.models import ManagerScope, ModulePermission, RegistrationInvite, Tenant, User, Workspace
+from accounts.services.default_permissions import EMPLOYEE_PERMISSIONS, MANAGER_PERMISSIONS
 
 
 @override_settings(
@@ -75,6 +76,22 @@ class RegistrationTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("invite_code", response.data)
 
+    def test_register_rejects_invite_without_workspace(self):
+        invite = RegistrationInvite(
+            code="NO-WORKSPACE",
+            tenant=self.tenant,
+            role=User.Role.EMPLOYEE,
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        invite.save()
+        response = self.client.post(
+            "/api/v1/auth/register/",
+            self._register_payload(invite_code="NO-WORKSPACE"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("invite_code", response.data)
+
     def test_register_rejects_invalid_invite_code(self):
         response = self.client.post(
             "/api/v1/auth/register/",
@@ -112,3 +129,73 @@ class RegistrationTests(TestCase):
         self.assertEqual(second.status_code, status.HTTP_201_CREATED)
         self.invite.refresh_from_db()
         self.assertEqual(self.invite.use_count, 2)
+
+    def test_invite_auto_generates_code_on_save_when_empty(self):
+        invite = RegistrationInvite(
+            tenant=self.tenant,
+            workspace=self.workspace,
+            role=User.Role.EMPLOYEE,
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        invite.save()
+        self.assertTrue(invite.code)
+        self.assertGreaterEqual(len(invite.code), 16)
+
+    def test_registration_invite_requires_workspace(self):
+        from django.core.exceptions import ValidationError
+
+        invite = RegistrationInvite(
+            tenant=self.tenant,
+            role=User.Role.MANAGER,
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        with self.assertRaises(ValidationError):
+            invite.full_clean()
+
+    @override_settings(FRONTEND_URL="http://localhost:3000")
+    def test_invite_registration_url_property(self):
+        self.assertEqual(
+            self.invite.registration_url,
+            "http://localhost:3000/register?code=TEST-INVITE-001",
+        )
+
+    def test_register_applies_employee_default_permissions(self):
+        response = self.client.post("/api/v1/auth/register/", self._register_payload(), format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        user = User.objects.get(email="newuser@test.local")
+        for module, expected_level in EMPLOYEE_PERMISSIONS.items():
+            perm = ModulePermission.objects.get(user=user, module=module)
+            self.assertEqual(perm.level, expected_level)
+        self.assertFalse(ManagerScope.objects.filter(user=user).exists())
+
+    def test_register_applies_manager_default_permissions_and_scope(self):
+        self.invite.role = User.Role.MANAGER
+        self.invite.save(update_fields=["role"])
+        response = self.client.post(
+            "/api/v1/auth/register/",
+            self._register_payload(email="manager-new@test.local"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        user = User.objects.get(email="manager-new@test.local")
+        for module, expected_level in MANAGER_PERMISSIONS.items():
+            perm = ModulePermission.objects.get(user=user, module=module)
+            self.assertEqual(perm.level, expected_level)
+        self.assertTrue(
+            ManagerScope.objects.filter(user=user, workspace=self.workspace).exists()
+        )
+
+    def test_register_rejects_email_when_expected_email_set(self):
+        self.invite.expected_email = "expected@test.local"
+        self.invite.save(update_fields=["expected_email"])
+        response = self.client.post("/api/v1/auth/register/", self._register_payload(), format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
+
+    def test_register_accepts_matching_expected_email(self):
+        self.invite.expected_email = "newuser@test.local"
+        self.invite.save(update_fields=["expected_email"])
+        response = self.client.post("/api/v1/auth/register/", self._register_payload(), format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)

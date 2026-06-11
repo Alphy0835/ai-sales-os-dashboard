@@ -177,6 +177,12 @@ class AgentChatMessage(models.Model):
         ordering = ["created_at"]
 
 
+class ModelTier(models.TextChoices):
+    FREE = "free", "Free"
+    STANDARD = "standard", "Standard"
+    PREMIUM = "premium", "Premium"
+
+
 class TenantAiConfig(models.Model):
     tenant = models.OneToOneField(
         "accounts.Tenant",
@@ -185,6 +191,13 @@ class TenantAiConfig(models.Model):
     )
     api_key_encrypted = models.TextField(blank=True, default="")
     base_url = models.URLField(blank=True, default="")
+    model_tier = models.CharField(
+        max_length=16,
+        choices=ModelTier.choices,
+        blank=True,
+        default="",
+        help_text="Пусто — модели из .env; иначе пресет free/standard/premium.",
+    )
     chat_model = models.CharField(max_length=128, blank=True, default="")
     embedding_model = models.CharField(max_length=128, blank=True, default="")
     is_enabled = models.BooleanField(default=True)
@@ -202,6 +215,12 @@ class WorkspaceAiConfig(models.Model):
     )
     api_key_encrypted = models.TextField(blank=True, default="")
     base_url = models.URLField(blank=True, default="")
+    model_tier = models.CharField(
+        max_length=16,
+        choices=ModelTier.choices,
+        blank=True,
+        default="",
+    )
     chat_model = models.CharField(max_length=128, blank=True, default="")
     embedding_model = models.CharField(max_length=128, blank=True, default="")
     is_enabled = models.BooleanField(default=True)

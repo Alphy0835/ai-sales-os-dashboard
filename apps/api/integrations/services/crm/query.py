@@ -6,8 +6,8 @@ from typing import Literal
 from django.db.models import Q
 from django.utils import timezone
 
-from accounts.models import User
-from accounts.services.scope import get_accessible_users
+from accounts.models import User, Workspace
+from accounts.services.scope import get_accessible_users, get_scoped_workspace_ids
 from analytics.models import ClientToReview
 from integrations.models import CrmLead, IntegrationSource
 
@@ -82,9 +82,23 @@ def _lead_to_dict(lead: CrmLead) -> dict:
     }
 
 
-def _scoped_employee_ids(actor: User) -> list:
-    accessible = get_accessible_users(actor)
-    return [u.id for u in accessible if u.role == User.Role.EMPLOYEE]
+def _apply_actor_scope(qs, actor: User):
+    if actor.role == User.Role.EMPLOYEE:
+        return qs.filter(
+            Q(employee_id=actor.id)
+            | Q(employee__isnull=True, manager_email__iexact=actor.email)
+        )
+
+    scoped_ws = get_scoped_workspace_ids(actor)
+    if not scoped_ws:
+        return qs.none()
+
+    employee_ids = [u.id for u in get_accessible_users(actor) if u.role == User.Role.EMPLOYEE]
+    return qs.filter(
+        Q(workspace_id__in=scoped_ws)
+        | Q(employee_id__in=employee_ids)
+        | Q(employee__workspace_id__in=scoped_ws)
+    )
 
 
 def query_crm_leads(
@@ -101,8 +115,7 @@ def query_crm_leads(
     if source is not None:
         qs = qs.filter(integration_source=source)
 
-    employee_ids = _scoped_employee_ids(actor)
-    qs = qs.filter(Q(employee_id__in=employee_ids) | Q(employee__isnull=True, manager_email__iexact=actor.email))
+    qs = _apply_actor_scope(qs, actor)
 
     if filters.manager_user_id:
         qs = qs.filter(employee_id=filters.manager_user_id)
@@ -135,19 +148,27 @@ def query_crm_leads(
     if filters.search:
         qs = qs.filter(
             Q(client_name__icontains=filters.search)
+            | Q(external_lead_id__icontains=filters.search)
+            | Q(phone__icontains=filters.search)
             | Q(communication_comment__icontains=filters.search)
         )
 
     if filters.needs_review is True:
+        review_employee_ids = [
+            u.id for u in get_accessible_users(actor) if u.role == User.Role.EMPLOYEE
+        ]
         review_ids = ClientToReview.objects.filter(
             tenant_id=actor.tenant_id,
-            employee_id__in=employee_ids,
+            employee_id__in=review_employee_ids,
         ).values_list("client_external_id", flat=True)
         qs = qs.filter(external_lead_id__in=review_ids)
     elif filters.needs_review is False:
+        review_employee_ids = [
+            u.id for u in get_accessible_users(actor) if u.role == User.Role.EMPLOYEE
+        ]
         review_ids = ClientToReview.objects.filter(
             tenant_id=actor.tenant_id,
-            employee_id__in=employee_ids,
+            employee_id__in=review_employee_ids,
         ).values_list("client_external_id", flat=True)
         qs = qs.exclude(external_lead_id__in=review_ids)
 

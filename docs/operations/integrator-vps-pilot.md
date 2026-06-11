@@ -75,8 +75,9 @@ cd ai-sales-os
 | `CORS_ALLOWED_ORIGINS` | **да** | `https://app.example.com` |
 | `NEXT_PUBLIC_API_URL` | **да** | **пусто** (`""`) — same-origin cookies через BFF |
 | `AI_CREDENTIALS_KEY` | **да** | Fernet-ключ для шифрования credentials в Admin |
-| `OPENROUTER_API_KEY` | рекомендуется | Ключ OpenRouter (LLM, embeddings, STT) |
-| `LLM_BASE_URL`, `LLM_CHAT_MODEL`, `LLM_EMBEDDING_MODEL` | опционально | См. `.env.example` |
+| `FRONTEND_URL` | **да** (VPS) | Публичный origin, напр. `https://app.example.com` — для ссылок регистрации в Admin |
+| `OPENROUTER_API_KEY` | рекомендуется | Ключ OpenRouter (LLM, embeddings, STT); fallback, если в Admin нет tenant API key |
+| `LLM_BASE_URL`, `LLM_CHAT_MODEL`, `LLM_EMBEDDING_MODEL` | опционально | Env fallback; per-tenant tier/presets — в Admin → **Tenant AI configs** (§7.4) |
 | `CRM_SYNC_INTERVAL_MINUTES` | опционально | По умолчанию `60` |
 | `THROTTLE_LOGIN`, `THROTTLE_AGENT` | опционально | По умолчанию `10/min`, `30/min` |
 | `TRANSCRIPT_RETENTION_DAYS` | опционально | По умолчанию `90` |
@@ -166,7 +167,7 @@ Admin → **Accounts → Tenants → Add**
 | Slug | `pilot-co` |
 | Is active | ✓ |
 
-### 7.2 Workspace
+### 7.2 Workspace (hub)
 
 Admin → **Accounts → Workspaces → Add**
 
@@ -176,22 +177,45 @@ Admin → **Accounts → Workspaces → Add**
 | Tenant | pilot-co |
 | Is active | ✓ |
 
+Workspace — точка привязки для pilot: **RegistrationInvite**, **IntegrationSource** (CRM) и опционально **Workspace AI configs** (§7.4) задаются на этот workspace.
+
 ### 7.3 RegistrationInvite
 
 Admin → **Accounts → Registration invites → Add**
 
 | Поле | Значение |
 |---|---|
-| Code | Сгенерировать (action «Generate random invite codes») или ввести вручную |
+| Code | Оставить пустым — сгенерируется при сохранении; или action «Generate random invite codes» |
+| Expected email | Email будущего пользователя (= `manager_email` в sheet); если пусто — любой email |
 | Tenant | pilot-co |
 | Workspace | ОП Москва |
 | Role | `manager` или `employee` |
 | Expires at | +30 дней |
 | Max uses | `1` (или больше для batch onboarding) |
 
-**Важно:** email пользователя при регистрации должен совпадать с `manager_email` в Google Sheet (для привязки `CrmLead.employee`).
+После сохранения: readonly **Ссылка для регистрации** (`registration_url`) — `https://app.example.com/register?code=…` (зависит от `FRONTEND_URL`).
 
-Ссылка для пользователя: `https://app.example.com/register` — код invite вводится на форме.
+При регистрации автоматически выставляются **default permissions** по роли (manager: dashboard/clients/reviews/analytics/settings/agent; employee: dashboard + agent). Manager получает **Manager scope** на workspace из invite.
+
+**Важно:** для привязки `CrmLead.employee` email при регистрации должен совпадать с `manager_email` в Google Sheet (используйте **Expected email**, если invite персональный).
+
+### 7.4 Tenant / Workspace AI config
+
+Admin → **AI → Tenant AI configs → Add** (один на tenant)
+
+| Поле | Значение |
+|---|---|
+| Tenant | pilot-co |
+| Is enabled | ✓ |
+| Model tier | Пусто → модели из env (`LLM_*`); иначе `free` / `standard` / `premium` — preset chat/embedding |
+| API key | Опционально; per-tenant OpenRouter key (шифруется). Пусто → `OPENROUTER_API_KEY` из env |
+| Base URL | Опционально; override OpenRouter base |
+
+Presets tier (см. `ai/services/model_tiers.py`): **free** → Llama 3.3 70B free; **standard** → gpt-4o-mini + text-embedding-3-small; **premium** → gpt-4o + text-embedding-3-small.
+
+Опционально Admin → **AI → Workspace AI configs** — override tier/key для одного workspace (пустой tier → наследует tenant).
+
+Раскрываемый блок **Advanced model override** — явные `chat_model` / `embedding_model` поверх tier preset.
 
 ---
 
@@ -208,6 +232,8 @@ Admin → **Accounts → Registration invites → Add**
 
 Admin → **Integrations → Integration sources → Add**
 
+**Основные поля**
+
 | Поле | Значение |
 |---|---|
 | Name | CRM Google Sheets |
@@ -215,22 +241,22 @@ Admin → **Integrations → Integration sources → Add**
 | Tenant | pilot-co |
 | Workspace | ОП Москва |
 | Is enabled | ✓ |
-| Config JSON | Шаблон подставляется автоматически; задать `"provider": "google_sheets"`, `spreadsheet_id`, `sheet_name`, при необходимости русские ключи в `header_map` |
 | Credentials JSON | Полный JSON service account (шифруется при сохранении) |
 
-Пример фрагмента `config_json`:
+**CRM configuration** (структурированная форма; `config_json` собирается при сохранении)
 
-```json
-{
-  "provider": "google_sheets",
-  "spreadsheet_id": "1abc…",
-  "sheet_name": "Leads",
-  "header_map": { "email менеджера": "manager_email", "клиент": "client_name" },
-  "review_rules": { "empty_comment_on_active": true, "auto_review_statuses": ["требует разбора"] }
-}
-```
+| Поле | Значение |
+|---|---|
+| CRM-провайдер | `google_sheets` |
+| ID Google Таблицы | ID из URL spreadsheet |
+| Имя листа | `Leads` (или имя вкладки) |
+| Заголовки колонок | По одному полю на внутреннее имя (`lead_id`, `client_name`, …) — введите **точный текст заголовка** из row 1 sheet (рус/англ) |
 
-Полный шаблон — [integrations.md](../architecture/integrations.md).
+**Advanced JSON** (свёрнутый блок) — только `review_rules` и `crm_vocabulary`. `skip_status_stages` сохраняется из шаблона/существующей записи.
+
+Полный пример `config_json` и шаблон — [integrations.md](../architecture/integrations.md).
+
+Admin action **Sync CRM now** на списке sources — принудительный sync без shell (Google Sheets CRM only).
 
 ### 8.3 Первый sync
 
@@ -249,13 +275,9 @@ docker compose -f docker-compose.prod.yml exec api python manage.py shell -c \
 
 ## 9. OPENROUTER_API_KEY и reindex_knowledge
 
-1. Добавить в `.env` на VPS:
+1. Задать ключ: **env** `OPENROUTER_API_KEY` и/или per-tenant **API key** в Admin → Tenant AI configs (§7.4). Workspace key override — в Workspace AI configs.
 
-```bash
-OPENROUTER_API_KEY=sk-or-…
-```
-
-2. Пересоздать `api` и `worker` (ключ читается из env):
+2. Пересоздать `api` и `worker` (env-ключ читается при старте; Admin keys — из БД):
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d api worker
@@ -331,7 +353,7 @@ OpenRouter получает данные tenant'а при включённом `
 
 - [ ] Health ready 200 через BFF
 - [ ] Admin доступен по `https://app.example.com/admin/`
-- [ ] Tenant + Workspace + Invite + IntegrationSource connected
+- [ ] Tenant + Workspace + Invite + IntegrationSource connected; Tenant AI config (tier/key) при необходимости
 - [ ] Sheet shared с service account
 - [ ] Пользователь зарегистрирован, CRM sync OK
 - [ ] Agent отвечает с `as_of`

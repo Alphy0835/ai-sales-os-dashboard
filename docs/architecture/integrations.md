@@ -34,7 +34,7 @@ First production CRM connector: **Google Sheets API** (read-only). Integrator sh
 
 **Service account:** JSON key with Sheets read scope. Store **per tenant** encrypted in `IntegrationSource.credentials_encrypted` via Django Admin (recommended). Optional global default: `GOOGLE_SERVICE_ACCOUNT_JSON` env path for single-tenant dev — see `.env.example`.
 
-**Header mapping:** `IntegrationSource.config_json.header_map` — sheet header (lowercased) → internal `CrmLead` field. Defaults cover English names; override for Russian headers. Mapping is explicit (no auto-detect in MVP).
+**Header mapping:** `IntegrationSource.config_json.header_map` maps **sheet row-1 header text** (case-insensitive) → internal `CrmLead` field. Admin form stores the exact label from the sheet (e.g. `"id лида" → lead_id`). Sync reader lowercases row-1 headers before lookup.
 
 ```json
 {
@@ -88,7 +88,9 @@ First production CRM connector: **Google Sheets API** (read-only). Integrator sh
 
 Employee mapping: sheet `manager_email` ↔ `User.email` (tenant-scoped, active employee/manager). Sets `CrmLead.employee` on sync.
 
-**RegistrationInvite flow:** Manager (or integrator) pre-creates rows in the sheet with `employee_email`. Integrator creates `RegistrationInvite` in Django Admin (or via future manager API) with matching email + tenant/workspace/role. Employee opens invite link → `POST /auth/register/` → account created → first login triggers CRM sync and links user to sheet rows by email.
+**RegistrationInvite flow:** Integrator pre-creates rows in the sheet with `manager_email`. In Django Admin, create `RegistrationInvite` with matching **Expected email** (optional but recommended), tenant, workspace, and role. Invite **code** auto-generates on save; Admin shows **registration_url** (`FRONTEND_URL/register?code=…`). User submits `email`, `password`, `full_name`, `invite_code` → `POST /auth/register/` → default `ModulePermission` rows by role. CRM sync and `CrmLead.employee` linking run on the next `POST /auth/login/`, Celery Beat, manual **Sync CRM now**, or agent `refresh_crm` — not on register itself.
+
+**Django Admin CRM form (integrator):** structured fields for provider, spreadsheet ID, sheet name, per-column header labels, and credentials JSON. Collapsed **Advanced JSON** accepts only `review_rules` and `crm_vocabulary`; full `config_json` is assembled on save. List action **Sync CRM now** for Google Sheets sources.
 
 **No User Level Integration UI:** All CRM setup (service account JSON, spreadsheet ID, column map, invite rows) is **Django Admin only** for MVP. User Level exposes read-only source health via `GET /integrations/sources/` and metrics; manual sync remains `POST /integrations/sources/{id}/sync/` for managers with `settings: edit`.
 

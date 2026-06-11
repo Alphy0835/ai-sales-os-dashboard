@@ -64,6 +64,7 @@ function Test-DockerReady {
 function Set-LocalDevMode([string]$ApiDir) {
     $dbPath = (Join-Path $ApiDir "db.sqlite3") -replace "\\", "/"
     $env:DATABASE_URL = "sqlite:///$dbPath"
+    $env:REDIS_URL = "disabled"
     $env:CELERY_TASK_ALWAYS_EAGER = "true"
 }
 
